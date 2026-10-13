@@ -30,17 +30,22 @@ def _env_candidates() -> list[Path]:
     return [config.root() / ".env", config.DEFAULT_ROOT / ".env", config.DEFAULT_ROOT.parent / ".env"]
 
 
+def _is_real_key(v: str) -> bool:
+    """Bỏ qua giá trị mẫu từ .env.example (vd. "nvapi-...")."""
+    return bool(v) and "..." not in v and v != "nvapi-"
+
+
 def get_api_key() -> str | None:
-    key = os.environ.get("NVIDIA_API_KEY")
-    if key:
-        return key.strip()
+    key = (os.environ.get("NVIDIA_API_KEY") or "").strip()
+    if _is_real_key(key):
+        return key
     for p in _env_candidates():
         try:
             for line in p.read_text(encoding="utf-8").splitlines():
                 m = re.match(r"\s*(?:export\s+)?NVIDIA_API_KEY\s*=\s*(.*)", line)
                 if m:
                     v = m.group(1).strip().strip("'\"")
-                    if v:
+                    if _is_real_key(v):
                         return v
         except OSError:
             continue

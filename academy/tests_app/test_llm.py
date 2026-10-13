@@ -70,3 +70,14 @@ def test_key_from_env_file(env, monkeypatch):
 def test_no_key_raises(env):
     with pytest.raises(llm.NoKeyError):
         llm.chat([], llm.TUTOR_MODEL)
+
+
+def test_placeholder_key_is_ignored(tmp_path, monkeypatch):
+    from app import llm
+    monkeypatch.delenv("NVIDIA_API_KEY", raising=False)
+    env = tmp_path / ".env"
+    env.write_text("NVIDIA_API_KEY=nvapi-...\n", encoding="utf-8")
+    monkeypatch.setattr(llm, "_env_candidates", lambda: [env])
+    assert llm.get_api_key() is None
+    env.write_text("NVIDIA_API_KEY=nvapi-realKey123\n", encoding="utf-8")
+    assert llm.get_api_key() == "nvapi-realKey123"
