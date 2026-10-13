@@ -1,0 +1,58 @@
+{
+  "id": "L10-etl-chat-luong-du-lieu",
+  "title": "ETL lặp lại được & chất lượng dữ liệu",
+  "goal": "Đóng gói ETL idempotent kèm bộ kiểm tra chất lượng dữ liệu chặn bản ghi lỗi — 4 hàm trong pipeline.py qua hết 14 test, chạy 2 lần trên dữ liệu thật đều nạp đúng 264 tin.",
+  "duration_min": 210,
+  "concepts": ["etl", "idempotency", "data-quality"],
+  "entry": "pipeline.py",
+  "checklist": [
+    "Copy cleaning.py (L07) và db.py (L08) vào thư mục bài, chạy được `python pipeline.py` 2 lần",
+    "Định nghĩa được idempotent và nêu 3 cách nạp lại an toàn",
+    "Kể được các khía cạnh chất lượng dữ liệu: đầy đủ, hợp lệ, duy nhất, kịp thời, khối lượng",
+    "Phân biệt được lỗi từng dòng (loại + log) và lỗi cả lô (raise, dừng)",
+    "Giải thích được ON CONFLICT ... DO UPDATE và excluded",
+    "Dùng logging với mức INFO/WARNING thay cho print",
+    "Qua hết test của bài"
+  ],
+  "interview_questions": [
+    "ETL và ELT khác nhau thế nào? Khi nào chọn ELT?",
+    "Idempotent là gì? Vì sao pipeline dữ liệu cần idempotent?",
+    "So sánh full refresh, delete-insert theo lô và upsert.",
+    "Bạn kiểm tra chất lượng dữ liệu những gì? Kể theo các khía cạnh.",
+    "Khi kiểm tra chất lượng thất bại, pipeline nên làm gì? Khi nào loại dòng, khi nào dừng cả lô?",
+    "INSERT OR REPLACE khác ON CONFLICT DO UPDATE thế nào?",
+    "Vì sao dùng logging thay vì print trong pipeline?",
+    "Kể lại pipeline JobRadar của bạn từ CSV thô tới bảng SQLite trong 1 phút."
+  ],
+  "tutor_notes": "Bài ghép L07 + L08: học sinh phải copy cleaning.py và db.py của mình vào workspace L10 (nếu thiếu → ModuleNotFoundError ở test upsert/run_pipeline). Lỗi hay gặp: (1) quality_checks coi lương trống (NaN) là lỗi, hoặc so min > max khi một bên NaN, hoặc báo job_id trùng nhiều lần; (2) gán cứng ngày hôm nay thay vì dùng as_of; (3) split_rejects loại cả dòng vì lỗi BLOCKING_CHECKS, lý do không sắp A→Z, quên reset_index; (4) upsert_jobs dùng INSERT thường (lần 2 lỗi UNIQUE) hoặc INSERT OR REPLACE, quên xóa kỹ năng cũ nên kỹ năng bị bỏ vẫn còn; (5) run_pipeline mở DB/create_schema trước khi kiểm tra chất lượng nên lỗi vẫn tạo bảng; nuốt lỗi bằng try/except; dùng print thay log.warning nên test log fail; (6) summary đếm 'clean' sau khi loại thay vì trước. Gợi ý: chạy test idempotent và in snapshot DB 2 lần để so; hỏi 'nếu chạy lại lúc 2 giờ sáng thì sao?'. Không đưa nguyên hàm; có thể đưa cú pháp riêng lẻ (ON CONFLICT(job_id) DO UPDATE SET a = excluded.a, logging.getLogger, raise).",
+  "tasks": [
+    {
+      "fn": "quality_checks",
+      "signature": "quality_checks(df, as_of=\"2026-10-13\", min_rows=1)",
+      "summary": "7 kiểm tra chất lượng, trả list (tên_kiểm_tra, job_id)",
+      "example": "lương 40-15 → (\"salary_min_gt_max\", \"J2\")",
+      "test_prefix": "test_quality_checks"
+    },
+    {
+      "fn": "split_rejects",
+      "signature": "split_rejects(df, issues)",
+      "summary": "Tách dòng hợp lệ và dòng bị loại kèm lý do",
+      "example": "→ (DataFrame hợp lệ, [(\"J3\", \"company_null, salary_out_of_range\")])",
+      "test_prefix": "test_split_rejects"
+    },
+    {
+      "fn": "upsert_jobs",
+      "signature": "upsert_jobs(conn, df)",
+      "summary": "Nạp idempotent: upsert jobs, delete-insert job_skills",
+      "example": "chạy 2 lần → DB y hệt chạy 1 lần",
+      "test_prefix": "test_upsert_jobs"
+    },
+    {
+      "fn": "run_pipeline",
+      "signature": "run_pipeline(csv_path, db_path, as_of, min_rows, max_reject_ratio)",
+      "summary": "Extract → Transform → Quality → Load, có log và DataQualityError",
+      "example": "→ {\"raw\": 302, \"clean\": 268, \"rejected\": 4, \"loaded\": 264}",
+      "test_prefix": "test_run_pipeline"
+    }
+  ]
+}

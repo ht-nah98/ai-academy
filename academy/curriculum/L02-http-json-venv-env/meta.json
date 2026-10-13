@@ -1,0 +1,79 @@
+{
+  "id": "L02-http-json-venv-env",
+  "title": "HTTP, JSON, venv, .env — gọi API NVIDIA",
+  "goal": "Tạo venv, đọc API key từ .env, lấy danh sách model từ API NVIDIA rồi nhóm theo nhà phát hành và lọc theo từ khóa; qua hết 15 test offline.",
+  "duration_min": 210,
+  "concepts": [
+    "venv-pip",
+    "env-secrets",
+    "http-api",
+    "json",
+    "dependency-injection",
+    "testing-pytest"
+  ],
+  "entry": "models.py",
+  "checklist": [
+    "Tạo và kích hoạt được virtual environment (.venv), cài gói bằng pip trong đó",
+    "Có file requirements.txt liệt kê thư viện cần cài",
+    "Có file .env chứa NVIDIA_API_KEY và .env nằm trong .gitignore",
+    "Giải thích được GET/POST, status code 200/401/404/429/500",
+    "Phân biệt được chuỗi JSON và dict Python (json.loads / json.dumps)",
+    "Chạy thật `python models.py nemotron` và thấy danh sách model",
+    "Giải thích được vì sao fetch_model_ids nhận tham số fetch",
+    "Qua hết test của bài"
+  ],
+  "interview_questions": [
+    "Virtual environment là gì? Vì sao mỗi project Python nên có venv riêng?",
+    "Bạn quản lý API key và mật khẩu trong project thế nào? Nếu lỡ commit key lên GitHub thì làm gì?",
+    "Giải thích các status code 200, 400, 401, 404, 429, 500. Gặp 429 thì xử lý thế nào?",
+    "GET và POST khác nhau thế nào? Thế nào là một REST API?",
+    "JSON là gì? json.loads và json.dumps khác nhau ra sao?",
+    "Làm sao để test một hàm có gọi API bên ngoài mà không gọi mạng thật?",
+    "requirements.txt dùng để làm gì? Vì sao nên ghim (pin) phiên bản thư viện?"
+  ],
+  "tutor_notes": "Lỗi hay gặp: (1) pip install ngoài venv trên Ubuntu/Debian → 'externally-managed-environment' — hướng dẫn tạo venv chứ không dùng --break-system-packages; (2) quên activate venv nên `python` vẫn là bản hệ thống; Windows dùng .venv\\Scripts\\activate; (3) read_env_file tách bằng split('=') không giới hạn nên value chứa '=' bị cắt, hoặc quên strip, hoặc không bỏ dấu nháy; (4) get_api_key dùng os.environ trực tiếp thay vì tham số environ nên test không kiểm soát được — hỏi lại 'vì sao hàm nhận environ?'; (5) parse_model_ids không kiểm tra 'data' là list; (6) fetch_model_ids gọi http_get_json trực tiếp thay vì dùng tham số fetch. Tuyệt đối không yêu cầu học sinh dán API key vào chat. Gợi ý bằng câu hỏi.",
+  "tasks": [
+    {
+      "fn": "read_env_file",
+      "signature": "read_env_file(path)",
+      "summary": "Đọc file .env thành dict, bỏ dòng trống, comment và dấu nháy",
+      "example": "\"A=x=y\" → {\"A\": \"x=y\"}",
+      "test_prefix": "test_read_env"
+    },
+    {
+      "fn": "get_api_key",
+      "signature": "get_api_key(env_path=\".env\", environ=None)",
+      "summary": "Lấy NVIDIA_API_KEY: biến môi trường trước, .env sau, thiếu thì RuntimeError",
+      "example": "get_api_key(environ={\"NVIDIA_API_KEY\": \"nvapi-x\"}) → \"nvapi-x\"",
+      "test_prefix": "test_key"
+    },
+    {
+      "fn": "parse_model_ids",
+      "signature": "parse_model_ids(payload)",
+      "summary": "Lấy list id model A→Z từ JSON; JSON lạ thì ValueError",
+      "example": "{\"data\": [{\"id\": \"b\"}, {\"id\": \"a\"}]} → [\"a\", \"b\"]",
+      "test_prefix": "test_parse"
+    },
+    {
+      "fn": "fetch_model_ids",
+      "signature": "fetch_model_ids(fetch=http_get_json, url=MODELS_URL)",
+      "summary": "Gọi hàm fetch được truyền vào rồi parse_model_ids",
+      "example": "fetch_model_ids(fake_fetch) → list id từ JSON giả",
+      "test_prefix": "test_fetch"
+    },
+    {
+      "fn": "group_by_publisher",
+      "signature": "group_by_publisher(model_ids)",
+      "summary": "Nhóm id theo hãng (phần trước /), mỗi nhóm A→Z",
+      "example": "[\"meta/llama-3\"] → {\"meta\": [\"meta/llama-3\"]}",
+      "test_prefix": "test_group"
+    },
+    {
+      "fn": "filter_by_keyword",
+      "signature": "filter_by_keyword(model_ids, keyword)",
+      "summary": "Lọc id chứa từ khóa, không phân biệt hoa thường",
+      "example": "filter_by_keyword(ids, \"NEMOTRON\") → các id nvidia/nemotron-...",
+      "test_prefix": "test_filter"
+    }
+  ]
+}

@@ -1,0 +1,57 @@
+{
+  "id": "L03-goi-llm-dau-tien",
+  "title": "Gọi LLM đầu tiên",
+  "goal": "Viết hàm ask() gửi câu hỏi tới LLM và trả về câu trả lời + số token đã dùng; qua hết 12 test với fake client và chạy thật được với model NVIDIA.",
+  "duration_min": 210,
+  "concepts": [
+    "llm-next-token",
+    "token",
+    "llm-api",
+    "messages-roles",
+    "cost-estimation",
+    "dependency-injection"
+  ],
+  "entry": "chat.py",
+  "checklist": [
+    "Giải thích được LLM 'dự đoán token tiếp theo' bằng ví dụ của riêng mình",
+    "Giải thích được token là gì và vì sao giá/giới hạn tính theo token",
+    "Đo được số token của cùng một câu bằng tiếng Việt và tiếng Anh",
+    "Phân biệt được vai trò system / user / assistant",
+    "Đọc được trường usage và finish_reason trong response",
+    "Chạy thật `python chat.py \"...\"` và nhận được câu trả lời",
+    "Qua hết test của bài"
+  ],
+  "interview_questions": [
+    "LLM là gì? Giải thích cơ chế 'dự đoán token tiếp theo' một cách đơn giản.",
+    "Token là gì? Vì sao chi phí và giới hạn của LLM tính theo token chứ không theo ký tự hay từ?",
+    "Vì sao cùng một nội dung, tiếng Việt thường tốn nhiều token hơn tiếng Anh? Điều đó ảnh hưởng gì khi làm sản phẩm cho người Việt?",
+    "Các role system, user, assistant trong messages khác nhau thế nào?",
+    "'OpenAI-compatible API' nghĩa là gì? Lợi ích khi đổi nhà cung cấp model?",
+    "max_tokens dùng để làm gì? finish_reason = \"length\" nghĩa là gì?",
+    "Làm sao để viết unit test cho code gọi LLM mà không tốn tiền và kết quả ổn định?"
+  ],
+  "tutor_notes": "Lỗi hay gặp: (1) gọi client.chat.completions.create(...) với tham số vị trí thay vì keyword (model=..., messages=...) — fake client chỉ nhận **kwargs; (2) lấy response['choices'] kiểu dict thay vì thuộc tính response.choices[0].message.content; (3) quên .strip() hoặc không xử lý content None; (4) kiểm tra câu hỏi rỗng SAU khi gọi API; (5) build_messages chỉ kiểm tra `if system` nên '   ' vẫn lọt; (6) estimate_cost_usd quên chia 1_000_000 hoặc quên round. Khi chạy thật: 401 = thiếu/sai key hoặc chưa activate venv nên không thấy openai (ModuleNotFoundError), 404 = sai tên model, 429 = gọi quá nhanh. Không bao giờ yêu cầu học sinh dán API key. Khi giải thích LLM, dùng ví dụ gợi ý bàn phím điện thoại; tránh nói LLM 'hiểu' hay 'tra cứu Internet'.",
+  "tasks": [
+    {
+      "fn": "build_messages",
+      "signature": "build_messages(system, question)",
+      "summary": "Tạo list messages: system nếu có nội dung, rồi user",
+      "example": "build_messages(None, \"Hi\") → [{\"role\": \"user\", \"content\": \"Hi\"}]",
+      "test_prefix": "test_build_messages"
+    },
+    {
+      "fn": "ask",
+      "signature": "ask(question, client, model=DEFAULT_MODEL, system=DEFAULT_SYSTEM, max_tokens=512)",
+      "summary": "Gọi LLM đúng một lần, trả câu trả lời và số token",
+      "example": "ask(\"Hi\", client) → {\"answer\": \"...\", \"prompt_tokens\": 42, \"completion_tokens\": 7}",
+      "test_prefix": "test_ask"
+    },
+    {
+      "fn": "estimate_cost_usd",
+      "signature": "estimate_cost_usd(prompt_tokens, completion_tokens, input_price_per_m, output_price_per_m)",
+      "summary": "Chi phí USD theo giá mỗi 1 triệu token, làm tròn 6 chữ số",
+      "example": "estimate_cost_usd(1_000_000, 500_000, 0.5, 1.5) → 1.25",
+      "test_prefix": "test_estimate"
+    }
+  ]
+}

@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎓</text></svg>">
+<title>AI Academy</title>
+<script>try{var t=localStorage.getItem("theme");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t;}catch(_){}</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="style.css">
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.9.1/mermaid.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+</head>
+<body>
+<div id="app" class="layout">
+  <aside id="sidebar" class="sidebar" aria-label="Lộ trình học">
+    <div class="brand">
+      <a href="#/" class="logo"><span class="logo-mark" aria-hidden="true">AI</span><span>Academy</span></a>
+      <button id="theme-toggle" class="iconbtn" type="button" title="Đổi giao diện sáng / tối" aria-label="Đổi giao diện sáng / tối">◐</button>
+      <button id="side-toggle" class="iconbtn" type="button" title="Thu gọn lộ trình" aria-label="Thu gọn lộ trình">«</button>
+    </div>
+    <div class="overall"><div class="bar"><div id="overall-bar"></div></div><small id="overall-text"></small></div>
+    <a class="navlink" id="nav-home" href="#/"><span aria-hidden="true">🏠</span> Trang chủ</a>
+    <nav id="roadmap"></nav>
+  </aside>
+  <button id="side-open" class="iconbtn side-open" type="button" title="Mở lộ trình" aria-label="Mở lộ trình">☰</button>
+  <main id="main" class="main"><div id="view"></div></main>
+  <button id="tutor-fab" class="tutor-fab" type="button" title="Hỏi Gia sư AI" aria-label="Mở Gia sư AI"><span aria-hidden="true">💬</span> Gia sư AI</button>
+  <div id="tutor-scrim" class="tutor-scrim" hidden></div>
+  <aside id="tutor" class="tutor" hidden aria-label="Gia sư AI">
+    <div class="tutor-head">
+      <div class="tutor-av" aria-hidden="true">🤖</div>
+      <div class="tutor-title">Gia sư AI <small id="tutor-lesson"></small></div>
+      <button id="tutor-close" class="iconbtn" type="button" aria-label="Đóng">✕</button>
+    </div>
+    <div id="tutor-log" class="tutor-log" aria-live="polite"></div>
+    <form id="tutor-form" class="tutor-form">
+      <textarea id="tutor-input" rows="2" placeholder="Hỏi gia sư… (Enter để gửi, Shift+Enter xuống dòng)" aria-label="Câu hỏi cho gia sư"></textarea>
+      <button type="submit" class="btn">Gửi</button>
+    </form>
+  </aside>
+</div>
+<script defer src="app.js"></script>
+</body>
+</html>

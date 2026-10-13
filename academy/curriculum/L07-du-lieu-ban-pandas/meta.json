@@ -1,0 +1,64 @@
+{
+  "id": "L07-du-lieu-ban-pandas",
+  "title": "Dữ liệu bẩn & pandas",
+  "goal": "Làm sạch bộ tin tuyển dụng thô bằng pandas: chuẩn hóa thành phố, lương, kỹ năng, loại bản trùng — 5 hàm trong cleaning.py qua hết 18 test (302 dòng thô → 268 tin sạch).",
+  "duration_min": 210,
+  "concepts": ["pandas", "data-cleaning"],
+  "entry": "cleaning.py",
+  "checklist": [
+    "Cài pandas trong venv và chạy được `python cleaning.py`",
+    "Khám phá được một DataFrame bằng shape, dtypes, isna().sum(), value_counts()",
+    "Giải thích được vì sao NaN == NaN là False và dùng isna() thay thế",
+    "Đọc và viết được regex đơn giản lấy số từ chuỗi",
+    "Giải thích được vì sao phải chuẩn hóa trước khi khử trùng",
+    "Biết vì sao không sửa file dữ liệu thô mà tạo bản sạch mới",
+    "Qua hết test của bài"
+  ],
+  "interview_questions": [
+    "Dữ liệu bẩn thường gặp những dạng nào? Kể ví dụ từ project của bạn.",
+    "Bạn xử lý giá trị thiếu thế nào? Khi nào bỏ dòng, khi nào điền giá trị, khi nào giữ trống?",
+    "None và NaN khác nhau thế nào trong pandas? Vì sao không dùng == để kiểm tra NaN?",
+    "Làm sao phát hiện và loại bản ghi trùng gần đúng (khác khoảng trắng, hoa thường)?",
+    ".apply() khác thao tác vector hóa (vd. df[\"a\"] * 2, .str.lower()) thế nào? Cái nào nhanh hơn, vì sao?",
+    "Vì sao nên giữ nguyên dữ liệu thô và tạo bản sạch riêng?",
+    "Bạn quy đổi lương USD sang VND thế nào? Dùng tỷ giá cố định có vấn đề gì?"
+  ],
+  "tutor_notes": "Học sinh mới dùng pandas lần đầu. Lỗi hay gặp: (1) gọi .lower() trên NaN → AttributeError 'float' object has no attribute 'lower' — nhắc dùng is_blank trước; (2) normalize_city chỉ strip mà quên gom khoảng trắng giữa (' '.join(s.split())) hoặc quên bỏ tiền tố 'tp.'; (3) parse_salary xét 'từ' trước 'up to' hoặc quên .lower(), quên bỏ dấu phẩy '$1,200', gán cứng 25000 thay vì usd_rate; (4) parse_date không bắt ValueError, hoặc trả về datetime thay vì chuỗi 'YYYY-MM-DD'; (5) split_skills dùng set nên mất thứ tự; (6) clean_jobs sửa df gốc (quên .copy()), lọc rỗng bằng != '' nên sót NaN, khử trùng trước khi chuẩn hóa, hoặc quên reset_index. Gợi ý: in value_counts(dropna=False) của từng cột để thấy biến thể; thử từng hàm nhỏ trong python REPL. Không đưa nguyên hàm hoàn chỉnh; có thể đưa cú pháp riêng lẻ (re.findall, datetime.strptime, groupby().agg, drop_duplicates).",
+  "tasks": [
+    {
+      "fn": "normalize_city",
+      "signature": "normalize_city(raw)",
+      "summary": "Gom các cách viết thành phố về 5 tên chuẩn; rỗng hoặc lạ → None",
+      "example": "normalize_city(\" TP.HCM \") → \"Hồ Chí Minh\"",
+      "test_prefix": "test_normalize_city"
+    },
+    {
+      "fn": "parse_salary",
+      "signature": "parse_salary(raw, usd_rate=25000)",
+      "summary": "Đọc lương dạng chữ → (min, max) triệu VND, hỗ trợ USD, 'up to', 'từ', thỏa thuận",
+      "example": "parse_salary(\"$1000-1500\") → (25.0, 37.5)",
+      "test_prefix": "test_parse_salary"
+    },
+    {
+      "fn": "parse_date",
+      "signature": "parse_date(raw)",
+      "summary": "Đọc ngày nhiều định dạng → \"YYYY-MM-DD\", sai → None",
+      "example": "parse_date(\"15/09/2026\") → \"2026-09-15\"",
+      "test_prefix": "test_parse_date"
+    },
+    {
+      "fn": "split_skills",
+      "signature": "split_skills(raw)",
+      "summary": "Tách kỹ năng theo , hoặc ; → list chữ thường, bỏ trùng giữ thứ tự",
+      "example": "split_skills(\" Python, SQL;python\") → [\"python\", \"sql\"]",
+      "test_prefix": "test_split_skills"
+    },
+    {
+      "fn": "clean_jobs",
+      "signature": "clean_jobs(df)",
+      "summary": "Làm sạch cả bảng: bỏ dòng thiếu, chuẩn hóa từng cột, khử trùng, trả 11 cột",
+      "example": "clean_jobs(pd.read_csv(DATA_PATH)) → 268 dòng",
+      "test_prefix": "test_clean_jobs"
+    }
+  ]
+}

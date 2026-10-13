@@ -1,0 +1,76 @@
+{
+  "id": "L06-web-chat-streaming-rate-limit",
+  "title": "Web chat, streaming, lỗi & rate limit",
+  "goal": "Làm trang chat stream từng mẩu chữ và tự retry có backoff khi gặp lỗi 429; qua hết 32 test và chat được trên trình duyệt.",
+  "duration_min": 210,
+  "concepts": [
+    "streaming",
+    "rate-limit",
+    "retry-backoff",
+    "rest-api-fastapi"
+  ],
+  "entry": "webchat.py",
+  "checklist": [
+    "Giải thích được streaming và time to first token",
+    "Phân biệt được lỗi đáng retry (429, 5xx, timeout) và không đáng retry (400, 401, 404)",
+    "Giải thích được exponential backoff và vì sao cần jitter",
+    "Biết vì sao mọi lời gọi mạng cần timeout",
+    "Viết được endpoint FastAPI và test bằng TestClient",
+    "Chạy `python webchat.py` và chat được trên trình duyệt, chữ hiện dần",
+    "Qua hết test của bài"
+  ],
+  "interview_questions": [
+    "Streaming trong LLM API là gì? Nó cải thiện chỉ số nào (time to first token) và không cải thiện chỉ số nào?",
+    "HTTP 429 nghĩa là gì? Bạn xử lý thế nào trong production?",
+    "Exponential backoff là gì? Vì sao cần thêm jitter?",
+    "Lỗi nào nên retry, lỗi nào không? Vì sao không retry lỗi 401?",
+    "Vì sao mọi lời gọi mạng cần timeout? Chuyện gì xảy ra khi có hai lớp retry chồng nhau?",
+    "Trong web chat, lịch sử hội thoại nên lưu ở đâu? Ưu nhược điểm khi để trình duyệt gửi lên?",
+    "FastAPI kiểm tra dữ liệu đầu vào thế nào? Mã 422 nghĩa là gì?"
+  ],
+  "tutor_notes": "Lần đầu học sinh gặp generator, lambda truyền vào hàm, và FastAPI — giải thích bằng ví dụ khác (cafe, chia số), không viết hộ. Lỗi hay gặp: (1) backoff_delays dùng 2**(i+1) hoặc quên min(cap, ...); (2) is_retryable retry mọi lỗi, hoặc so status_code mà quên lỗi timeout/kết nối không có status_code (dùng getattr(error, 'status_code', None)); (3) with_retry gọi sleep cả sau lần thử cuối, quên nhân rand(), nuốt lỗi (return None) thay vì raise, hoặc dùng `raise e` sai chỗ; gọi fn thay vì truyền fn (with_retry(client...create(...)) thay vì lambda); (4) stream_text gom list rồi return thay vì yield, quên bỏ chunk choices rỗng; (5) handler /chat gọi API ngoài with_retry, không đổi lỗi hết lượt thành HTTPException 503, quên strip/None. Khi chạy thật: ModuleNotFoundError fastapi/uvicorn → pip install trong venv; cổng 8001 bận → đổi port. Không bao giờ yêu cầu học sinh dán API key.",
+  "tasks": [
+    {
+      "fn": "backoff_delays",
+      "signature": "backoff_delays(n, base=1.0, cap=30.0)",
+      "summary": "Thời gian chờ tăng gấp đôi mỗi lần, không vượt cap",
+      "example": "backoff_delays(5) → [1.0, 2.0, 4.0, 8.0, 16.0]",
+      "test_prefix": "test_backoff"
+    },
+    {
+      "fn": "is_retryable",
+      "signature": "is_retryable(error)",
+      "summary": "True với 429, 5xx, timeout, mất kết nối",
+      "example": "is_retryable(lỗi 401) → False",
+      "test_prefix": "test_is_retryable"
+    },
+    {
+      "fn": "with_retry",
+      "signature": "with_retry(fn, max_tries=4, base=1.0, cap=30.0, sleep=time.sleep, rand=random.random)",
+      "summary": "Gọi lại fn khi lỗi tạm thời, chờ backoff có jitter",
+      "example": "429, 429, OK → trả OK sau 2 lần chờ",
+      "test_prefix": "test_with_retry"
+    },
+    {
+      "fn": "stream_text",
+      "signature": "stream_text(chunks)",
+      "summary": "Generator: yield chữ của từng chunk, bỏ chunk rỗng",
+      "example": "list(stream_text(chunks)) → [\"Data\", \" Engineer\"]",
+      "test_prefix": "test_stream_text"
+    },
+    {
+      "fn": "collect_stream",
+      "signature": "collect_stream(chunks)",
+      "summary": "Ghép toàn bộ stream thành một chuỗi",
+      "example": "collect_stream(chunks) → \"Xin chào\"",
+      "test_prefix": "test_collect_stream"
+    },
+    {
+      "fn": "POST /chat",
+      "signature": "create_app(client, ...) → handler chat(req)",
+      "summary": "Endpoint chat: gọi LLM qua with_retry, hết lượt trả 503",
+      "example": "POST /chat {\"message\": \"Hi\"} → {\"answer\": \"Chào bạn!\"}",
+      "test_prefix": "test_api"
+    }
+  ]
+}

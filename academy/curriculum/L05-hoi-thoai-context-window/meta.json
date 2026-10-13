@@ -1,0 +1,67 @@
+{
+  "id": "L05-hoi-thoai-context-window",
+  "title": "Hội thoại nhiều lượt & context window",
+  "goal": "Giữ lịch sử hội thoại và tự cắt bớt khi vượt ngân sách token cho trước; qua hết 25 test và chat nhiều lượt thật trong terminal.",
+  "duration_min": 180,
+  "concepts": [
+    "context-window",
+    "messages-roles",
+    "token"
+  ],
+  "entry": "conversation.py",
+  "checklist": [
+    "Giải thích được vì sao LLM stateless mà chatbot vẫn 'nhớ'",
+    "Giải thích được context window và những gì chiếm chỗ trong đó",
+    "Tính được tổng token của hội thoại N lượt khi gửi lại toàn bộ lịch sử",
+    "Viết được class Conversation với messages() trả bản sao",
+    "Cắt được lịch sử theo ngân sách: giữ system + các lượt mới nhất",
+    "So sánh được cắt lịch sử và tóm tắt lịch sử",
+    "Qua hết test của bài"
+  ],
+  "interview_questions": [
+    "LLM có nhớ cuộc trò chuyện không? Chatbot 'nhớ' bằng cách nào?",
+    "Context window là gì? Điều gì xảy ra khi hội thoại vượt context window?",
+    "Vì sao chi phí một cuộc hội thoại dài tăng nhanh hơn tuyến tính theo số lượt?",
+    "Bạn cắt lịch sử hội thoại thế nào? Vì sao luôn giữ system prompt và câu mới nhất?",
+    "So sánh cắt lịch sử và tóm tắt lịch sử. Khi nào dùng cách nào?",
+    "Làm sao ước lượng số token mà không gọi API? Vì sao nên làm tròn lên?"
+  ],
+  "tutor_notes": "Đây là lần đầu học sinh viết class: giải thích __init__ và self bằng ví dụ khác (playlist, giỏ hàng), không viết hộ Conversation. Lỗi hay gặp: (1) khai báo list lịch sử ở mức class (dùng chung giữa các đối tượng) thay vì self._history = [] trong __init__; (2) messages() trả chính list bên trong thay vì list(self._history); (3) estimate_tokens dùng // hoặc round thay vì math.ceil; (4) trim_history dùng pop/del làm sửa list đầu vào, quên luôn giữ message cuối, nhảy cóc qua message không vừa thay vì dừng, hoặc trả kết quả bị đảo thứ tự (quên insert(0, ...) hay đảo lại); (5) chat_turn gửi toàn bộ lịch sử thay vì bản đã cắt, hoặc quên add_assistant. Gợi ý: vẽ ra giấy danh sách message với số token từng cái rồi đi ngược từ cuối. Không bao giờ yêu cầu học sinh dán API key.",
+  "tasks": [
+    {
+      "fn": "Conversation",
+      "signature": "Conversation(system=None) · add_user · add_assistant · messages()",
+      "summary": "Lưu lịch sử hội thoại, messages() trả bản sao",
+      "example": "conv.add_user(\"Hi\"); conv.messages() → [system, {\"role\": \"user\", \"content\": \"Hi\"}]",
+      "test_prefix": "test_conversation"
+    },
+    {
+      "fn": "estimate_tokens",
+      "signature": "estimate_tokens(text)",
+      "summary": "Ước lượng token: 3 ký tự ≈ 1 token, làm tròn lên",
+      "example": "estimate_tokens(\"abcd\") → 2",
+      "test_prefix": "test_estimate_tokens"
+    },
+    {
+      "fn": "count_message_tokens",
+      "signature": "count_message_tokens(messages)",
+      "summary": "Tổng token: mỗi message 4 token khung + nội dung",
+      "example": "count_message_tokens([{\"role\": \"user\", \"content\": \"abcdef\"}]) → 6",
+      "test_prefix": "test_count_message_tokens"
+    },
+    {
+      "fn": "trim_history",
+      "signature": "trim_history(messages, max_tokens)",
+      "summary": "Giữ system và các lượt mới nhất vừa ngân sách",
+      "example": "trim_history(history, 50) → [system, u2, a2, u3]",
+      "test_prefix": "test_trim_history"
+    },
+    {
+      "fn": "chat_turn",
+      "signature": "chat_turn(conv, text, client, max_context_tokens=3000, ...)",
+      "summary": "Một lượt chat: lưu câu hỏi, cắt, gọi API, lưu trả lời",
+      "example": "chat_turn(conv, \"Mình tên gì?\", client) → \"Bạn tên Lan.\"",
+      "test_prefix": "test_chat_turn"
+    }
+  ]
+}

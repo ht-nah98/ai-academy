@@ -1,0 +1,57 @@
+{
+  "id": "L08-mo-hinh-hoa-sqlite",
+  "title": "Mô hình hóa & nạp SQLite",
+  "goal": "Thiết kế schema 3 bảng (jobs, companies, job_skills) và nạp dữ liệu sạch vào SQLite — 4 hàm trong db.py qua hết 13 test, jobradar.db có 30 công ty và 268 tin.",
+  "duration_min": 180,
+  "concepts": ["schema", "data-modeling", "sqlite"],
+  "entry": "db.py",
+  "checklist": [
+    "Chạy được `python db.py` và mở jobradar.db xem 3 bảng",
+    "Giải thích được vì sao tách companies ra khỏi jobs (tránh lặp, tránh mâu thuẫn)",
+    "Chỉ ra được khóa chính, khóa ngoại, khóa ghép trong schema",
+    "Giải thích được bảng nối cho quan hệ nhiều–nhiều",
+    "Luôn dùng tham số ? thay vì ghép chuỗi SQL",
+    "Giải thích được commit/rollback khi dùng `with conn:`",
+    "Qua hết test của bài"
+  ],
+  "interview_questions": [
+    "Chuẩn hóa dữ liệu (normalization) là gì? Nêu ví dụ 1NF bị vi phạm.",
+    "Khóa chính và khóa ngoại khác nhau thế nào? Khóa ghép dùng khi nào?",
+    "Thiết kế schema cho quan hệ nhiều–nhiều giữa tin tuyển dụng và kỹ năng.",
+    "Transaction là gì? ACID là gì (giải thích chữ A)?",
+    "SQL injection là gì và phòng tránh thế nào?",
+    "Khi nào nên phi chuẩn hóa (denormalize)?",
+    "Vì sao executemany nhanh hơn gọi execute trong vòng lặp?"
+  ],
+  "tutor_notes": "Học sinh mới học SQL lần đầu (chỉ DDL + INSERT, chưa học SELECT phức tạp). Lỗi hay gặp: (1) quên IF NOT EXISTS → 'table already exists' khi gọi 2 lần; (2) viết khóa chính ghép sai: PRIMARY KEY trên từng cột thay vì PRIMARY KEY (job_id, skill) cuối bảng; (3) quên PRAGMA foreign_keys = ON nên khóa ngoại không được kiểm; (4) truyền (name) thay vì (name,) → lỗi số tham số; ghép f-string nên tên có dấu ' gây lỗi; (5) load_jobs gọi get_or_create_company ngoài khối `with conn:` nên rollback không xóa công ty; quên commit nên đóng kết nối là mất dữ liệu; (6) NaN không đổi thành None — nhắc dùng to_db. Gợi ý: thử từng lệnh SQL trên sqlite3.connect(':memory:') trong REPL; dùng PRAGMA table_info(tên_bảng) để kiểm tra. Không đưa nguyên chuỗi DDL hoàn chỉnh của 3 bảng; có thể đưa cú pháp riêng lẻ (REFERENCES, PRIMARY KEY (a, b), executemany).",
+  "tasks": [
+    {
+      "fn": "create_schema",
+      "signature": "create_schema(conn)",
+      "summary": "Tạo 3 bảng companies, jobs, job_skills với khóa chính/ngoại; gọi nhiều lần không lỗi",
+      "example": "create_schema(conn) → 3 bảng, PRAGMA foreign_keys = 1",
+      "test_prefix": "test_create_schema"
+    },
+    {
+      "fn": "get_or_create_company",
+      "signature": "get_or_create_company(conn, name)",
+      "summary": "Trả company_id theo tên, chưa có thì thêm; dùng tham số ?",
+      "example": "get_or_create_company(conn, \"Lotus AI\") → 1 (gọi lại vẫn 1)",
+      "test_prefix": "test_get_or_create_company"
+    },
+    {
+      "fn": "load_jobs",
+      "signature": "load_jobs(conn, df)",
+      "summary": "Nạp DataFrame sạch vào 3 bảng trong một transaction, trả số tin",
+      "example": "load_jobs(conn, clean) → 268",
+      "test_prefix": "test_load_jobs"
+    },
+    {
+      "fn": "count_rows",
+      "signature": "count_rows(conn)",
+      "summary": "Đếm số dòng của 3 bảng, trả dict",
+      "example": "count_rows(conn) → {\"companies\": 30, \"jobs\": 268, \"job_skills\": 977}",
+      "test_prefix": "test_count_rows"
+    }
+  ]
+}

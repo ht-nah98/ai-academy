@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>JobRadar chat</title>
+<!-- ĐÃ VIẾT SẴN: trang chat tối giản. Bài L06 tập trung vào phía Python (webchat.py). -->
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 720px; margin: 0 auto; padding: 16px; background: #f6f7f9; color: #1d2330; }
+  h1 { font-size: 20px; }
+  #log { display: flex; flex-direction: column; gap: 8px; min-height: 50vh; }
+  .msg { padding: 10px 14px; border-radius: 12px; white-space: pre-wrap; max-width: 85%; }
+  .user { align-self: flex-end; background: #2563eb; color: #fff; }
+  .assistant { align-self: flex-start; background: #fff; border: 1px solid #dde1e8; }
+  .error { align-self: center; color: #b42318; font-size: 14px; }
+  form { display: flex; gap: 8px; margin-top: 16px; }
+  input { flex: 1; padding: 10px; border: 1px solid #c8cdd6; border-radius: 8px; font-size: 16px; }
+  button { padding: 10px 16px; border: 0; border-radius: 8px; background: #0f766e; color: #fff; font-size: 16px; }
+  button:disabled { opacity: .5; }
+</style>
+</head>
+<body>
+<h1>JobRadar — trợ lý việc làm IT</h1>
+<div id="log"></div>
+<form id="form">
+  <input id="input" autocomplete="off" placeholder="Hỏi về thị trường việc làm IT...">
+  <button id="send">Gửi</button>
+</form>
+<script>
+  const history = [];  // lịch sử nằm ở trình duyệt; server không nhớ gì (giống L05)
+  const log = document.getElementById("log");
+  const input = document.getElementById("input");
+  const send = document.getElementById("send");
+
+  function bubble(cls, text) {
+    const div = document.createElement("div");
+    div.className = "msg " + cls;
+    div.textContent = text;
+    log.appendChild(div);
+    return div;
+  }
+
+  document.getElementById("form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const message = input.value.trim();
+    if (!message) return;
+    input.value = "";
+    send.disabled = true;
+    bubble("user", message);
+    const out = bubble("assistant", "…");
+    try {
+      const res = await fetch("/chat/stream", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message, history }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || ("HTTP " + res.status));
+      }
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let answer = "";
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        answer += decoder.decode(value, { stream: true });
+        out.textContent = answer;
+      }
+      history.push({ role: "user", content: message }, { role: "assistant", content: answer });
+    } catch (err) {
+      out.remove();
+      bubble("error", "Lỗi: " + err.message);
+    } finally {
+      send.disabled = false;
+      input.focus();
+    }
+  });
+</script>
+</body>
+</html>

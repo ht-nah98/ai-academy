@@ -1,0 +1,86 @@
+{
+  "id": "L09-sql-phan-tich",
+  "title": "SQL phân tích",
+  "goal": "Viết 8 truy vấn phân tích dùng JOIN, GROUP BY và window function trả lời câu hỏi thị trường — 8 hàm trong queries.py qua hết 11 test.",
+  "duration_min": 210,
+  "concepts": ["sql-basics", "sql-joins", "window-functions"],
+  "entry": "queries.py",
+  "checklist": [
+    "Chạy được `python queries.py` trên jobradar.db của L08",
+    "Kể được thứ tự thực thi FROM → WHERE → GROUP BY → HAVING → SELECT → ORDER BY → LIMIT",
+    "Phân biệt được WHERE và HAVING",
+    "Phân biệt được INNER JOIN và LEFT JOIN bằng ví dụ",
+    "Viết được truy vấn top-1 mỗi nhóm bằng CTE + ROW_NUMBER",
+    "Giải thích được ROW_NUMBER, RANK, DENSE_RANK khác nhau khi bằng nhau",
+    "Qua hết test của bài"
+  ],
+  "interview_questions": [
+    "WHERE và HAVING khác nhau thế nào? Vì sao WHERE COUNT(*) > 1 lỗi?",
+    "INNER JOIN và LEFT JOIN khác nhau thế nào? Cho ví dụ cần LEFT JOIN.",
+    "ROW_NUMBER, RANK, DENSE_RANK khác nhau thế nào khi có giá trị bằng nhau?",
+    "Viết SQL lấy 2 tin lương cao nhất mỗi thành phố.",
+    "Window function khác GROUP BY ở điểm nào?",
+    "COUNT(*) và COUNT(cột) khác nhau thế nào? NULL = NULL trả về gì?",
+    "CTE (WITH) là gì? Khi nào dùng thay cho subquery?",
+    "Tính trung bình trượt 7 ngày bằng SQL thế nào?"
+  ],
+  "tutor_notes": "Học sinh đã biết DDL/INSERT ở L08, lần đầu viết SELECT phân tích. Test dùng DB mẫu 10 tin (FIXTURE_SQL trong tests/test_queries.py) — khuyến khích học sinh dán FIXTURE_SQL vào SQLite Viewer để thử. Lỗi hay gặp: (1) dùng WHERE với COUNT(*) thay vì HAVING → 'misuse of aggregate'; (2) quên WHERE city IS NOT NULL, hoặc viết city != NULL; (3) avg_salary_by_level lấy AVG(salary_min) + AVG(salary_max) hoặc không bỏ tin thiếu min/max; (4) sai thứ tự sắp xếp phụ (bằng nhau thì A→Z); (5) jobs_with_skill quên .lower() hoặc ghép f-string; (6) đặt window function trong WHERE → lỗi, cần CTE rồi lọc ở câu ngoài; (7) dùng ROW_NUMBER thay RANK ở top_paid_per_city nên mất tin cùng hạng; (8) monthly_trend thiếu ROWS BETWEEN 2 PRECEDING AND CURRENT ROW nên ra trung bình cộng dồn. Gợi ý bằng câu hỏi: 'Bước nào chạy trước: WHERE hay GROUP BY?'. Không đưa nguyên câu SQL hoàn chỉnh; có thể đưa cú pháp riêng lẻ (HAVING, OVER (PARTITION BY ...), WITH ... AS).",
+  "tasks": [
+    {
+      "fn": "jobs_by_city",
+      "signature": "jobs_by_city(conn)",
+      "summary": "Số tin theo thành phố, giảm dần",
+      "example": "→ [(\"Hồ Chí Minh\", 5), (\"Hà Nội\", 3), …]",
+      "test_prefix": "test_jobs_by_city"
+    },
+    {
+      "fn": "avg_salary_by_level",
+      "signature": "avg_salary_by_level(conn)",
+      "summary": "Lương trung bình (min+max)/2 theo cấp bậc, làm tròn 1 số",
+      "example": "→ [(\"senior\", 50.0), (\"middle\", 32.5), …]",
+      "test_prefix": "test_avg_salary_by_level"
+    },
+    {
+      "fn": "top_skills",
+      "signature": "top_skills(conn, n=5)",
+      "summary": "n kỹ năng có nhiều tin nhất",
+      "example": "top_skills(conn, 2) → [(\"python\", 6), (\"sql\", 5)]",
+      "test_prefix": "test_top_skills"
+    },
+    {
+      "fn": "companies_with_min_jobs",
+      "signature": "companies_with_min_jobs(conn, k)",
+      "summary": "Công ty có ít nhất k tin (JOIN + HAVING)",
+      "example": "companies_with_min_jobs(conn, 4) → [(\"Lotus AI\", 4)]",
+      "test_prefix": "test_companies_with_min_jobs"
+    },
+    {
+      "fn": "jobs_with_skill",
+      "signature": "jobs_with_skill(conn, skill)",
+      "summary": "Các tin cần một kỹ năng, JOIN 3 bảng, tham số ?",
+      "example": "jobs_with_skill(conn, \"Spark\") → [(\"J03\", …), (\"J06\", …)]",
+      "test_prefix": "test_jobs_with_skill"
+    },
+    {
+      "fn": "top_skill_per_city",
+      "signature": "top_skill_per_city(conn)",
+      "summary": "Kỹ năng hot nhất mỗi thành phố (CTE + ROW_NUMBER)",
+      "example": "→ [(\"Hà Nội\", \"python\", 2), …]",
+      "test_prefix": "test_top_skill_per_city"
+    },
+    {
+      "fn": "top_paid_per_city",
+      "signature": "top_paid_per_city(conn, k=2)",
+      "summary": "k hạng lương tối đa cao nhất mỗi thành phố (RANK, bằng lương cùng hạng)",
+      "example": "top_paid_per_city(conn, 1) → [(\"Hà Nội\", \"J05\", 35.0, 1), …]",
+      "test_prefix": "test_top_paid_per_city"
+    },
+    {
+      "fn": "monthly_trend",
+      "signature": "monthly_trend(conn)",
+      "summary": "Số tin theo tháng + trung bình trượt 3 tháng",
+      "example": "→ [(\"2026-07\", 2, 2.0), (\"2026-08\", 3, 2.5), …]",
+      "test_prefix": "test_monthly_trend"
+    }
+  ]
+}

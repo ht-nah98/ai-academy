@@ -1,0 +1,67 @@
+{
+  "id": "L04-temperature-system-prompt",
+  "title": "Temperature & system prompt",
+  "goal": "Cấu hình system prompt và temperature để chatbot trả lời nhất quán; qua hết 26 test và đo được độ ổn định qua 5 lần gọi model thật.",
+  "duration_min": 180,
+  "concepts": [
+    "temperature",
+    "system-prompt",
+    "prompt-engineering"
+  ],
+  "entry": "prompting.py",
+  "checklist": [
+    "Giải thích được temperature bằng hình ảnh 'bốc thăm có trọng số'",
+    "Phân biệt được temperature và top_p",
+    "Chọn được temperature hợp lý cho trích xuất, trò chuyện, brainstorm",
+    "Viết được system prompt có vai trò, luật, định dạng",
+    "Giải thích được zero-shot và few-shot",
+    "Đo được số câu trả lời khác nhau qua 5 lần gọi ở 2 mức temperature",
+    "Qua hết test của bài"
+  ],
+  "interview_questions": [
+    "Temperature là gì? Đặt temperature = 0 thì kết quả có chắc chắn giống hệt nhau mỗi lần không?",
+    "top_p khác temperature thế nào? Có nên chỉnh cả hai cùng lúc?",
+    "Với việc trích xuất thông tin từ tin tuyển dụng, bạn chọn temperature bao nhiêu? Còn đặt slogan?",
+    "System prompt khác user prompt thế nào? Một system prompt tốt gồm những phần nào?",
+    "Zero-shot và few-shot prompting khác nhau ra sao? Khi nào nên dùng few-shot?",
+    "Làm sao đo được chatbot trả lời có ổn định hay không?"
+  ],
+  "tutor_notes": "Lỗi hay gặp: (1) build_system_prompt gọi .strip() trên None trước khi kiểm tra rỗng; quên bỏ luật rỗng; thừa/thiếu dòng 'Luật:' khi không còn luật; dùng ', ' thay vì '\\n'; (2) build_few_shot đảo thứ tự user/assistant hoặc quên message system / câu hỏi cuối; (3) sample_answers quên truyền temperature hoặc extra_body, kiểm tra n < 1 sau khi đã gọi API, không xử lý content None; (4) diversity quên chuẩn hóa strip()+lower(), chia cho số câu khác nhau thay vì tổng số câu, quên round 2; (5) choose_temperature trả mặc định cho loại lạ thay vì raise ValueError. Gợi ý: Counter cho diversity, dict tra cứu cho choose_temperature. Khi giải thích temperature dùng hình ảnh bốc thăm có trọng số; nhấn mạnh temperature 0 vẫn có thể lệch nhẹ, muốn test ổn định thì dùng client giả. Không bao giờ yêu cầu học sinh dán API key.",
+  "tasks": [
+    {
+      "fn": "build_system_prompt",
+      "signature": "build_system_prompt(persona, rules, output_format=None)",
+      "summary": "Ghép vai trò, luật, định dạng thành system prompt nhiều dòng",
+      "example": "build_system_prompt(\"Bạn là JobRadar.\", [\"Ngắn gọn\"]) → \"Bạn là JobRadar.\\nLuật:\\n- Ngắn gọn\"",
+      "test_prefix": "test_build_system_prompt"
+    },
+    {
+      "fn": "build_few_shot",
+      "signature": "build_few_shot(system, examples, question)",
+      "summary": "messages gồm system, các cặp hỏi–đáp mẫu, rồi câu hỏi thật",
+      "example": "build_few_shot(\"S\", [(\"q\", \"a\")], \"Q\") → 4 messages",
+      "test_prefix": "test_few_shot"
+    },
+    {
+      "fn": "sample_answers",
+      "signature": "sample_answers(question, client, n=5, temperature=0.7, ...)",
+      "summary": "Hỏi cùng một câu n lần với temperature cho trước",
+      "example": "sample_answers(\"Đặt tên app\", client, n=5, temperature=0) → list 5 câu",
+      "test_prefix": "test_sample_answers"
+    },
+    {
+      "fn": "diversity",
+      "signature": "diversity(answers)",
+      "summary": "Đếm số câu khác nhau và tỉ lệ câu phổ biến nhất",
+      "example": "diversity([\"A\", \"a\", \"B\", \"A\"]) → {\"unique\": 2, \"stability\": 0.75}",
+      "test_prefix": "test_diversity"
+    },
+    {
+      "fn": "choose_temperature",
+      "signature": "choose_temperature(task_type)",
+      "summary": "Chọn temperature theo loại việc, loại lạ báo lỗi",
+      "example": "choose_temperature(\"sql\") → 0.0",
+      "test_prefix": "test_choose_temperature"
+    }
+  ]
+}
