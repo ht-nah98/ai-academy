@@ -1,6 +1,6 @@
 # L02 — HTTP, JSON, venv, .env: gọi API NVIDIA
 
-> JobRadar sẽ dùng model AI miễn phí trên **build.nvidia.com**. Trước khi "nói chuyện" với AI, ta cần 3 thứ mọi project thật đều có: **hộp thư viện riêng**, **chỗ cất chìa khóa bí mật**, và **cách gọi API qua HTTP**. Hôm nay ta hỏi máy chủ NVIDIA: "Bạn có những model nào?"
+> Cất API key an toàn trong `.env`, gọi HTTP API của build.nvidia.com và lọc danh sách model JobRadar có thể dùng.
 
 ## 🎯 Mục tiêu
 

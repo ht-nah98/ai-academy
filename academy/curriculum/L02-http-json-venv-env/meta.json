@@ -75,5 +75,93 @@
       "example": "filter_by_keyword(ids, \"NEMOTRON\") → các id nvidia/nemotron-...",
       "test_prefix": "test_filter"
     }
-  ]
+  ],
+  "brief": {
+    "context": "JobRadar sẽ dùng model AI miễn phí trên build.nvidia.com. Chưa có cấu hình API key và chưa biết endpoint đang cung cấp model nào.",
+    "problem": "Cần lấy danh sách model từ GET /v1/models, nhóm theo nhà phát hành và lọc theo từ khóa để chọn model. API key không được nằm trong code hay Git.",
+    "requirements": [
+      {
+        "task": "read_env_file",
+        "purpose": "Đọc cấu hình bí mật từ .env thay vì hard-code."
+      },
+      {
+        "task": "get_api_key",
+        "purpose": "Một điểm duy nhất lấy NVIDIA_API_KEY, báo lỗi rõ khi thiếu."
+      },
+      {
+        "task": "parse_model_ids",
+        "purpose": "Chuyển response /v1/models thành list id, chặn response sai định dạng."
+      },
+      {
+        "task": "fetch_model_ids",
+        "purpose": "Lấy danh sách model mới nhất, tách phần gọi mạng để test được offline."
+      },
+      {
+        "task": "group_by_publisher",
+        "purpose": "Thống kê model theo hãng để so sánh lựa chọn."
+      },
+      {
+        "task": "filter_by_keyword",
+        "purpose": "Thu hẹp danh sách xuống các model cần thử (vd. nemotron)."
+      }
+    ],
+    "deliverable": "models.py qua 15/15 test offline; `python models.py nemotron` in được danh sách model thật với key lấy từ .env.",
+    "constraints": [
+      "Key chỉ ở biến môi trường hoặc .env; .env nằm trong .gitignore.",
+      "Test không gọi mạng: hàm fetch được truyền vào.",
+      "Response lạ thì raise ValueError, không trả dữ liệu rỗng im lặng."
+    ],
+    "product_nodes": [
+      "llm-gateway"
+    ],
+    "workflow": {
+      "flow": "chain",
+      "inputs": [
+        {
+          "label": ".env",
+          "detail": "NVIDIA_API_KEY, ngoài Git"
+        },
+        {
+          "label": "GET /v1/models",
+          "detail": "JSON danh sách model"
+        }
+      ],
+      "steps": [
+        {
+          "task": "read_env_file",
+          "label": "Đọc .env thành dict"
+        },
+        {
+          "task": "get_api_key",
+          "label": "Lấy key: env trước, .env sau"
+        },
+        {
+          "task": "fetch_model_ids",
+          "label": "Gọi API qua fetch truyền vào"
+        },
+        {
+          "task": "parse_model_ids",
+          "label": "Trích id model A→Z"
+        },
+        {
+          "task": "group_by_publisher",
+          "label": "Nhóm theo nhà phát hành"
+        },
+        {
+          "task": "filter_by_keyword",
+          "label": "Lọc id theo từ khóa"
+        }
+      ],
+      "outputs": [
+        {
+          "label": "Model nhóm theo hãng",
+          "detail": "{\"nvidia\": [...], \"meta\": [...]}"
+        },
+        {
+          "label": "Danh sách model nemotron",
+          "detail": "python models.py nemotron"
+        }
+      ]
+    }
+  }
 }

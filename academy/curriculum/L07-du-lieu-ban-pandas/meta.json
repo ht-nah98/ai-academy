@@ -3,7 +3,10 @@
   "title": "Dữ liệu bẩn & pandas",
   "goal": "Làm sạch bộ tin tuyển dụng thô bằng pandas: chuẩn hóa thành phố, lương, kỹ năng, loại bản trùng — 5 hàm trong cleaning.py qua hết 18 test (302 dòng thô → 268 tin sạch).",
   "duration_min": 210,
-  "concepts": ["pandas", "data-cleaning"],
+  "concepts": [
+    "pandas",
+    "data-cleaning"
+  ],
   "entry": "cleaning.py",
   "checklist": [
     "Cài pandas trong venv và chạy được `python cleaning.py`",
@@ -60,5 +63,82 @@
       "example": "clean_jobs(pd.read_csv(DATA_PATH)) → 268 dòng",
       "test_prefix": "test_clean_jobs"
     }
-  ]
+  ],
+  "brief": {
+    "context": "Có 302 tin crawl thật trong datasets/jobs_raw.csv. Thành phố, lương, ngày đăng, kỹ năng mỗi nguồn ghi một kiểu.",
+    "problem": "\"TP.HCM\", \"Ho Chi Minh\", \"Sài Gòn\" đang được đếm như ba thành phố; lương lẫn USD, triệu và \"thỏa thuận\"; có dòng trùng và dòng thiếu dữ liệu. Mọi số liệu tính trên bảng này hiện đều sai.",
+    "requirements": [
+      {
+        "task": "normalize_city",
+        "purpose": "Gom tên thành phố về 5 giá trị chuẩn để đếm và lọc đúng."
+      },
+      {
+        "task": "parse_salary",
+        "purpose": "Đưa lương về (min, max) triệu VND để so sánh được."
+      },
+      {
+        "task": "parse_date",
+        "purpose": "Chuẩn hóa ngày đăng về YYYY-MM-DD cho phân tích theo thời gian."
+      },
+      {
+        "task": "split_skills",
+        "purpose": "Biến chuỗi kỹ năng thành list chuẩn, không trùng."
+      },
+      {
+        "task": "clean_jobs",
+        "purpose": "Pipeline làm sạch cả bảng: bỏ dòng hỏng, chuẩn hóa cột, khử trùng."
+      }
+    ],
+    "deliverable": "cleaning.py qua 18/18 test; chạy trên dữ liệu thật ra 268 tin sạch từ 302 dòng thô, đúng 11 cột.",
+    "constraints": [
+      "Không sửa DataFrame đầu vào.",
+      "Giá trị không đọc được thì trả None, không đoán.",
+      "Rỗng, None và NaN xử lý như nhau."
+    ],
+    "product_nodes": [
+      "data-source",
+      "cleaning"
+    ],
+    "workflow": {
+      "flow": "chain",
+      "inputs": [
+        {
+          "label": "jobs_raw.csv",
+          "detail": "302 dòng crawl thô"
+        }
+      ],
+      "steps": [
+        {
+          "task": "normalize_city",
+          "label": "Gom về 5 tên thành phố"
+        },
+        {
+          "task": "parse_salary",
+          "label": "Lương → (min, max) triệu"
+        },
+        {
+          "task": "parse_date",
+          "label": "Ngày → YYYY-MM-DD"
+        },
+        {
+          "task": "split_skills",
+          "label": "Tách kỹ năng, chữ thường"
+        },
+        {
+          "task": "clean_jobs",
+          "label": "Làm sạch cả bảng, khử trùng"
+        }
+      ],
+      "outputs": [
+        {
+          "label": "268 tin sạch",
+          "detail": "DataFrame đúng 11 cột"
+        },
+        {
+          "label": "34 dòng bị bỏ",
+          "detail": "Thiếu dữ liệu hoặc trùng"
+        }
+      ]
+    }
+  }
 }

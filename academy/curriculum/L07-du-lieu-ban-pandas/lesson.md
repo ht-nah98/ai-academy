@@ -1,6 +1,6 @@
 # L07 — Dữ liệu bẩn & pandas
 
-> Từ bài này JobRadar dùng **dữ liệu thật cỡ vừa**: ~300 tin tuyển dụng crawl từ nhiều trang. Dữ liệu crawl luôn bẩn. Việc đầu tiên của Data Engineer: **làm sạch trước khi tin con số.**
+> Làm sạch ~300 tin tuyển dụng crawl thật bằng pandas — **làm sạch trước khi tin con số.**
 
 ## 🎯 Mục tiêu
 

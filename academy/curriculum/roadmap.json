@@ -726,6 +726,124 @@
       "project-storytelling"
     ]
   ],
+  "product_map": {
+    "nodes": [
+      {
+        "id": "data-source",
+        "title": "Nguồn tin tuyển dụng"
+      },
+      {
+        "id": "cleaning",
+        "title": "Làm sạch & kiểm tra chất lượng"
+      },
+      {
+        "id": "database",
+        "title": "CSDL SQLite"
+      },
+      {
+        "id": "analytics",
+        "title": "Phân tích & báo cáo thị trường"
+      },
+      {
+        "id": "extraction",
+        "title": "Trích xuất bằng LLM"
+      },
+      {
+        "id": "search-rag",
+        "title": "Tìm kiếm ngữ nghĩa & RAG"
+      },
+      {
+        "id": "llm-gateway",
+        "title": "Kết nối model AI (key, HTTP, retry)"
+      },
+      {
+        "id": "prompting",
+        "title": "System prompt & temperature"
+      },
+      {
+        "id": "memory",
+        "title": "Trí nhớ hội thoại"
+      },
+      {
+        "id": "chatbot",
+        "title": "Chatbot web"
+      },
+      {
+        "id": "agent",
+        "title": "Agent dùng công cụ"
+      },
+      {
+        "id": "deploy",
+        "title": "API, Docker & giám sát"
+      }
+    ],
+    "edges": [
+      [
+        "data-source",
+        "cleaning"
+      ],
+      [
+        "cleaning",
+        "database"
+      ],
+      [
+        "database",
+        "analytics"
+      ],
+      [
+        "database",
+        "extraction"
+      ],
+      [
+        "llm-gateway",
+        "extraction"
+      ],
+      [
+        "extraction",
+        "search-rag"
+      ],
+      [
+        "database",
+        "search-rag"
+      ],
+      [
+        "llm-gateway",
+        "chatbot"
+      ],
+      [
+        "prompting",
+        "chatbot"
+      ],
+      [
+        "memory",
+        "chatbot"
+      ],
+      [
+        "search-rag",
+        "chatbot"
+      ],
+      [
+        "analytics",
+        "agent"
+      ],
+      [
+        "database",
+        "agent"
+      ],
+      [
+        "llm-gateway",
+        "agent"
+      ],
+      [
+        "agent",
+        "chatbot"
+      ],
+      [
+        "chatbot",
+        "deploy"
+      ]
+    ]
+  },
   "projects": [
     {
       "id": "P0",
@@ -745,7 +863,11 @@
           "goal": "Tạo venv, đọc .env, lấy danh sách model từ API NVIDIA và nhóm theo nhà cung cấp, qua hết test offline.",
           "status": "ready"
         }
-      ]
+      ],
+      "brief": {
+        "goal": "Xây nền xử lý dữ liệu bằng Python và kết nối an toàn tới model AI trên build.nvidia.com.",
+        "deliverable": "Bộ hàm phân tích tin tuyển dụng và module lấy danh sách model NVIDIA, có test offline."
+      }
     },
     {
       "id": "P1",
@@ -777,7 +899,11 @@
           "goal": "Làm trang chat stream từng token và tự retry có backoff khi gặp lỗi 429.",
           "status": "ready"
         }
-      ]
+      ],
+      "brief": {
+        "goal": "Cho người dùng hỏi về thị trường việc làm IT bằng ngôn ngữ tự nhiên thay vì chờ viết hàm cho từng câu hỏi.",
+        "deliverable": "Chatbot web nhớ ngữ cảnh, giọng trả lời nhất quán, stream chữ và tự retry khi gặp 429."
+      }
     },
     {
       "id": "P2",
@@ -809,7 +935,11 @@
           "goal": "Đóng gói ETL idempotent kèm bộ kiểm tra chất lượng dữ liệu chặn bản ghi lỗi.",
           "status": "ready"
         }
-      ]
+      ],
+      "brief": {
+        "goal": "Biến 302 tin crawl thô, không nhất quán thành nguồn dữ liệu đáng tin cho phân tích.",
+        "deliverable": "Pipeline idempotent CSV → SQLite có kiểm tra chất lượng, kèm bộ truy vấn SQL cho báo cáo thị trường tuần."
+      }
     },
     {
       "id": "P3",
@@ -835,7 +965,11 @@
           "goal": "Gán nhãn 30 tin và tính precision/recall/F1 cho việc trích kỹ năng.",
           "status": "planned"
         }
-      ]
+      ],
+      "brief": {
+        "goal": "Trích kỹ năng, cấp bậc, lương từ mô tả công việc dạng văn bản tự do mà không nhập tay.",
+        "deliverable": "Bộ trích xuất bằng LLM ra JSON đúng schema, chạy batch có cache và đo được độ chính xác."
+      }
     },
     {
       "id": "P4",
@@ -867,7 +1001,11 @@
           "goal": "Đo recall@k của retrieval và tỉ lệ câu trả lời có căn cứ trên bộ 20 câu hỏi.",
           "status": "planned"
         }
-      ]
+      ],
+      "brief": {
+        "goal": "Trả lời câu hỏi về tin tuyển dụng kèm nguồn để người dùng tự kiểm chứng.",
+        "deliverable": "Tìm kiếm ngữ nghĩa và RAG trả lời kèm id tin nguồn, có số đo chất lượng truy hồi."
+      }
     },
     {
       "id": "P5",
@@ -887,7 +1025,11 @@
           "goal": "Agent sinh SQL chỉ-đọc, chặn câu lệnh nguy hiểm, trả lời đúng ≥ 8/10 câu hỏi mẫu.",
           "status": "planned"
         }
-      ]
+      ],
+      "brief": {
+        "goal": "Trả lời câu hỏi cần số liệu thật bằng cách truy vấn CSDL, không cho model chạy SQL tùy ý.",
+        "deliverable": "Agent tự chọn công cụ và sinh SQL chỉ-đọc, trả lời đúng ít nhất 8/10 câu hỏi mẫu."
+      }
     },
     {
       "id": "P6",
@@ -919,7 +1061,11 @@
           "goal": "Hoàn thiện README + demo JobRadar và trả lời trôi chảy 10 câu phỏng vấn về project.",
           "status": "planned"
         }
-      ]
+      ],
+      "brief": {
+        "goal": "Vận hành JobRadar ổn định như một sản phẩm thật và trình bày được trong phỏng vấn.",
+        "deliverable": "JobRadar đóng gói Docker, pipeline có giám sát, mô hình dự đoán lương và phần trình bày project."
+      }
     }
   ]
 }

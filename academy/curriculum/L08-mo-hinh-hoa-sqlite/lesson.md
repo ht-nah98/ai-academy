@@ -1,6 +1,6 @@
 # L08 — Mô hình hóa & nạp SQLite
 
-> Ở L07 bạn có một DataFrame sạch — nhưng nó chỉ sống trong RAM, tắt chương trình là mất. Bài này cất dữ liệu vào **cơ sở dữ liệu** với cấu trúc bảng hợp lý, để L09 truy vấn và các project sau dùng lại.
+> Cất DataFrame sạch của L07 vào **cơ sở dữ liệu SQLite** với cấu trúc bảng hợp lý, để L09 và các project sau dùng lại.
 
 ## 🎯 Mục tiêu
 

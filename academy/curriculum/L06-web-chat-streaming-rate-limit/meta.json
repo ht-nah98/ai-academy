@@ -72,5 +72,98 @@
       "example": "POST /chat {\"message\": \"Hi\"} → {\"answer\": \"Chào bạn!\"}",
       "test_prefix": "test_api"
     }
-  ]
+  ],
+  "brief": {
+    "context": "Chatbot chạy được trong terminal. Chưa có giao diện web; mỗi lỗi 429 từ API làm app dừng.",
+    "problem": "Người dùng chờ hàng chục giây trước khi thấy chữ đầu tiên. API trả 429 khi vượt rate limit và 5xx/timeout không định kỳ; cần tự thử lại đúng lỗi tạm thời, không spam server khi lỗi do mình.",
+    "requirements": [
+      {
+        "task": "backoff_delays",
+        "purpose": "Lịch chờ exponential backoff có trần."
+      },
+      {
+        "task": "is_retryable",
+        "purpose": "Phân loại lỗi tạm thời (429, 5xx, timeout, mất kết nối) với lỗi cố định."
+      },
+      {
+        "task": "with_retry",
+        "purpose": "Bọc mọi lời gọi API bằng retry có backoff và jitter."
+      },
+      {
+        "task": "stream_text",
+        "purpose": "Đẩy chữ ra trình duyệt ngay khi model sinh."
+      },
+      {
+        "task": "collect_stream",
+        "purpose": "Ghép stream thành câu trả lời đầy đủ để lưu."
+      },
+      {
+        "task": "POST /chat",
+        "purpose": "Endpoint chat của sản phẩm: trả câu trả lời hoặc 503 rõ ràng khi hết lượt thử."
+      }
+    ],
+    "deliverable": "webchat.py qua 32/32 test; chat được trên trình duyệt với chữ hiện dần.",
+    "constraints": [
+      "Chỉ retry lỗi tạm thời; 400/401/404 raise ngay.",
+      "sleep và rand được truyền vào để test không chờ thật.",
+      "Tin nhắn rỗng trả 400, không gọi API."
+    ],
+    "product_nodes": [
+      "chatbot",
+      "llm-gateway"
+    ],
+    "workflow": {
+      "flow": "chain",
+      "inputs": [
+        {
+          "label": "POST /chat",
+          "detail": "message + history"
+        },
+        {
+          "label": "Stream từ API",
+          "detail": "Chunk, có thể 429/5xx"
+        }
+      ],
+      "steps": [
+        {
+          "task": "backoff_delays",
+          "label": "Thời gian chờ tăng gấp đôi"
+        },
+        {
+          "task": "is_retryable",
+          "label": "Nhận diện lỗi tạm thời"
+        },
+        {
+          "task": "with_retry",
+          "label": "Thử lại có backoff + jitter"
+        },
+        {
+          "task": "stream_text",
+          "label": "Lấy chữ từ từng chunk"
+        },
+        {
+          "task": "collect_stream",
+          "label": "Ghép stream thành chuỗi"
+        },
+        {
+          "task": "POST /chat",
+          "label": "Endpoint chat, hết lượt 503"
+        }
+      ],
+      "outputs": [
+        {
+          "label": "Chữ hiện dần",
+          "detail": "Trên trình duyệt"
+        },
+        {
+          "label": "429 tự thử lại",
+          "detail": "Backoff gấp đôi, có jitter"
+        },
+        {
+          "label": "503 khi hết lượt",
+          "detail": "400/401 báo lỗi ngay"
+        }
+      ]
+    }
+  }
 }

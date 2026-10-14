@@ -60,5 +60,86 @@
       "example": "top_skills(JOBS, 2) → [(\"python\", 6), (\"sql\", 4)]",
       "test_prefix": "test_top_skills"
     }
-  ]
+  ],
+  "brief": {
+    "context": "JobRadar có 8 tin tuyển dụng mẫu dạng list các dict (title, company, city, skills, salary). Chưa có hàm phân tích nào.",
+    "problem": "Người tìm việc cần 4 con số từ dữ liệu: tin nào cần kỹ năng X, thành phố nào tuyển nhiều, lương trung bình, kỹ năng nào được yêu cầu nhiều nhất. Trường salary có thể là None.",
+    "requirements": [
+      {
+        "task": "filter_by_skill",
+        "purpose": "Lọc tin theo kỹ năng người dùng đang có để gợi ý job phù hợp."
+      },
+      {
+        "task": "count_by_city",
+        "purpose": "Cho biết thị trường tập trung ở thành phố nào."
+      },
+      {
+        "task": "average_salary",
+        "purpose": "Mức lương tham chiếu, không để tin thiếu lương làm lệch kết quả."
+      },
+      {
+        "task": "top_skills",
+        "purpose": "Xếp hạng kỹ năng theo nhu cầu, làm cơ sở gợi ý thứ tự học."
+      }
+    ],
+    "deliverable": "jobs.py với 4 hàm, qua 15/15 test. Trên dữ liệu mẫu: 5/8 tin ở Hồ Chí Minh, lương trung bình 12.0 triệu, top 2 kỹ năng là python và sql.",
+    "constraints": [
+      "Không sửa list đầu vào.",
+      "So khớp kỹ năng không phân biệt hoa thường.",
+      "Không có tin nào có lương thì trả None, không chia cho 0."
+    ],
+    "product_nodes": [
+      "data-source",
+      "analytics"
+    ],
+    "workflow": {
+      "flow": "parallel",
+      "inputs": [
+        {
+          "label": "JOBS",
+          "detail": "8 tin, list[dict]"
+        },
+        {
+          "label": "skill, n",
+          "detail": "Tham số từ người dùng"
+        }
+      ],
+      "steps": [
+        {
+          "task": "filter_by_skill",
+          "label": "Lọc tin theo kỹ năng"
+        },
+        {
+          "task": "count_by_city",
+          "label": "Đếm tin theo thành phố"
+        },
+        {
+          "task": "average_salary",
+          "label": "Lương trung bình, bỏ None"
+        },
+        {
+          "task": "top_skills",
+          "label": "Xếp hạng kỹ năng phổ biến"
+        }
+      ],
+      "outputs": [
+        {
+          "label": "2 tin cần LLM",
+          "detail": "filter_by_skill(JOBS, \"llm\")"
+        },
+        {
+          "label": "5/8 tin ở HCM",
+          "detail": "count_by_city"
+        },
+        {
+          "label": "Lương TB 12.0 triệu",
+          "detail": "average_salary"
+        },
+        {
+          "label": "python 6, sql 4",
+          "detail": "top_skills(JOBS, 2)"
+        }
+      ]
+    }
+  }
 }

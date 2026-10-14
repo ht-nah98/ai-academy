@@ -3,7 +3,11 @@
   "title": "ETL lặp lại được & chất lượng dữ liệu",
   "goal": "Đóng gói ETL idempotent kèm bộ kiểm tra chất lượng dữ liệu chặn bản ghi lỗi — 4 hàm trong pipeline.py qua hết 14 test, chạy 2 lần trên dữ liệu thật đều nạp đúng 264 tin.",
   "duration_min": 210,
-  "concepts": ["etl", "idempotency", "data-quality"],
+  "concepts": [
+    "etl",
+    "idempotency",
+    "data-quality"
+  ],
   "entry": "pipeline.py",
   "checklist": [
     "Copy cleaning.py (L07) và db.py (L08) vào thư mục bài, chạy được `python pipeline.py` 2 lần",
@@ -54,5 +58,83 @@
       "example": "→ {\"raw\": 302, \"clean\": 268, \"rejected\": 4, \"loaded\": 264}",
       "test_prefix": "test_run_pipeline"
     }
-  ]
+  ],
+  "brief": {
+    "context": "Làm sạch (L07) và nạp DB (L08) đang là hai bước chạy tay. Báo cáo tuần vừa có một tin lương 800 triệu và một tin đăng năm 2027.",
+    "problem": "Chạy lại lần hai làm nhân đôi tin trong DB. Cần một pipeline chạy hằng đêm, idempotent, chặn bản ghi vô lý và ghi rõ lý do loại.",
+    "requirements": [
+      {
+        "task": "quality_checks",
+        "purpose": "Bộ 7 kiểm tra chất lượng trên dữ liệu đã làm sạch."
+      },
+      {
+        "task": "split_rejects",
+        "purpose": "Tách bản ghi lỗi khỏi lô, kèm lý do để tra soát."
+      },
+      {
+        "task": "upsert_jobs",
+        "purpose": "Nạp idempotent: chạy lại không tạo bản trùng."
+      },
+      {
+        "task": "run_pipeline",
+        "purpose": "Điểm chạy duy nhất Extract → Transform → Quality → Load, có log."
+      }
+    ],
+    "deliverable": "pipeline.py qua 14/14 test; chạy 2 lần trên dữ liệu thật đều cho 302 dòng thô → 264 tin trong DB, 4 tin bị loại kèm lý do.",
+    "constraints": [
+      "Lỗi chặn (blocking) thì raise DataQualityError và không ghi gì vào DB.",
+      "Load trong một transaction.",
+      "Ngày hiện tại (as_of) được truyền vào để test ổn định."
+    ],
+    "product_nodes": [
+      "data-source",
+      "cleaning",
+      "database"
+    ],
+    "workflow": {
+      "flow": "chain",
+      "inputs": [
+        {
+          "label": "jobs_raw.csv",
+          "detail": "302 dòng thô"
+        },
+        {
+          "label": "clean_jobs, create_schema",
+          "detail": "Từ L07 và L08"
+        }
+      ],
+      "steps": [
+        {
+          "task": "quality_checks",
+          "label": "Chạy 7 kiểm tra chất lượng"
+        },
+        {
+          "task": "split_rejects",
+          "label": "Tách dòng lỗi kèm lý do"
+        },
+        {
+          "task": "upsert_jobs",
+          "label": "Nạp idempotent vào DB"
+        },
+        {
+          "task": "run_pipeline",
+          "label": "Ghép E→T→Q→L, ghi log"
+        }
+      ],
+      "outputs": [
+        {
+          "label": "264 tin trong DB",
+          "detail": "Chạy 2 lần vẫn 264"
+        },
+        {
+          "label": "4 tin bị loại",
+          "detail": "Kèm lý do trong log"
+        },
+        {
+          "label": "Lỗi chặn → dừng",
+          "detail": "DataQualityError, DB không đổi"
+        }
+      ]
+    }
+  }
 }

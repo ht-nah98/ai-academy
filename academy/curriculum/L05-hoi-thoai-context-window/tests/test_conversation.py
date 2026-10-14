@@ -144,12 +144,12 @@ def test_chat_turn_luu_ca_hai_luot():
 
 
 def test_chat_turn_gui_lai_lich_su():
-    conv, client = Conversation("S"), FakeClient(["Tên bạn là Lan.", "Bạn tên Lan."])
-    chat_turn(conv, "Mình tên Lan", client)
+    conv, client = Conversation("S"), FakeClient(["Tên bạn là An.", "Bạn tên An."])
+    chat_turn(conv, "Mình tên An", client)
     chat_turn(conv, "Mình tên gì?", client)
     assert len(client.calls) == 2, "Mỗi lượt gọi API đúng 1 lần"
-    assert client.calls[1]["messages"] == [msg("system", "S"), msg("user", "Mình tên Lan"),
-                                           msg("assistant", "Tên bạn là Lan."), msg("user", "Mình tên gì?")], (
+    assert client.calls[1]["messages"] == [msg("system", "S"), msg("user", "Mình tên An"),
+                                           msg("assistant", "Tên bạn là An."), msg("user", "Mình tên gì?")], (
         "Lượt 2 phải gửi lại TOÀN BỘ lịch sử — LLM không tự nhớ"
     )
     kwargs = client.calls[1]

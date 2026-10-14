@@ -1,10 +1,12 @@
 """FastAPI: phục vụ web/ và /api/*."""
+import hashlib
 import os
+import re
 import shutil
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -12,6 +14,14 @@ from . import config, curriculum, llm, progress, runner
 
 WEB_DIR = Path(__file__).resolve().parent.parent / "web"
 app = FastAPI(title="AI Academy")
+
+
+@app.middleware("http")
+async def no_stale_assets(request, call_next):
+    """Bắt trình duyệt kiểm tra lại HTML/CSS/JS mỗi lần tải (tránh dùng bản cũ sau khi cập nhật)."""
+    response = await call_next(request)
+    response.headers.setdefault("Cache-Control", "no-cache")
+    return response
 
 
 class ChecklistIn(BaseModel):
@@ -90,6 +100,8 @@ def get_roadmap():
         for les in proj.get("lessons", []):
             les["status_declared"] = les.get("status", "ready")
             les["status"] = statuses[les["id"]]
+            brief = (curriculum.load_meta(les["id"]) or {}).get("brief") or {}
+            les["product_nodes"] = brief.get("product_nodes", []) if isinstance(brief, dict) else []
     taught: dict[str, list[str]] = {}  # concept → các bài dạy nó (theo thứ tự lộ trình)
     for les in curriculum.all_lessons(rm):
         cs = les.get("concepts") or (curriculum.load_meta(les["id"]) or {}).get("concepts", [])
@@ -219,9 +231,44 @@ def grade(body: GradeIn):
         return _llm_error(e)
 
 
+_ASSET_RE = re.compile(r'(\b(?:href|src)=")([\w./-]+\.(?:css|js))(")')
+_index_cache: dict = {"key": None, "html": ""}
+
+
+def _file_key(p: Path):
+    st = p.stat()
+    return (str(p), st.st_mtime_ns, st.st_size)
+
+
+def _asset_hash(name: str) -> str | None:
+    p = (WEB_DIR / name).resolve()
+    if WEB_DIR.resolve() not in p.parents or not p.is_file():
+        return None
+    return hashlib.sha1(p.read_bytes()).hexdigest()[:10]
+
+
+def render_index() -> str:
+    """index.html với URL asset nội bộ gắn ?v=<sha1[:10]> của nội dung file.
+
+    Trình duyệt giữ bản style.css cũ (cache trước khi có no-cache) vẫn phải tải bản mới vì URL đổi.
+    Băm lại chỉ khi mtime/size của index hoặc asset thay đổi.
+    """
+    index = WEB_DIR / "index.html"
+    raw = index.read_text(encoding="utf-8")
+    names = sorted({m.group(2) for m in _ASSET_RE.finditer(raw)})
+    key = (_file_key(index), *(_file_key(WEB_DIR / n) for n in names if (WEB_DIR / n).is_file()))
+    if _index_cache["key"] != key:
+        hashes = {n: _asset_hash(n) for n in names}
+        _index_cache["html"] = _ASSET_RE.sub(
+            lambda m: f"{m.group(1)}{m.group(2)}?v={hashes[m.group(2)]}{m.group(3)}" if hashes.get(m.group(2)) else m.group(0), raw)
+        _index_cache["key"] = key
+    return _index_cache["html"]
+
+
 @app.get("/")
+@app.get("/index.html")
 def index():
-    return FileResponse(WEB_DIR / "index.html")
+    return HTMLResponse(render_index(), headers={"Cache-Control": "no-cache"})
 
 
 app.mount("/", StaticFiles(directory=WEB_DIR), name="web")

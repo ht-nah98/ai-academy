@@ -1,6 +1,6 @@
 # L09 — SQL phân tích
 
-> Dữ liệu đã nằm gọn trong `jobradar.db`. Giờ đến lúc **đặt câu hỏi cho nó**: thành phố nào tuyển nhiều nhất? Kỹ năng nào hot ở Hà Nội? Lương Senior bao nhiêu? SQL là ngôn ngữ để hỏi — và là kỹ năng bị kiểm tra nhiều nhất khi phỏng vấn Data.
+> Dùng SQL hỏi `jobradar.db` những câu hỏi nghiệp vụ cho bản tin thị trường tuần — kỹ năng bị kiểm tra nhiều nhất khi phỏng vấn Data.
 
 ## 🎯 Mục tiêu
 

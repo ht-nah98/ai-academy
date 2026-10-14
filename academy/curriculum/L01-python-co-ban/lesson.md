@@ -1,6 +1,6 @@
 # L01 — Python cơ bản qua dữ liệu tuyển dụng
 
-> **JobRadar** là trợ lý thị trường việc làm IT bạn sẽ tự xây trong 3–4 tuần. Hôm nay bắt đầu từ việc đơn giản nhất: **cầm một danh sách tin tuyển dụng và trả lời vài câu hỏi về nó.**
+> Viết 4 hàm Python trả lời 4 câu hỏi cơ bản về 8 tin tuyển dụng mẫu: lọc theo kỹ năng, đếm theo thành phố, lương trung bình, kỹ năng phổ biến.
 
 ## 🎯 Mục tiêu
 

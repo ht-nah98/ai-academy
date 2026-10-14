@@ -189,7 +189,7 @@ def test_api_chat_tra_loi():
 
 def test_api_chat_gui_kem_lich_su():
     client = FakeClient()
-    history = [{"role": "user", "content": "Mình tên Lan"}, {"role": "assistant", "content": "Chào Lan!"}]
+    history = [{"role": "user", "content": "Mình tên An"}, {"role": "assistant", "content": "Chào An!"}]
     make_api(client).post("/chat", json={"message": "Mình tên gì?", "history": history})
     assert client.calls[0]["messages"][1:] == history + [{"role": "user", "content": "Mình tên gì?"}], (
         "Server không nhớ gì: lịch sử do trình duyệt gửi lên trong mỗi request"

@@ -60,8 +60,89 @@
       "fn": "chat_turn",
       "signature": "chat_turn(conv, text, client, max_context_tokens=3000, ...)",
       "summary": "Một lượt chat: lưu câu hỏi, cắt, gọi API, lưu trả lời",
-      "example": "chat_turn(conv, \"Mình tên gì?\", client) → \"Bạn tên Lan.\"",
+      "example": "chat_turn(conv, \"Mình tên gì?\", client) → \"Bạn tên An.\"",
       "test_prefix": "test_chat_turn"
     }
-  ]
+  ],
+  "brief": {
+    "context": "Mỗi lần gọi LLM hiện là độc lập. Model không giữ trạng thái giữa các request.",
+    "problem": "Câu hỏi tiếp nối (\"vậy nên học gì trước?\") mất ngữ cảnh. Gửi lại toàn bộ lịch sử thì token tăng theo số lượt và có lúc vượt context window.",
+    "requirements": [
+      {
+        "task": "Conversation",
+        "purpose": "Lưu lịch sử hội thoại theo đúng thứ tự, không cho sửa từ bên ngoài."
+      },
+      {
+        "task": "estimate_tokens",
+        "purpose": "Ước lượng token nhanh, không cần gọi API."
+      },
+      {
+        "task": "count_message_tokens",
+        "purpose": "Đo kích thước cả lịch sử trước khi gửi."
+      },
+      {
+        "task": "trim_history",
+        "purpose": "Giữ lịch sử trong ngân sách token mà không mất system prompt và câu mới nhất."
+      },
+      {
+        "task": "chat_turn",
+        "purpose": "Một lượt chat hoàn chỉnh: lưu, cắt, gọi model, lưu câu trả lời."
+      }
+    ],
+    "deliverable": "conversation.py qua 25/25 test; chat nhiều lượt trong terminal và model trả lời đúng theo ngữ cảnh trước đó.",
+    "constraints": [
+      "System prompt và message cuối luôn được giữ.",
+      "Cắt từ mới về cũ, không bỏ cách message.",
+      "messages() trả bản sao."
+    ],
+    "product_nodes": [
+      "memory",
+      "chatbot"
+    ],
+    "workflow": {
+      "flow": "chain",
+      "inputs": [
+        {
+          "label": "Tin nhắn mới",
+          "detail": "Câu hỏi tiếp nối"
+        },
+        {
+          "label": "Ngân sách token",
+          "detail": "max_context_tokens = 3000"
+        }
+      ],
+      "steps": [
+        {
+          "task": "Conversation",
+          "label": "Lưu lịch sử hội thoại"
+        },
+        {
+          "task": "estimate_tokens",
+          "label": "Ước lượng token một chuỗi"
+        },
+        {
+          "task": "count_message_tokens",
+          "label": "Cộng token cả danh sách"
+        },
+        {
+          "task": "trim_history",
+          "label": "Cắt lượt cũ vừa ngân sách"
+        },
+        {
+          "task": "chat_turn",
+          "label": "Một lượt: lưu, cắt, gọi"
+        }
+      ],
+      "outputs": [
+        {
+          "label": "Trả lời đúng ngữ cảnh",
+          "detail": "\"Bạn tên An.\""
+        },
+        {
+          "label": "Context không vượt ngân sách",
+          "detail": "Giữ system + lượt mới nhất"
+        }
+      ]
+    }
+  }
 }

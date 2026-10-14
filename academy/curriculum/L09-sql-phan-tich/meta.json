@@ -3,7 +3,11 @@
   "title": "SQL phân tích",
   "goal": "Viết 8 truy vấn phân tích dùng JOIN, GROUP BY và window function trả lời câu hỏi thị trường — 8 hàm trong queries.py qua hết 11 test.",
   "duration_min": 210,
-  "concepts": ["sql-basics", "sql-joins", "window-functions"],
+  "concepts": [
+    "sql-basics",
+    "sql-joins",
+    "window-functions"
+  ],
   "entry": "queries.py",
   "checklist": [
     "Chạy được `python queries.py` trên jobradar.db của L08",
@@ -82,5 +86,106 @@
       "example": "→ [(\"2026-07\", 2, 2.0), (\"2026-08\", 3, 2.5), …]",
       "test_prefix": "test_monthly_trend"
     }
-  ]
+  ],
+  "brief": {
+    "context": "jobradar.db có 3 bảng companies, jobs, job_skills với 268 tin.",
+    "problem": "Báo cáo thị trường hằng tuần cần số liệu theo thành phố, cấp bậc, kỹ năng, công ty và theo tháng. Mỗi chỉ số phải là một câu SQL, không kéo cả bảng ra Python để lặp.",
+    "requirements": [
+      {
+        "task": "jobs_by_city",
+        "purpose": "Phân bố tin theo thành phố."
+      },
+      {
+        "task": "avg_salary_by_level",
+        "purpose": "So sánh mức lương giữa các cấp bậc."
+      },
+      {
+        "task": "top_skills",
+        "purpose": "Kỹ năng có nhu cầu cao nhất toàn thị trường."
+      },
+      {
+        "task": "companies_with_min_jobs",
+        "purpose": "Danh sách công ty đang tuyển mạnh."
+      },
+      {
+        "task": "jobs_with_skill",
+        "purpose": "Tìm tin theo kỹ năng người dùng nhập vào."
+      },
+      {
+        "task": "top_skill_per_city",
+        "purpose": "Kỹ năng được cần nhiều nhất ở từng thành phố."
+      },
+      {
+        "task": "top_paid_per_city",
+        "purpose": "Các tin trả lương cao nhất ở từng thành phố."
+      },
+      {
+        "task": "monthly_trend",
+        "purpose": "Xu hướng số tin theo tháng, có trung bình trượt 3 tháng."
+      }
+    ],
+    "deliverable": "queries.py với 8 truy vấn qua 11/11 test trên DB mẫu; chạy được trên jobradar.db thật.",
+    "constraints": [
+      "Input người dùng đi qua tham số ?.",
+      "Mỗi hàm chạy đúng một câu SQL.",
+      "Thứ tự sắp xếp và cách xử lý bằng nhau theo đúng đặc tả từng hàm."
+    ],
+    "product_nodes": [
+      "analytics",
+      "database"
+    ],
+    "workflow": {
+      "flow": "parallel",
+      "inputs": [
+        {
+          "label": "jobradar.db",
+          "detail": "3 bảng, 268 tin"
+        }
+      ],
+      "steps": [
+        {
+          "task": "jobs_by_city",
+          "label": "Số tin theo thành phố"
+        },
+        {
+          "task": "avg_salary_by_level",
+          "label": "Lương TB theo cấp bậc"
+        },
+        {
+          "task": "top_skills",
+          "label": "Kỹ năng nhiều tin nhất"
+        },
+        {
+          "task": "companies_with_min_jobs",
+          "label": "Công ty có ≥ k tin"
+        },
+        {
+          "task": "jobs_with_skill",
+          "label": "Tin cần một kỹ năng"
+        },
+        {
+          "task": "top_skill_per_city",
+          "label": "Kỹ năng hot mỗi thành phố"
+        },
+        {
+          "task": "top_paid_per_city",
+          "label": "Hạng lương mỗi thành phố"
+        },
+        {
+          "task": "monthly_trend",
+          "label": "Xu hướng theo tháng"
+        }
+      ],
+      "outputs": [
+        {
+          "label": "8 chỉ số thị trường",
+          "detail": "Mỗi chỉ số một câu SQL"
+        },
+        {
+          "label": "Số liệu báo cáo tuần",
+          "detail": "Thành phố, cấp bậc, kỹ năng, tháng"
+        }
+      ]
+    }
+  }
 }

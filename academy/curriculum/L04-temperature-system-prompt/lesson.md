@@ -1,6 +1,6 @@
 # L04 — Temperature & system prompt
 
-> JobRadar đã biết trả lời (L03), nhưng lúc dài lúc ngắn, lúc nghiêm túc lúc "bay". Hôm nay bạn học hai cái núm điều khiển: **system prompt** (nói cho model biết phải cư xử thế nào) và **temperature** (cho model "sáng tạo" bao nhiêu) — rồi **đo** độ ổn định bằng số.
+> Dùng **system prompt** và **temperature** để JobRadar trả lời ổn định, đúng giọng — và **đo** độ ổn định bằng số.
 
 ## 🎯 Mục tiêu
 

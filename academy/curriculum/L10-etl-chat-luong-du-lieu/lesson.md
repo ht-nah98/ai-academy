@@ -1,6 +1,6 @@
 # L10 — ETL lặp lại được & chất lượng dữ liệu
 
-> Ở L09 bạn thấy tin lương **800 triệu** và tin đăng năm **2027** lọt vào báo cáo. Ở L08, chạy lại phải xóa file DB. Bài này ghép mọi thứ thành **một pipeline** chạy bằng một lệnh: tự chặn dữ liệu sai, và chạy lại bao nhiêu lần cũng ra cùng kết quả.
+> Ghép mọi thứ thành **một pipeline** chạy bằng một lệnh: tự chặn dữ liệu sai, và chạy lại bao nhiêu lần cũng ra cùng kết quả.
 
 ## 🎯 Mục tiêu
 

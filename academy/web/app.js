@@ -285,6 +285,7 @@ function showHome() {
         <span class="tl-node" aria-hidden="true">${state === "done" ? "✓" : esc(p.id.replace("P", ""))}</span>
         <span class="tl-track">${esc(p.track || "")}</span>
         <b class="tl-title">${esc(p.title)}</b>
+        ${p.brief && p.brief.goal ? `<span class="tl-goal" title="${esc(p.brief.goal)}">${esc(p.brief.goal)}</span>` : ""}
         <span class="tl-count">${state === "soon" ? "Sắp có" : `${done}/${p.lessons.length} bài`}</span>
         <span class="tl-bar"><i style="width:${(100 * done) / p.lessons.length}%"></i></span>
       </${tag}></li>`;
@@ -318,6 +319,11 @@ function showHome() {
         <div class="legend">${tracks.map((t) => `<span class="lg t-${TRACK[t] || "ai"}"><i></i>${esc(t)}</span>`).join("")}</div></div>
       <ol class="timeline">${projs}</ol>
     </section>
+    ${roadmap.product_map && (roadmap.product_map.nodes || []).length ? `<section class="sec">
+      <div class="sec-head"><h2>Sản phẩm JobRadar bạn đang xây</h2>
+        <p class="sec-note"><i class="pk done">✓</i> đã xây <i class="pk hl"></i> bài tiếp theo xây</p></div>
+      <div class="pmap-card home-map"><div class="pmap" id="home-map"></div></div>
+    </section>` : ""}
     <section class="sec">
       <div class="sec-head"><h2>Bản đồ kiến thức</h2>
         <p class="sec-note"><span class="key on"></span> đã học <span class="key off"></span> chưa học · bấm vào chấm để mở bài</p></div>
@@ -328,6 +334,8 @@ function showHome() {
       </div>
     </section>
   </div>`;
+  const hm = $("#home-map");
+  if (hm) drawPmap(hm, { hl: new Set(nx ? nx.product_nodes || [] : []), done: new Set(allLessons().filter((l) => l.status === "passed").flatMap((l) => l.product_nodes || [])) });
   (document.fonts ? document.fonts.ready : Promise.resolve()).then(() => { if (!current) drawGraph(); });
 }
 
@@ -444,13 +452,14 @@ function drawGraph() {
     .on("click", (ev, n) => go(n)).on("keydown", (ev, n) => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); go(n); } });
 }
 let resizeT = null;
-addEventListener("resize", () => { clearTimeout(resizeT); resizeT = setTimeout(() => { if (!current && $("#kg")) drawGraph(); }, 200); });
+addEventListener("resize", () => { clearTimeout(resizeT); resizeT = setTimeout(() => { if (!current && $("#kg")) drawGraph(); $$(".pmap").forEach((h) => drawPmap(h)); }, 200); });
 
 /* ---------- Trang bài học ---------- */
 async function showLesson(id) {
   const lesson = await api("/lessons/" + encodeURIComponent(id));
   const keep = current && current.id === id ? current : null;
-  current = { id, lesson, tab: keep ? keep.tab : "lesson", iv: keep ? keep.iv : {}, guide: store.get("guide:" + id, "steps"), pane: keep ? keep.pane : "left" };
+  const tab0 = keep ? keep.tab : (briefOf(lesson.meta) && !lessonStarted(lesson) ? "brief" : "lesson");
+  current = { id, lesson, tab: tab0 === "brief" && !briefOf(lesson.meta) ? "lesson" : tab0, iv: keep ? keep.iv : {}, guide: store.get("guide:" + id, "steps"), pane: keep ? keep.pane : "left" };
   setTutorLesson(lesson.meta.title);
   renderLesson();
   renderSidebar();
@@ -467,11 +476,11 @@ function renderLesson() {
     <h1>${esc(m.title)}</h1>
     <div class="lmeta"><span class="chip time">⏱ ${m.duration_min ? Math.round(m.duration_min / 6) / 10 + " giờ" : "?"}</span>${concepts}</div>
     <div class="tabs" role="tablist">
-      <button class="tab${tab === "lesson" ? " active" : ""}" data-tab="lesson" role="tab" aria-selected="${tab === "lesson"}">Bài học</button>
-      <button class="tab${tab === "interview" ? " active" : ""}" data-tab="interview" role="tab" aria-selected="${tab === "interview"}">Phỏng vấn thử</button></div></header>
+      ${[briefOf(m) && ["brief", "Bối cảnh"], ["lesson", "Bài học"], ["interview", "Phỏng vấn thử"]].filter(Boolean).map(([k, label]) =>
+        `<button class="tab${tab === k ? " active" : ""}" data-tab="${k}" role="tab" aria-selected="${tab === k}">${label}</button>`).join("")}</div></header>
     <div id="tabbody" class="lbody${tab === "lesson" ? "" : " scroll"}"></div>`;
   $$(".tab", view).forEach((b) => b.onclick = () => { current.tab = b.dataset.tab; renderLesson(); });
-  if (tab === "lesson") renderLessonTab(); else renderInterviewTab();
+  if (tab === "lesson") renderLessonTab(); else if (tab === "brief") renderBriefTab(); else renderInterviewTab();
 }
 
 const prettyTest = (name) => name.replace(/^test_?/, "").replace(/\[.*\]$/, "").replace(/_/g, " ");
@@ -625,7 +634,8 @@ function renderTasks(tasks, sec) {
     return;
   }
   const lt = current.lesson.progress.last_test, tests = lt && lt.tests;
-  const claimed = new Set();
+  const claimed = new Set(), brief = briefOf(m);
+  const purposeOf = (fn) => { const r = brief && (brief.requirements || []).find((q) => q && q.task === fn); return r && r.purpose; };
   const cards = tasks.map((t, i) => {
     const ts = testsFor(t, tests); ts.forEach((x) => claimed.add(x.name));
     const ok = ts.filter((x) => x.outcome === "passed").length, fail = ts.filter((x) => x.outcome !== "passed");
@@ -636,6 +646,7 @@ function renderTasks(tasks, sec) {
       <div class="task-top"><span class="task-n">${state === "done" ? "✓" : i + 1}</span>
         <code class="sig">${esc(t.signature || t.fn + "(…)")}</code>
         <span class="pill">${pill}</span></div>
+      ${purposeOf(t.fn) ? `<p class="task-ans"><span>Mục đích:</span> ${esc(purposeOf(t.fn))}</p>` : ""}
       ${ts.length ? `<div class="dots" aria-hidden="true">${ts.map((x) => `<i class="${x.outcome === "passed" ? "ok" : "bad"}"></i>`).join("")}</div>` : ""}
       ${t.summary ? `<p class="task-sum">${mdInline(t.summary)}</p>` : ""}
       ${t.example ? `<div class="task-ex"><span>Ví dụ</span><code>${esc(t.example)}</code></div>` : ""}
@@ -751,6 +762,195 @@ function renderInterviewTab() {
   });
 }
 
+/* ---------- Bối cảnh (brief bài toán) ---------- */
+function briefOf(meta) {
+  const b = meta && meta.brief;
+  return b && typeof b === "object" && (b.context || b.problem || (b.requirements || []).length) ? b : null;
+}
+const lessonStarted = (les) => !!les.workspace_exists || les.status === "in_progress" || les.status === "passed";
+function taskState(task, tests) {
+  const ts = task ? testsFor(task, tests) : [];
+  if (!tests || !ts.length) return null;
+  const ok = ts.filter((x) => x.outcome === "passed").length;
+  return { ok, n: ts.length, state: ok === ts.length ? "done" : ok ? "part" : "todo" };
+}
+
+/* Icon nét mảnh (stroke = currentColor) cho tiêu đề mục brief */
+const BF_ICON = {
+  context: '<path d="M4 5.5h16v13H4z"/><path d="M8 9.5h8M8 13h5"/>',
+  problem: '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3.5"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3"/>',
+  flow: '<rect x="3" y="4" width="6" height="6" rx="1.5"/><rect x="15" y="14" width="6" height="6" rx="1.5"/><path d="M9 7h4a2 2 0 0 1 2 2v5"/><path d="m13 12 2 2 2-2"/>',
+  deliver: '<path d="M5 4h14v16H5z"/><path d="m8.5 12 2.3 2.3L15.5 9.6"/>',
+  limits: '<path d="M12 3.5 21 19.5H3z"/><path d="M12 10v4M12 16.8v.2"/>',
+  map: '<circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="8" r="2.5"/><circle cx="9" cy="18" r="2.5"/><path d="M8.3 7.1 15.6 7.4M7 8.4l1.4 7.2M16.5 10l-5.6 6.4"/>',
+  input: '<ellipse cx="12" cy="6" rx="7" ry="2.5"/><path d="M5 6v12c0 1.4 3.1 2.5 7 2.5s7-1.1 7-2.5V6M5 12c0 1.4 3.1 2.5 7 2.5s7-1.1 7-2.5"/>',
+  fn: '<path d="m8 7-5 5 5 5M16 7l5 5-5 5"/>',
+  output: '<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',
+  check: '<path d="m5 12.5 4.5 4.5L19 7.5"/>',
+};
+const bfIcon = (k, cls = "bs-ic") => `<svg class="${cls}" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${BF_ICON[k]}</svg>`;
+const bfHead = (n, icon, title, extra = "") => `<h2 class="bs-h"><span class="bs-tile">${bfIcon(icon)}</span><span class="bs-n">${String(n).padStart(2, "0")}</span>${title}${extra}</h2>`;
+const fnLabel = (task) => (/[\s/]/.test(task) ? task : task + "()");
+function splitSentences(t) { // tách câu theo ". " + chữ hoa/backtick; giữ số thập phân như 12.0
+  return String(t || "").split(/(?<=[.!?])\s+(?=[A-ZÀ-ỸĐ`"0-9])/u).map((s) => s.trim()).filter(Boolean);
+}
+
+/* Luồng xử lý: Đầu vào → Xử lý (mỗi hàm 1 ô) → Đầu ra. HTML/CSS thuần, màn hẹp xếp dọc. */
+function renderWorkflow(b, tasks, tests) {
+  const wf = b.workflow && typeof b.workflow === "object" ? b.workflow : null;
+  const purposeOf = (fn) => { const r = (b.requirements || []).find((q) => q && q.task === fn); return r && r.purpose; };
+  const order = wf && Array.isArray(wf.steps) && wf.steps.length ? wf.steps.filter((s) => s && s.task)
+    : (b.requirements || []).filter((r) => r && r.task).map((r) => ({ task: r.task }));
+  const parallel = wf && wf.flow === "parallel";
+  const steps = order.map((s, i) => {
+    const t = tasks.find((x) => x.fn === s.task), st = taskState(t, tests), p = purposeOf(s.task);
+    const badge = st ? `<span class="bf-st ${st.state}" title="Kết quả lần chạy test gần nhất">${st.state === "done" ? "✓ " : ""}${st.ok}/${st.n} test</span>`
+      : t && t.test_prefix ? `<span class="bf-st idle" title="Chưa chạy test">chưa chạy</span>` : "";
+    return `<li class="wf-step${st ? " s-" + st.state : ""}">
+      <span class="wf-i" aria-hidden="true">${i + 1}</span>
+      <div class="wf-sb"><div class="wf-sh"><code class="wf-fn">${esc(fnLabel(s.task))}</code>${badge}</div>
+      ${s.label ? `<p class="wf-sl">${esc(s.label)}</p>` : ""}${p ? `<p class="wf-sp">${esc(p)}</p>` : ""}</div></li>`;
+  }).join("");
+  const box = (x, cls) => `<li class="wf-io ${cls}"><b>${esc(x.label || "")}</b>${x.detail ? `<span>${esc(x.detail)}</span>` : ""}</li>`;
+  const ins = wf ? (wf.inputs || []).filter((x) => x && x.label) : [], outs = wf ? (wf.outputs || []).filter((x) => x && x.label) : [];
+  const arrow = '<div class="wf-arrow" aria-hidden="true"><i></i></div>';
+  const stage = (cls, icon, title, sub, inner) => `<div class="wf-stage ${cls}"><div class="wf-sth">${bfIcon(icon, "wf-ic")}<span>${title}</span>${sub ? `<small>${sub}</small>` : ""}</div>${inner}</div>`;
+  return `<div class="wf${parallel ? " par" : ""}">
+    ${ins.length ? stage("in", "input", "Đầu vào", "", `<ul class="wf-list">${ins.map((x) => box(x, "in")).join("")}</ul>`) + arrow : ""}
+    ${stage("proc", "fn", "Xử lý", `${order.length} hàm${parallel ? " · độc lập, cùng đầu vào" : " · theo thứ tự dữ liệu"}`, `<ol class="wf-steps">${steps}</ol>`)}
+    ${outs.length ? arrow + stage("out", "output", "Đầu ra", "", `<ul class="wf-list">${outs.map((x) => box(x, "out")).join("")}</ul>`) : ""}
+  </div>`;
+}
+
+function renderBriefTab() {
+  const { lesson, id } = current, m = lesson.meta, b = briefOf(m), body = $("#tabbody");
+  const info = lessonById(id), proj = info && info.project, pb = proj && proj.brief;
+  const firstOfProj = proj && proj.lessons[0] && proj.lessons[0].id === id;
+  const started = lessonStarted(lesson), passed = !!lesson.progress.passed;
+  const tasks = Array.isArray(m.tasks) ? m.tasks.filter((t) => t && t.fn) : [];
+  const tests = lesson.progress.last_test && lesson.progress.last_test.tests;
+  const cons = (b.constraints || []).filter(Boolean);
+  const deliv = splitSentences(b.deliverable);
+  const hasMap = roadmap.product_map && (roadmap.product_map.nodes || []).length;
+  const cta = started ? "Tiếp tục" : "Bắt đầu làm";
+  const hours = m.duration_min ? `khoảng ${Math.round(m.duration_min / 6) / 10} giờ` : "";
+  let n = 0;
+  body.innerHTML = `<div class="col brief">
+    <header class="bh">
+      <div class="bh-txt">
+        ${proj ? `<p class="bf-label">${esc(proj.id)} · ${esc(proj.title)}</p>` : ""}
+        ${m.goal ? `<p class="bh-goal">${esc(m.goal)}</p>` : ""}
+      </div>
+      <button type="button" class="btn amber sm bh-cta take-btn">${cta} <span aria-hidden="true">→</span></button>
+    </header>
+    ${firstOfProj && pb && (pb.goal || pb.deliverable) ? `<dl class="bf-proj">${pb.goal ? `<div><dt>Mục tiêu project</dt><dd>${esc(pb.goal)}</dd></div>` : ""}${pb.deliverable ? `<div><dt>Đầu ra project</dt><dd>${esc(pb.deliverable)}</dd></div>` : ""}</dl>` : ""}
+    <div class="bs-pair">
+      ${b.context ? `<section class="bs bs-card">${bfHead(++n, "context", "Bối cảnh")}<p class="bs-p">${esc(b.context)}</p></section>` : ""}
+      ${b.problem ? `<section class="bs bs-card bs-problem">${bfHead(++n, "problem", "Bài toán")}<p class="bs-p">${esc(b.problem)}</p></section>` : ""}
+    </div>
+    ${tasks.length || (b.requirements || []).length ? `<section class="bs">${bfHead(++n, "flow", "Luồng xử lý")}${renderWorkflow(b, tasks, tests)}</section>` : ""}
+    ${deliv.length || cons.length ? `<div class="bs-pair bs-pair-2">
+      ${deliv.length ? `<section class="bs bs-card">${bfHead(++n, "deliver", "Đầu ra &amp; nghiệm thu")}
+        <ul class="bs-check${passed ? " all" : ""}">${deliv.map((d) => `<li>${bfIcon("check", "ck")}<span>${mdInline(d)}</span></li>`).join("")}</ul></section>` : ""}
+      ${cons.length ? `<section class="bs bs-card bs-limits">${bfHead(++n, "limits", "Ràng buộc")}
+        <ul class="bs-cons">${cons.map((c) => `<li>${mdInline(c)}</li>`).join("")}</ul></section>` : ""}
+    </div>` : ""}
+    ${hasMap ? `<section class="bs bf-map">${bfHead(++n, "map", "Vị trí trong hệ thống")}
+      <div class="pmap-card"><div class="pmap" id="brief-map"></div>
+      <p class="pmap-key"><span><i class="pk hl"></i>Bài này xây</span><span><i class="pk done">✓</i>Đã xây ở bài trước</span></p></div></section>` : ""}
+    <div class="cta"><button type="button" class="btn amber cta-btn take-btn" id="take">${cta} <span aria-hidden="true">→</span></button>
+      <span class="cta-sub">${[tasks.length ? `${tasks.length} hàm cần viết` : "", hours].filter(Boolean).join(" · ")}</span>
+      <div id="take-msg" class="runmsg"></div></div>
+  </div>`;
+  if (hasMap) {
+    const doneN = new Set(allLessons().filter((l) => l.status === "passed").flatMap((l) => l.product_nodes || []));
+    drawPmap($("#brief-map", body), { hl: new Set(b.product_nodes || []), done: doneN });
+  }
+  const btns = $$(".take-btn", body);
+  const onTake = async (ev) => {
+    const btn = ev.currentTarget;
+    if (!lessonStarted(lesson) && lesson.status !== "locked") {
+      btns.forEach((x) => { x.disabled = true; }); btn.textContent = "Đang tạo thư mục bài…";
+      try {
+        await api(`/lessons/${id}/start`, { body: {} });
+        await loadRoadmap();
+        current.lesson.workspace_exists = true; current.lesson.status = "in_progress";
+      } catch (e) {
+        btns.forEach((x) => { x.disabled = false; x.innerHTML = `${cta} <span aria-hidden="true">→</span>`; });
+        $("#take-msg", body).innerHTML = `<p class="err">${esc(e.message)}</p>`; return;
+      }
+    }
+    current.tab = "lesson"; renderLesson(); renderSidebar(); $("#main").scrollTop = 0;
+  };
+  btns.forEach((x) => { x.onclick = onTake; });
+}
+
+/* Sơ đồ sản phẩm JobRadar: xếp lớp theo cạnh (trái→phải; màn hẹp thì trên→dưới) */
+function drawPmap(host, opts) {
+  if (!host) return;
+  if (opts) host._opts = opts; else opts = host._opts || {};
+  const pm = roadmap.product_map || {}, hl = opts.hl || new Set(), done = opts.done || new Set();
+  const nodes = (pm.nodes || []).filter((n) => n && n.id);
+  const ids = new Set(nodes.map((n) => n.id));
+  const edges = (pm.edges || []).filter((e) => Array.isArray(e) && ids.has(e[0]) && ids.has(e[1]) && e[0] !== e[1]);
+  if (!nodes.length) { host.innerHTML = ""; return; }
+  const depth = new Map(nodes.map((n) => [n.id, 0]));
+  for (let k = 0; k < nodes.length; k++) { let ch = false; for (const [a, b] of edges) { if (depth.get(a) + 1 > depth.get(b)) { depth.set(b, depth.get(a) + 1); ch = true; } } if (!ch) break; }
+  nodes.forEach((n) => { // nút nguồn (không có cha) đặt ngay trước nút con gần nhất → cạnh ngắn
+    if (edges.some((e) => e[1] === n.id)) return;
+    const ch = edges.filter((e) => e[0] === n.id).map((e) => depth.get(e[1]));
+    if (ch.length) depth.set(n.id, Math.max(0, Math.min(...ch) - 1));
+  });
+  const nL = Math.max(...depth.values()) + 1;
+  const layers = Array.from({ length: nL }, () => []);
+  nodes.forEach((n, i) => layers[depth.get(n.id)].push({ ...n, i }));
+  const pos = new Map();
+  layers.forEach((L, d) => { // thứ tự trong lớp: trung bình vị trí nút cha (giảm cạnh chéo)
+    if (d) L.forEach((n) => { const ps = edges.filter((e) => e[1] === n.id).map((e) => pos.get(e[0])).filter((x) => x != null); n.bc = ps.length ? ps.reduce((a, b) => a + b, 0) / ps.length : n.i; });
+    if (d) L.sort((a, b) => a.bc - b.bc);
+    L.forEach((n, k) => pos.set(n.id, k - (L.length - 1) / 2));
+  });
+  const W = Math.max(280, host.clientWidth), maxPer = Math.max(...layers.map((L) => L.length));
+  const lr = W / nL >= 104;
+  let nh = lr ? 64 : 52, H;
+  const gap = 12, box = new Map();
+  if (lr) {
+    const colW = W / nL, nw = Math.min(colW - 18, 190);
+    if (nw < 130) nh = 80; // cột hẹp: nhãn dài xuống 4 dòng, không bị cắt
+    H = maxPer * (nh + gap) - gap + 8;
+    layers.forEach((L, d) => L.forEach((n, k) => box.set(n.id, { x: d * colW + (colW - nw) / 2, y: 4 + (maxPer - L.length) * (nh + gap) / 2 + k * (nh + gap), w: nw })));
+  } else {
+    const rowH = nh + 30, perRow = Math.max(1, Math.floor((W + 10) / 114)); // lớp quá rộng → tách nhiều hàng
+    let r = 0;
+    layers.forEach((L) => {
+      for (let i = 0; i < L.length; i += perRow, r++) {
+        const R = L.slice(i, i + perRow), nw = Math.min(200, (W - (R.length - 1) * 10) / R.length), tot = R.length * nw + (R.length - 1) * 10;
+        R.forEach((n, k) => box.set(n.id, { x: (W - tot) / 2 + k * (nw + 10), y: 4 + r * rowH, w: nw }));
+      }
+    });
+    H = r * rowH - 30 + 8;
+  }
+  const path = ([a, b]) => {
+    const p = box.get(a), q = box.get(b);
+    if (lr) { const x1 = p.x + p.w, y1 = p.y + nh / 2, x2 = q.x - 3, y2 = q.y + nh / 2, mx = (x1 + x2) / 2; return `M${x1},${y1}C${mx},${y1} ${mx},${y2} ${x2},${y2}`; }
+    const x1 = p.x + p.w / 2, y1 = p.y + nh, x2 = q.x + q.w / 2, y2 = q.y - 3, my = (y1 + y2) / 2; return `M${x1},${y1}C${x1},${my} ${x2},${my} ${x2},${y2}`;
+  };
+  const uid = host.id || "pm";
+  const lit = (x) => hl.has(x) || done.has(x);
+  const eCls = ([a, b]) => (done.has(a) && done.has(b) && !(hl.has(a) && hl.has(b)) ? "done" : (hl.has(a) || hl.has(b)) && lit(a) && lit(b) ? "hl" : "");
+  // bố cục + fill/stroke đặt inline: style.css tới muộn/thiếu thì sơ đồ vẫn đúng chỗ, không thành khối đen
+  host.style.position = "relative"; host.style.height = H + "px";
+  host.classList.toggle("tight", lr && nh === 80);
+  host.setAttribute("role", "img");
+  host.setAttribute("aria-label", `Sơ đồ sản phẩm JobRadar: ${nodes.length} khối` + (hl.size ? `; bài này xây: ${nodes.filter((n) => hl.has(n.id)).map((n) => n.title).join(", ")}` : "") + (done.size ? `; đã xây: ${nodes.filter((n) => done.has(n.id)).map((n) => n.title).join(", ")}` : ""));
+  host.innerHTML = `<svg class="pm-edges" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="position:absolute;left:0;top:0;overflow:visible" aria-hidden="true">
+      <defs>${["", "hl", "done"].map((c) => `<marker id="${uid}-ah${c}" viewBox="0 -4 8 8" refX="5" refY="0" markerWidth="7" markerHeight="7" markerUnits="userSpaceOnUse" orient="auto"><path d="M0,-4L8,0L0,4" class="pm-ah ${c}" fill="#8A94A3"/></marker>`).join("")}</defs>
+      ${edges.map((e) => { const c = eCls(e); return `<path class="pm-e ${c}" d="${path(e)}" fill="none" stroke="#8A94A3" stroke-width="1.5" marker-end="url(#${uid}-ah${c})"/>`; }).join("")}</svg>`
+    + nodes.map((n) => { const b = box.get(n.id), h = hl.has(n.id), d = done.has(n.id);
+      return `<div class="pn${h ? " hl" : ""}${d ? " done" : ""}" style="position:absolute;box-sizing:border-box;left:${b.x}px;top:${b.y}px;width:${b.w}px;height:${nh}px" title="${esc(n.title)}${h ? " — bài này xây" : ""}${d ? " — đã xây" : ""}">
+        ${d ? '<span class="pn-ck" aria-hidden="true">✓</span>' : ""}<span class="pn-t">${esc(n.title)}</span></div>`; }).join("");
+}
+
 /* ---------- Gia sư AI ---------- */
 const SUGGEST = ["Lỗi này nghĩa là gì?", "Gợi ý cho mình bước tiếp theo", "Giải thích lại bằng ví dụ đời thường"];
 function setTutorLesson(title) { $("#tutor-lesson").textContent = title ? "Bài: " + title : "Mở một bài để hỏi gia sư"; renderTutor(); }
@@ -795,7 +995,7 @@ document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("#tut
 function sideHide(on) {
   $("#app").classList.toggle("side-hidden", on);
   if (innerWidth > 760) { try { localStorage.setItem("sideHidden", on ? "1" : ""); } catch (_) {} }
-  if (!current && $("#kg")) { clearTimeout(resizeT); resizeT = setTimeout(drawGraph, 60); }
+  clearTimeout(resizeT); resizeT = setTimeout(() => { if (!current && $("#kg")) drawGraph(); $$(".pmap").forEach((h) => drawPmap(h)); }, 60);
 }
 $("#side-toggle").onclick = () => sideHide(true);
 $("#side-open").onclick = () => sideHide(false);

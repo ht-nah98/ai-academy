@@ -53,5 +53,74 @@
       "example": "estimate_cost_usd(1_000_000, 500_000, 0.5, 1.5) → 1.25",
       "test_prefix": "test_estimate"
     }
-  ]
+  ],
+  "brief": {
+    "context": "Đã có API key và danh sách model NVIDIA. JobRadar chưa gọi model nào.",
+    "problem": "Cần gửi câu hỏi tự do của người dùng tới LLM qua API tương thích OpenAI và nhận câu trả lời. Mỗi lần gọi phải ghi lại số token để ước tính chi phí khi có 1.000 người dùng mỗi ngày.",
+    "requirements": [
+      {
+        "task": "build_messages",
+        "purpose": "Chuẩn hóa payload messages (system tùy chọn + user) cho mọi lần gọi."
+      },
+      {
+        "task": "ask",
+        "purpose": "Hàm gọi LLM duy nhất của sản phẩm: trả câu trả lời kèm số token đã dùng."
+      },
+      {
+        "task": "estimate_cost_usd",
+        "purpose": "Quy đổi token ra USD để lập ngân sách vận hành."
+      }
+    ],
+    "deliverable": "chat.py qua 12/12 test với fake client; `python chat.py \"...\"` trả lời thật từ model NVIDIA kèm số token.",
+    "constraints": [
+      "Gọi API đúng một lần mỗi câu hỏi.",
+      "Test dùng client giả, không tốn token.",
+      "Không import openai ở cấp module."
+    ],
+    "product_nodes": [
+      "llm-gateway",
+      "chatbot"
+    ],
+    "workflow": {
+      "flow": "chain",
+      "inputs": [
+        {
+          "label": "Câu hỏi người dùng",
+          "detail": "Chuỗi tự do"
+        },
+        {
+          "label": "Client OpenAI",
+          "detail": "Thật hoặc giả khi test"
+        }
+      ],
+      "steps": [
+        {
+          "task": "build_messages",
+          "label": "Tạo messages system + user"
+        },
+        {
+          "task": "ask",
+          "label": "Gọi LLM một lần"
+        },
+        {
+          "task": "estimate_cost_usd",
+          "label": "Quy token ra chi phí USD"
+        }
+      ],
+      "outputs": [
+        {
+          "label": "Câu trả lời",
+          "detail": "answer"
+        },
+        {
+          "label": "Số token vào / ra",
+          "detail": "prompt_tokens, completion_tokens"
+        },
+        {
+          "label": "Chi phí USD",
+          "detail": "1M + 0.5M token → 1.25"
+        }
+      ]
+    }
+  }
 }

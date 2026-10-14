@@ -1,6 +1,6 @@
 # L03 — Gọi LLM đầu tiên
 
-> Đến lúc JobRadar biết nói. Hôm nay bạn viết hàm `ask()` — gửi câu hỏi tới mô hình ngôn ngữ lớn trên build.nvidia.com và nhận về câu trả lời **kèm số token đã dùng**. Đây là viên gạch nền của chatbot, trích xuất dữ liệu, RAG và agent sau này.
+> Viết hàm `ask()` gửi câu hỏi tới LLM trên build.nvidia.com và nhận câu trả lời **kèm số token đã dùng** — viên gạch nền của chatbot.
 
 ## 🎯 Mục tiêu
 

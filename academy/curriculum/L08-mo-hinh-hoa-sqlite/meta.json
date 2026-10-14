@@ -3,7 +3,11 @@
   "title": "Mô hình hóa & nạp SQLite",
   "goal": "Thiết kế schema 3 bảng (jobs, companies, job_skills) và nạp dữ liệu sạch vào SQLite — 4 hàm trong db.py qua hết 13 test, jobradar.db có 30 công ty và 268 tin.",
   "duration_min": 180,
-  "concepts": ["schema", "data-modeling", "sqlite"],
+  "concepts": [
+    "schema",
+    "data-modeling",
+    "sqlite"
+  ],
   "entry": "db.py",
   "checklist": [
     "Chạy được `python db.py` và mở jobradar.db xem 3 bảng",
@@ -53,5 +57,77 @@
       "example": "count_rows(conn) → {\"companies\": 30, \"jobs\": 268, \"job_skills\": 977}",
       "test_prefix": "test_count_rows"
     }
-  ]
+  ],
+  "brief": {
+    "context": "Có 268 tin sạch dưới dạng DataFrame trong bộ nhớ, phải chạy lại làm sạch mỗi lần cần dùng.",
+    "problem": "Chatbot và báo cáo thị trường cần đọc chung một nguồn dữ liệu bền vững. Kỹ năng đang là list trong một ô, không truy vấn được bằng SQL.",
+    "requirements": [
+      {
+        "task": "create_schema",
+        "purpose": "Định nghĩa schema 3 bảng có khóa chính và khóa ngoại."
+      },
+      {
+        "task": "get_or_create_company",
+        "purpose": "Đảm bảo mỗi công ty chỉ có một bản ghi."
+      },
+      {
+        "task": "load_jobs",
+        "purpose": "Nạp toàn bộ tin sạch vào DB một cách nguyên tử."
+      },
+      {
+        "task": "count_rows",
+        "purpose": "Kiểm tra nhanh số bản ghi sau khi nạp."
+      }
+    ],
+    "deliverable": "db.py qua 13/13 test; jobradar.db có 30 công ty, 268 tin và 977 cặp tin–kỹ năng.",
+    "constraints": [
+      "Mọi giá trị đi qua tham số ?, không ghép chuỗi SQL.",
+      "Nạp trong một transaction: lỗi giữa chừng thì không bảng nào thay đổi.",
+      "create_schema gọi nhiều lần không lỗi."
+    ],
+    "product_nodes": [
+      "database"
+    ],
+    "workflow": {
+      "flow": "chain",
+      "inputs": [
+        {
+          "label": "DataFrame sạch",
+          "detail": "268 tin từ L07"
+        }
+      ],
+      "steps": [
+        {
+          "task": "create_schema",
+          "label": "Tạo 3 bảng, khóa ngoại"
+        },
+        {
+          "task": "get_or_create_company",
+          "label": "Lấy hoặc thêm company_id"
+        },
+        {
+          "task": "load_jobs",
+          "label": "Nạp 3 bảng, một transaction"
+        },
+        {
+          "task": "count_rows",
+          "label": "Đếm dòng từng bảng"
+        }
+      ],
+      "outputs": [
+        {
+          "label": "jobradar.db",
+          "detail": "companies, jobs, job_skills"
+        },
+        {
+          "label": "30 công ty, 268 tin",
+          "detail": "count_rows"
+        },
+        {
+          "label": "977 cặp tin–kỹ năng",
+          "detail": "Bảng job_skills"
+        }
+      ]
+    }
+  }
 }

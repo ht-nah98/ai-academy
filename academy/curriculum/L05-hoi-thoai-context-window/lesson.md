@@ -1,6 +1,6 @@
 # L05 — Hội thoại nhiều lượt & context window
 
-> Bạn hỏi JobRadar "Mình tên Lan, đang học Data Engineer", rồi hỏi tiếp "Vậy mình nên học gì trước?" — và nó ngơ ngác. Vì **LLM không có trí nhớ**. Hôm nay bạn tự xây "trí nhớ" cho chatbot: giữ lịch sử, gửi lại mỗi lượt, và **tự cắt bớt** khi lịch sử dài quá ngân sách token.
+> LLM không có trí nhớ: hôm nay bạn tự xây lịch sử hội thoại cho chatbot và **tự cắt bớt** khi vượt ngân sách token.
 
 ## 🎯 Mục tiêu
 
@@ -42,14 +42,14 @@ def toy_llm(messages):
     return "Mình không biết bạn tên gì."
 
 print(toy_llm([{"role": "user", "content": "Mình tên gì?"}]))
-history = [{"role": "user", "content": "Mình tên là Minh"},
-           {"role": "assistant", "content": "Chào Minh!"},
+history = [{"role": "user", "content": "Mình tên là An"},
+           {"role": "assistant", "content": "Chào An!"},
            {"role": "user", "content": "Mình tên gì?"}]
 print(toy_llm(history))
 ```
 ```output
 Mình không biết bạn tên gì.
-Bạn tên Minh.
+Bạn tên An.
 ```
 
 ```mermaid
@@ -57,13 +57,13 @@ sequenceDiagram
     participant U as Người dùng
     participant A as App JobRadar
     participant L as LLM
-    U->>A: "Mình tên Lan"
+    U->>A: "Mình tên An"
     A->>L: [system, user1]
-    L-->>A: "Chào Lan!"
+    L-->>A: "Chào An!"
     U->>A: "Mình nên học gì?"
     A->>L: [system, user1, assistant1, user2]
     Note over A,L: Gửi lại TOÀN BỘ lịch sử mỗi lượt
-    L-->>A: "Lan nên học SQL trước..."
+    L-->>A: "An nên học SQL trước..."
 ```
 
 > 🎯 **Phỏng vấn hay hỏi:** "ChatGPT nhớ cuộc trò chuyện bằng cách nào?" — model không nhớ; ứng dụng lưu lịch sử và gửi lại trong mỗi request (có thể cắt hoặc tóm tắt bớt).
@@ -245,7 +245,7 @@ cd academy/workspace/L05-hoi-thoai-context-window
 python conversation.py
 ```
 
-Thử: "Mình tên Lan, đang học Data Engineer" → "Mình nên học gì trước?" → "Nhắc lại tên mình?". Quan sát dòng `[lịch sử N message ~X token | gửi đi M message ~Y token]` sau mỗi lượt.
+Thử: "Mình tên An, đang học Data Engineer" → "Mình nên học gì trước?" → "Nhắc lại tên mình?". Quan sát dòng `[lịch sử N message ~X token | gửi đi M message ~Y token]` sau mỗi lượt.
 
 ### Bước 7 — Thí nghiệm: ngân sách quá nhỏ
 

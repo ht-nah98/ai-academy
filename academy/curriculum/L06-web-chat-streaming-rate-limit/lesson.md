@@ -1,6 +1,6 @@
 # L06 — Web chat, streaming, lỗi & rate limit
 
-> JobRadar rời terminal, lên trình duyệt. Hai việc biến bản demo thành sản phẩm: chữ hiện ra **từng mẩu** ngay khi model sinh (streaming), và khi API báo **429** hay mạng chập chờn thì app **tự thử lại** thông minh thay vì sập.
+> Đưa JobRadar lên trình duyệt: chữ hiện **từng mẩu** (streaming) và app **tự thử lại** khi gặp 429 thay vì sập.
 
 ## 🎯 Mục tiêu
 

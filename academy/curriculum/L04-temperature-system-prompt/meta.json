@@ -63,5 +63,86 @@
       "example": "choose_temperature(\"sql\") → 0.0",
       "test_prefix": "test_choose_temperature"
     }
-  ]
+  ],
+  "brief": {
+    "context": "Chatbot đã trả lời được qua ask(), nhưng chưa có system prompt thống nhất và temperature để mặc định.",
+    "problem": "Cùng một câu hỏi cho ra câu trả lời khác nhau về độ dài và giọng văn. Cần giọng nhất quán và chọn temperature theo loại việc dựa trên số đo, không theo cảm giác.",
+    "requirements": [
+      {
+        "task": "build_system_prompt",
+        "purpose": "Chuẩn hóa system prompt: vai trò, luật, định dạng đầu ra."
+      },
+      {
+        "task": "build_few_shot",
+        "purpose": "Dùng cặp hỏi–đáp mẫu để cố định kiểu trả lời."
+      },
+      {
+        "task": "sample_answers",
+        "purpose": "Lấy n mẫu trả lời cho cùng một câu hỏi để đo."
+      },
+      {
+        "task": "diversity",
+        "purpose": "Định lượng độ ổn định: số câu khác nhau và tỉ lệ câu phổ biến nhất."
+      },
+      {
+        "task": "choose_temperature",
+        "purpose": "Một bảng cấu hình temperature theo loại việc, loại lạ thì báo lỗi."
+      }
+    ],
+    "deliverable": "prompting.py qua 26/26 test; có số đo độ ổn định qua 5 lần gọi model thật ở nhiều mức temperature.",
+    "constraints": [
+      "n < 1 hoặc input rỗng thì raise ValueError, không gọi API.",
+      "Việc cần đáp án lặp lại được (extract, classify, sql) dùng temperature 0.0.",
+      "Test dùng client giả."
+    ],
+    "product_nodes": [
+      "prompting",
+      "chatbot"
+    ],
+    "workflow": {
+      "flow": "chain",
+      "inputs": [
+        {
+          "label": "Vai trò + luật",
+          "detail": "persona, rules, định dạng"
+        },
+        {
+          "label": "Câu hỏi + ví dụ mẫu",
+          "detail": "Cặp hỏi–đáp few-shot"
+        }
+      ],
+      "steps": [
+        {
+          "task": "build_system_prompt",
+          "label": "Ghép system prompt"
+        },
+        {
+          "task": "build_few_shot",
+          "label": "Chèn ví dụ hỏi–đáp mẫu"
+        },
+        {
+          "task": "sample_answers",
+          "label": "Hỏi n lần cùng temperature"
+        },
+        {
+          "task": "diversity",
+          "label": "Đo số câu khác nhau"
+        },
+        {
+          "task": "choose_temperature",
+          "label": "Chọn temperature theo loại việc"
+        }
+      ],
+      "outputs": [
+        {
+          "label": "Bảng độ ổn định",
+          "detail": "unique, stability qua 5 lần"
+        },
+        {
+          "label": "Temperature theo việc",
+          "detail": "sql → 0.0"
+        }
+      ]
+    }
+  }
 }

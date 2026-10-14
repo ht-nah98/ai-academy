@@ -112,3 +112,94 @@ def test_tutor_and_grade_with_fake_llm(client, env, monkeypatch):
 def test_index_served(client):
     r = client.get("/")
     assert r.status_code == 200 and "AI Academy" in r.text
+
+
+def test_brief_passthrough(client, env):
+    cur = env / "curriculum"
+    rm = json.loads((cur / "roadmap.json").read_text())
+    rm["product_map"] = {"nodes": [{"id": "src", "title": "Nguồn"}, {"id": "db", "title": "CSDL"}], "edges": [["src", "db"]]}
+    rm["projects"][0]["brief"] = {"goal": "g", "deliverable": "d"}
+    (cur / "roadmap.json").write_text(json.dumps(rm))
+    meta = json.loads((cur / "L01-a" / "meta.json").read_text())
+    meta["brief"] = {"context": "c", "problem": "p", "requirements": [{"task": "add", "purpose": "u"}],
+                     "deliverable": "d", "constraints": ["k"], "product_nodes": ["src"]}
+    (cur / "L01-a" / "meta.json").write_text(json.dumps(meta))
+    r = client.get("/api/roadmap").json()
+    assert r["product_map"]["edges"] == [["src", "db"]]
+    assert r["projects"][0]["brief"] == {"goal": "g", "deliverable": "d"}
+    les = {l["id"]: l for l in r["projects"][0]["lessons"]}
+    assert les["L01-a"]["product_nodes"] == ["src"] and les["L02-b"]["product_nodes"] == []
+    assert les["L03-c"]["product_nodes"] == []  # bài planned không có meta
+    b = client.get("/api/lessons/L01-a").json()["meta"]["brief"]
+    assert b["requirements"][0] == {"task": "add", "purpose": "u"} and b["constraints"] == ["k"]
+
+
+def test_legacy_story_ignored(client, env):
+    meta_p = env / "curriculum" / "L01-a" / "meta.json"
+    meta = json.loads(meta_p.read_text())
+    meta["story"] = {"product_nodes": ["src"]}
+    meta_p.write_text(json.dumps(meta))
+    les = {l["id"]: l for p in client.get("/api/roadmap").json()["projects"] for l in p["lessons"]}
+    assert les["L01-a"]["product_nodes"] == []
+
+
+def test_roadmap_without_brief(client):
+    r = client.get("/api/roadmap").json()
+    assert "product_map" not in r and all(l["product_nodes"] == [] for p in r["projects"] for l in p["lessons"])
+
+
+def test_static_assets_not_cached_stale(client):
+    r = client.get("/style.css")
+    assert r.status_code == 200
+    assert r.headers.get("cache-control") == "no-cache"
+
+
+def test_index_versions_assets_by_content_hash(client, tmp_path, monkeypatch):
+    import hashlib
+    import re
+    import shutil
+    from app import main
+    web = tmp_path / "web"
+    shutil.copytree(main.WEB_DIR, web)
+    monkeypatch.setattr(main, "WEB_DIR", web)
+    sha = lambda name: hashlib.sha1((web / name).read_bytes()).hexdigest()[:10]
+    r = client.get("/")
+    assert r.status_code == 200 and r.headers["cache-control"] == "no-cache"
+    assert f'href="style.css?v={sha("style.css")}"' in r.text
+    assert f'src="app.js?v={sha("app.js")}"' in r.text
+    assert "https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js\"" in r.text  # CDN giữ nguyên
+    assert not re.search(r'(?:href|src)="(?:style\.css|app\.js)"', r.text)
+    old = sha("style.css")
+    with open(web / "style.css", "a", encoding="utf-8") as f:
+        f.write("\n/* đổi nội dung */\n")
+    r2 = client.get("/")
+    assert sha("style.css") != old and f"style.css?v={sha('style.css')}" in r2.text and old not in r2.text
+    assert client.get("/index.html").text == r2.text
+    assert client.get(f"/style.css?v={sha('style.css')}").status_code == 200
+
+
+def test_brief_workflow_passthrough(client, env):
+    meta_p = env / "curriculum" / "L01-a" / "meta.json"
+    meta = json.loads(meta_p.read_text())
+    wf = {"flow": "chain", "inputs": [{"label": "JOBS", "detail": "8 tin"}],
+          "steps": [{"task": "add", "label": "Cộng hai số"}], "outputs": [{"label": "3", "detail": "add(1, 2)"}]}
+    meta["brief"] = {"context": "c", "problem": "p", "requirements": [{"task": "add", "purpose": "u"}], "workflow": wf}
+    meta_p.write_text(json.dumps(meta))
+    assert client.get("/api/lessons/L01-a").json()["meta"]["brief"]["workflow"] == wf
+
+
+def test_real_curriculum_workflows_cover_tasks():
+    from pathlib import Path
+    cur = Path(__file__).resolve().parent.parent / "curriculum"
+    metas = sorted(cur.glob("L*/meta.json"))
+    assert metas
+    for p in metas:
+        m = json.loads(p.read_text(encoding="utf-8"))
+        wf = m["brief"]["workflow"]
+        fns = [t["fn"] for t in m["tasks"]]
+        steps = [s["task"] for s in wf["steps"]]
+        assert sorted(steps) == sorted(fns) and len(set(steps)) == len(steps), p
+        assert wf["inputs"] and wf["outputs"] and wf.get("flow", "chain") in ("chain", "parallel"), p
+        for x in wf["inputs"] + wf["outputs"] + wf["steps"]:
+            assert x["label"].strip() and len(x["label"].split()) <= 6, (p, x)
+            assert len(x.get("detail", "").split()) <= 8, (p, x)
