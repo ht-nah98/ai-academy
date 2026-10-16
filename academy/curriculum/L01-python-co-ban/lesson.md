@@ -4,7 +4,7 @@
 
 ## 🎯 Mục tiêu
 
-Sau buổi này (khoảng 3 giờ) bạn sẽ:
+Sau buổi này (khoảng 3,5 giờ) bạn sẽ:
 
 - Viết được Python cơ bản: biến, hàm, vòng lặp.
 - Dùng **list** (dãy có thứ tự) và **dict** (bảng tra key → value).
@@ -90,11 +90,11 @@ flowchart TD
 Toàn cảnh: 4 hàm cùng nhận `JOBS` và trả về 4 kiểu kết quả khác nhau.
 
 ```mermaid
-flowchart LR
-    J["JOBS: list 8 dict"] --> F["filter_by_skill"] --> R1["list tin"]
-    J --> C["count_by_city"] --> R2["dict thành phố → số tin"]
-    J --> A["average_salary"] --> R3["số thực hoặc None"]
-    J --> T["top_skills"] --> R4["list tuple (kỹ năng, số lần)"]
+flowchart TD
+    J["JOBS"] --> F["filter_by_skill"] --> R1["list tin"]
+    J --> C["count_by_city"] --> R2["dict city → số"]
+    J --> A["average_salary"] --> R3["float hoặc None"]
+    J --> T["top_skills"] --> R4["list tuple"]
 ```
 
 ### Bước 1 — Chuẩn bị
@@ -158,10 +158,10 @@ print(counts)
 ```
 
 ```mermaid
-flowchart LR
-    A["Lấy city của tin"] --> B{"city đã có trong counts?"}
-    B -- "Chưa" --> C["get trả 0 → gán 1"]
-    B -- "Rồi" --> D["Cộng thêm 1"]
+flowchart TD
+    A["Lấy city"] --> B{"Có trong counts?"}
+    B -- "Chưa" --> C["get trả 0 → 1"]
+    B -- "Rồi" --> D["Cộng 1"]
     C --> E["Tin tiếp theo"]
     D --> E
 ```
@@ -222,21 +222,6 @@ Mục tiêu: `15 passed`. Test fail → đọc dòng `AssertionError:`, thông b
 
 > 🧠 **Ghi nhớ:** mỗi hàm `test_...` trong pytest là một kịch bản; `assert điều_kiện, "thông báo"` fail khi điều kiện sai. Mở file test ra đọc cũng là cách học tốt.
 
-- [ ] Tôi giải thích được vì sao `job.city` lỗi còn `job["city"]` thì không.
-- [ ] Tôi viết được `[x * 2 for x in nums if x > 0]` mà không nhìn tài liệu.
-- [ ] Tôi biết khi nào dùng `d["key"]`, khi nào dùng `d.get("key", mặc_định)`.
-- [ ] Tôi giải thích được vì sao `average_salary` không chia cho `len(jobs)`.
-
 ## 🎤 Câu hỏi phỏng vấn
-
-Tập trả lời thành tiếng, mỗi câu 30–60 giây, rồi luyện ở tab **Phỏng vấn thử**.
-
-1. List và tuple trong Python khác nhau thế nào? Khi nào dùng tuple?
-2. List comprehension là gì? Viết một ví dụ lọc các số chẵn và bình phương chúng.
-3. Dict trong Python hoạt động thế nào? Vì sao tra cứu theo key lại nhanh (gần O(1))?
-4. `is` và `==` khác nhau thế nào? Vì sao nên viết `x is None` thay vì `x == None`?
-5. Mutable và immutable là gì? Chuyện gì xảy ra nếu dùng list làm giá trị mặc định của tham số (`def f(x=[])`)?
-6. `if __name__ == "__main__":` dùng để làm gì?
-7. Khi dữ liệu có giá trị thiếu (`None`), bạn xử lý thế nào? Nêu 3 lựa chọn và khi nào dùng từng cái.
 
 > 🎯 **Phỏng vấn hay hỏi:** câu 5 — thử chạy `def f(x=[]): x.append(1); return x` rồi gọi `f()` ba lần. Kết quả bất ngờ sẽ giúp bạn nhớ mãi.

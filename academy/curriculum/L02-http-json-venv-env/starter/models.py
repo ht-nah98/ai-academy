@@ -18,6 +18,7 @@ import json
 import os
 import sys
 import urllib.request
+from pathlib import Path
 
 MODELS_URL = "https://integrate.api.nvidia.com/v1/models"
 
@@ -105,6 +106,10 @@ def filter_by_keyword(model_ids, keyword):
 
 
 if __name__ == "__main__":
+    here = Path(__file__).resolve().parent
+    env_path = here / ".env" if (here / ".env").exists() else here.parents[2] / ".env"  # gốc repo
+    key = get_api_key(str(env_path))
+    print(f"Key từ {env_path}: {key[:8]}... ({len(key)} ký tự)")
     ids = fetch_model_ids()
     print(f"Có {len(ids)} model trên build.nvidia.com")
     groups = group_by_publisher(ids)

@@ -1,0 +1,352 @@
+{
+ "HX-001": {
+  "skills": [
+   "Python",
+   "SQL",
+   "Airflow",
+   "Spark"
+  ],
+  "level": "middle",
+  "salary_min": 25.0,
+  "salary_max": 35.0,
+  "work_mode": null
+ },
+ "HX-002": {
+  "skills": [
+   "Python",
+   "PyTorch",
+   "Docker"
+  ],
+  "level": "senior",
+  "salary_min": null,
+  "salary_max": null,
+  "work_mode": "remote"
+ },
+ "HX-003": {
+  "skills": [
+   "SQL",
+   "Excel",
+   "Power BI"
+  ],
+  "level": "intern",
+  "salary_min": 4.0,
+  "salary_max": 6.0,
+  "work_mode": "onsite"
+ },
+ "HX-004": {
+  "skills": [
+   "Go",
+   "Postgres",
+   "Redis",
+   "k8s"
+  ],
+  "level": null,
+  "salary_min": null,
+  "salary_max": 40.0,
+  "work_mode": "hybrid"
+ },
+ "HX-005": {
+  "skills": [
+   "Python",
+   "scikit-learn",
+   "MLflow",
+   "SQL"
+  ],
+  "level": "middle",
+  "salary_min": null,
+  "salary_max": null,
+  "work_mode": null
+ },
+ "HX-006": {
+  "skills": [
+   "ReactJS",
+   "TypeScript",
+   "CSS"
+  ],
+  "level": "fresher",
+  "salary_min": 10.0,
+  "salary_max": 14.0,
+  "work_mode": "onsite"
+ },
+ "HX-007": {
+  "skills": [
+   "AWS",
+   "Terraform",
+   "Kubernetes",
+   "CI/CD",
+   "Linux"
+  ],
+  "level": null,
+  "salary_min": null,
+  "salary_max": null,
+  "work_mode": "remote"
+ },
+ "HX-008": {
+  "skills": [
+   "Python",
+   "pandas",
+   "Statistics",
+   "SQL"
+  ],
+  "level": "junior",
+  "salary_min": 15.0,
+  "salary_max": 22.0,
+  "work_mode": "hybrid"
+ },
+ "HX-009": {
+  "skills": [
+   "Python",
+   "LangChain",
+   "FastAPI"
+  ],
+  "level": "intern",
+  "salary_min": null,
+  "salary_max": null,
+  "work_mode": null
+ },
+ "HX-010": {
+  "skills": [
+   "AWS",
+   "Spark",
+   "Kafka",
+   "dbt",
+   "Airflow"
+  ],
+  "level": "senior",
+  "salary_min": 60.0,
+  "salary_max": 80.0,
+  "work_mode": "onsite"
+ },
+ "HX-011": {
+  "skills": [
+   "Power BI",
+   "SSIS",
+   "SQL"
+  ],
+  "level": null,
+  "salary_min": null,
+  "salary_max": 30.0,
+  "work_mode": null
+ },
+ "HX-012": {
+  "skills": [
+   "Python",
+   "Django",
+   "PostgreSQL",
+   "Docker"
+  ],
+  "level": "middle",
+  "salary_min": 20.0,
+  "salary_max": 30.0,
+  "work_mode": "hybrid"
+ },
+ "HX-013": {
+  "skills": [
+   "Kubernetes",
+   "MLflow",
+   "Airflow",
+   "Python"
+  ],
+  "level": null,
+  "salary_min": null,
+  "salary_max": null,
+  "work_mode": "remote"
+ },
+ "HX-014": {
+  "skills": [
+   "Selenium",
+   "Java",
+   "API Testing"
+  ],
+  "level": "junior",
+  "salary_min": 12.0,
+  "salary_max": 16.0,
+  "work_mode": "onsite"
+ },
+ "HX-015": {
+  "skills": [
+   "SQL",
+   "Tableau",
+   "Python"
+  ],
+  "level": null,
+  "salary_min": null,
+  "salary_max": null,
+  "work_mode": "hybrid"
+ },
+ "HX-016": {
+  "skills": [
+   "Java",
+   "Spring Boot",
+   "Kafka",
+   "MySQL",
+   "Microservices"
+  ],
+  "level": "senior",
+  "salary_min": 45.0,
+  "salary_max": 65.0,
+  "work_mode": null
+ },
+ "HX-017": {
+  "skills": [
+   "Flutter",
+   "Dart",
+   "Firebase"
+  ],
+  "level": null,
+  "salary_min": 18.0,
+  "salary_max": 28.0,
+  "work_mode": "onsite"
+ },
+ "HX-018": {
+  "skills": [
+   "NodeJS",
+   "React",
+   "MongoDB",
+   "Docker"
+  ],
+  "level": "junior",
+  "salary_min": null,
+  "salary_max": null,
+  "work_mode": "remote"
+ },
+ "HX-019": {
+  "skills": [
+   "Python",
+   "SQL",
+   "Linux"
+  ],
+  "level": "fresher",
+  "salary_min": 9.0,
+  "salary_max": 12.0,
+  "work_mode": null
+ },
+ "HX-020": {
+  "skills": [
+   "Python",
+   "OpenCV",
+   "PyTorch",
+   "CUDA"
+  ],
+  "level": null,
+  "salary_min": 35.0,
+  "salary_max": null,
+  "work_mode": "onsite"
+ },
+ "HX-021": {
+  "skills": [
+   "SQL",
+   "BigQuery",
+   "Looker"
+  ],
+  "level": "senior",
+  "salary_min": 40.0,
+  "salary_max": 55.0,
+  "work_mode": "hybrid"
+ },
+ "HX-022": {
+  "skills": [
+   "Golang",
+   "gRPC",
+   "Kubernetes",
+   "Prometheus"
+  ],
+  "level": null,
+  "salary_min": null,
+  "salary_max": null,
+  "work_mode": "remote"
+ },
+ "HX-023": {
+  "skills": [
+   "Python",
+   "Transformers",
+   "LLM"
+  ],
+  "level": "junior",
+  "salary_min": 20.0,
+  "salary_max": 28.0,
+  "work_mode": null
+ },
+ "HX-024": {
+  "skills": [
+   "Python",
+   "SQL",
+   "Git"
+  ],
+  "level": "intern",
+  "salary_min": 5.0,
+  "salary_max": 5.0,
+  "work_mode": "onsite"
+ },
+ "HX-025": {
+  "skills": [
+   "dbt",
+   "SQL",
+   "Snowflake",
+   "Airflow"
+  ],
+  "level": "middle",
+  "salary_min": null,
+  "salary_max": null,
+  "work_mode": "remote"
+ },
+ "HX-026": {
+  "skills": [
+   "Elasticsearch",
+   "Python",
+   "Kafka"
+  ],
+  "level": null,
+  "salary_min": 30.0,
+  "salary_max": 45.0,
+  "work_mode": "hybrid"
+ },
+ "HX-027": {
+  "skills": [
+   "Python",
+   "FastAPI",
+   "SQL",
+   "Git"
+  ],
+  "level": "fresher",
+  "salary_min": 8.0,
+  "salary_max": 11.0,
+  "work_mode": null
+ },
+ "HX-028": {
+  "skills": [
+   "OpenAI API",
+   "RAG",
+   "Python",
+   "PostgreSQL"
+  ],
+  "level": null,
+  "salary_min": null,
+  "salary_max": 50.0,
+  "work_mode": "onsite"
+ },
+ "HX-029": {
+  "skills": [
+   "Databricks",
+   "Spark",
+   "Delta Lake",
+   "Python"
+  ],
+  "level": "senior",
+  "salary_min": null,
+  "salary_max": null,
+  "work_mode": "remote"
+ },
+ "HX-030": {
+  "skills": [
+   "Python",
+   "SQL",
+   "Airflow",
+   "Docker"
+  ],
+  "level": "junior",
+  "salary_min": 16.0,
+  "salary_max": 24.0,
+  "work_mode": "hybrid"
+ }
+}

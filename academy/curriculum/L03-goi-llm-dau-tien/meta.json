@@ -17,7 +17,8 @@
     "Giải thích được token là gì và vì sao giá/giới hạn tính theo token",
     "Đo được số token của cùng một câu bằng tiếng Việt và tiếng Anh",
     "Phân biệt được vai trò system / user / assistant",
-    "Đọc được trường usage và finish_reason trong response",
+    "Giải thích được vì sao \"hi\" có prompt_tokens=17",
+    "Đọc được trường usage và finish_reason; biết finish_reason=\"length\" nghĩa là gì và sửa thế nào",
     "Chạy thật `python chat.py \"...\"` và nhận được câu trả lời",
     "Qua hết test của bài"
   ],

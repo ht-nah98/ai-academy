@@ -1,0 +1,444 @@
+[
+ {
+  "job_id": "HX-001",
+  "title": "Data Engineer (2+ năm)",
+  "description": "Mây Trắng Data tuyển Data Engineer (2+ năm) cho đội nền tảng dữ liệu. Bạn sẽ xây và vận hành pipeline batch bằng Python, SQL, Airflow và Spark. Yêu cầu tiếng Anh đọc hiểu tài liệu. Thu nhập 25-35tr gross, review lương 2 lần/năm.",
+  "skills": [
+   "Python",
+   "SQL",
+   "Airflow",
+   "Spark"
+  ],
+  "level": null,
+  "salary_min": 25,
+  "salary_max": 35,
+  "work_mode": null
+ },
+ {
+  "job_id": "HX-002",
+  "title": "Senior AI Engineer",
+  "description": "Lotus AI đang tìm Senior AI Engineer để xây trợ lý nội bộ dựa trên LLM và RAG. Stack chính: Python, PyTorch, Docker. Team làm việc full remote, họp online đầu tuần. Lương $2,500 - $3,500/tháng tùy năng lực.",
+  "skills": [
+   "Python",
+   "PyTorch",
+   "LLM",
+   "RAG",
+   "Docker"
+  ],
+  "level": "senior",
+  "salary_min": 62.5,
+  "salary_max": 87.5,
+  "work_mode": "remote"
+ },
+ {
+  "job_id": "HX-003",
+  "title": "Thực tập sinh Data Analyst",
+  "description": "Hanoi Analytics tuyển Thực tập sinh Data Analyst kỳ thu. Bạn cần biết SQL, Excel; biết Power BI là điểm cộng. Ưu tiên bạn có kỹ năng giao tiếp và tự tin trình bày. Trợ cấp 4-6 triệu/tháng, làm việc tại văn phòng quận 1, 5 buổi/tuần.",
+  "skills": [
+   "SQL",
+   "Excel",
+   "Power BI"
+  ],
+  "level": "intern",
+  "salary_min": 4,
+  "salary_max": 6,
+  "work_mode": "onsite"
+ },
+ {
+  "job_id": "HX-004",
+  "title": "Backend Engineer",
+  "description": "Red River Labs cần một Backend Engineer cho hệ thống thanh toán. Dịch vụ viết bằng Go, dữ liệu trên Postgres và Redis, triển khai trên k8s. Không yêu cầu Java — team đã chuyển hết khỏi stack cũ. Mô hình hybrid, 2 ngày lên văn phòng. Thu nhập lên đến 40M.",
+  "skills": [
+   "Go",
+   "Postgres",
+   "Redis",
+   "k8s"
+  ],
+  "level": null,
+  "salary_min": null,
+  "salary_max": 40,
+  "work_mode": "hybrid"
+ },
+ {
+  "job_id": "HX-005",
+  "title": "Machine Learning Engineer",
+  "description": "Kite Robotics tuyển Machine Learning Engineer, vị trí cấp Middle, cho đội dự báo nhu cầu. Công việc: huấn luyện và theo dõi mô hình với Python, scikit-learn, MLflow; truy vấn dữ liệu bằng SQL. Cần tinh thần làm việc nhóm. Lương thỏa thuận.",
+  "skills": [
+   "Python",
+   "scikit-learn",
+   "MLflow",
+   "SQL"
+  ],
+  "level": "middle",
+  "salary_min": null,
+  "salary_max": null,
+  "work_mode": null
+ },
+ {
+  "job_id": "HX-006",
+  "title": "Fresher Frontend Developer",
+  "description": "Orchid Studio tuyển Fresher Frontend Developer. Yêu cầu nắm chắc ReactJS, TypeScript và CSS; không yêu cầu Angular. Lương 10-14 triệu, onsite tại Đà Nẵng.",
+  "skills": [
+   "ReactJS",
+   "TypeScript",
+   "CSS"
+  ],
+  "level": "fresher",
+  "salary_min": 10,
+  "salary_max": 14,
+  "work_mode": "onsite"
+ },
+ {
+  "job_id": "HX-007",
+  "title": "DevOps Engineer",
+  "description": "Bamboo Cloud tuyển DevOps Engineer quản lý hạ tầng trên AWS bằng Terraform và Kubernetes. Bạn sẽ dựng CI/CD cho 20+ service và xử lý sự cố trên Linux. Cần tiếng Anh giao tiếp tốt để làm việc với khách hàng Nhật và Úc. Remote 100%, lương $1,800 - $2,400.",
+  "skills": [
+   "AWS",
+   "Terraform",
+   "Kubernetes",
+   "CI/CD",
+   "Linux"
+  ],
+  "level": null,
+  "salary_min": 45,
+  "salary_max": 60,
+  "work_mode": "remote"
+ },
+ {
+  "job_id": "HX-008",
+  "title": "Data Scientist - Junior",
+  "description": "VietData cần Data Scientist - Junior cho mảng khách hàng. Yêu cầu Python, pandas, nền tảng Statistics vững và viết SQL thành thạo. Làm hybrid 3 ngày/tuần. Thu nhập 15 - 22 triệu.",
+  "skills": [
+   "Python",
+   "pandas",
+   "Statistics",
+   "SQL"
+  ],
+  "level": "junior",
+  "salary_min": 15,
+  "salary_max": 22,
+  "work_mode": "hybrid"
+ },
+ {
+  "job_id": "HX-009",
+  "title": "AI Engineer Intern",
+  "description": "EduViet mở vị trí AI Engineer Intern trong 6 tháng. Bạn sẽ thử nghiệm chatbot bằng Python, LangChain và dựng API với FastAPI. Chúng tôi tìm người chủ động, ham học. Lương cạnh tranh.",
+  "skills": [
+   "Python",
+   "LangChain",
+   "FastAPI"
+  ],
+  "level": "intern",
+  "salary_min": null,
+  "salary_max": null,
+  "work_mode": null
+ },
+ {
+  "job_id": "HX-010",
+  "title": "Lead Data Engineer",
+  "description": "Sao Mai Tech tuyển Lead Data Engineer (tương đương cấp Senior) dẫn dắt team 5 người. Nền tảng chạy trên AWS: Spark, Kafka cho streaming, dbt và Airflow cho batch. Cần kỹ năng lãnh đạo và kinh nghiệm thiết kế kiến trúc dữ liệu. Làm việc tại văn phòng Hà Nội, 60-80 triệu NET.",
+  "skills": [
+   "Spark",
+   "Kafka",
+   "dbt",
+   "Airflow",
+   "AWS"
+  ],
+  "level": "senior",
+  "salary_min": 60,
+  "salary_max": 80,
+  "work_mode": "onsite"
+ },
+ {
+  "job_id": "HX-011",
+  "title": "BI Developer",
+  "description": "Sen Vàng Insurance tuyển BI Developer xây báo cáo cho khối kinh doanh. Yêu cầu Power BI, SSIS và viết SQL tốt. Không yêu cầu Tableau. Lương upto 30tr.",
+  "skills": [
+   "Power BI",
+   "SSIS",
+   "SQL"
+  ],
+  "level": null,
+  "salary_min": null,
+  "salary_max": 30,
+  "work_mode": null
+ },
+ {
+  "job_id": "HX-012",
+  "title": "Python Developer (Mid-level)",
+  "description": "Hùng Vương Tech tuyển Python Developer (Mid-level) cho sản phẩm thương mại điện tử. Yêu cầu Python, Django, PostgreSQL; đóng gói bằng Docker. Làm hybrid linh hoạt, lương 20-30 triệu.",
+  "skills": [
+   "Python",
+   "Django",
+   "PostgreSQL",
+   "Docker"
+  ],
+  "level": "middle",
+  "salary_min": 20,
+  "salary_max": 30,
+  "work_mode": "hybrid"
+ },
+ {
+  "job_id": "HX-013",
+  "title": "MLOps Engineer",
+  "description": "SmartFarm VN tuyển MLOps Engineer đưa mô hình dự báo năng suất lên production. Bạn vận hành Kubernetes, theo dõi thí nghiệm bằng MLflow, điều phối job bằng Airflow; code chính bằng Python. Làm từ xa hoàn toàn, lương $2000-$3000 (gross).",
+  "skills": [
+   "Kubernetes",
+   "MLflow",
+   "Airflow",
+   "Python"
+  ],
+  "level": null,
+  "salary_min": 50,
+  "salary_max": 75,
+  "work_mode": "remote"
+ },
+ {
+  "job_id": "HX-014",
+  "title": "Junior QA Automation",
+  "description": "PayNow tuyển Junior QA Automation. Yêu cầu viết test UI bằng Selenium với Java và có kinh nghiệm API Testing. Tính cách cẩn thận, tỉ mỉ. Làm việc onsite, lương 12-16tr.",
+  "skills": [
+   "Selenium",
+   "Java",
+   "API Testing"
+  ],
+  "level": "junior",
+  "salary_min": 12,
+  "salary_max": 16,
+  "work_mode": "onsite"
+ },
+ {
+  "job_id": "HX-015",
+  "title": "Data Analyst",
+  "description": "TravelGo tuyển Data Analyst phân tích hành vi đặt phòng. Công cụ hằng ngày: SQL, Tableau, Python. Cần tư duy phản biện và khả năng kể chuyện bằng dữ liệu. Không yêu cầu R. Làm hybrid, lương thương lượng.",
+  "skills": [
+   "SQL",
+   "Tableau",
+   "Python"
+  ],
+  "level": null,
+  "salary_min": null,
+  "salary_max": null,
+  "work_mode": "hybrid"
+ },
+ {
+  "job_id": "HX-016",
+  "title": "Senior Java Developer",
+  "description": "Saigon Fintech tuyển Senior Java Developer cho core banking. Yêu cầu Java, Spring Boot, Kafka, MySQL và kinh nghiệm thiết kế Microservices. Lương 45-65 triệu, thưởng theo dự án.",
+  "skills": [
+   "Java",
+   "Spring Boot",
+   "Kafka",
+   "MySQL",
+   "Microservices"
+  ],
+  "level": "senior",
+  "salary_min": 45,
+  "salary_max": 65,
+  "work_mode": null
+ },
+ {
+  "job_id": "HX-017",
+  "title": "Mobile Developer",
+  "description": "Sky Mobile tuyển Mobile Developer làm ứng dụng ví điện tử. Yêu cầu Flutter, Dart, Firebase; không yêu cầu Swift. Làm việc tại văn phòng TP.HCM, lương 18tr - 28tr.",
+  "skills": [
+   "Flutter",
+   "Dart",
+   "Firebase"
+  ],
+  "level": null,
+  "salary_min": 18,
+  "salary_max": 28,
+  "work_mode": "onsite"
+ },
+ {
+  "job_id": "HX-018",
+  "title": "Fullstack Developer",
+  "description": "CodeCraft Vietnam tuyển Fullstack Developer, cấp bậc Junior, cho dự án outsource thị trường Singapore. Stack: NodeJS, React, MongoDB, Docker. Làm remote, lương $1000 - $1500.",
+  "skills": [
+   "NodeJS",
+   "React",
+   "MongoDB",
+   "Docker"
+  ],
+  "level": "junior",
+  "salary_min": 25,
+  "salary_max": 37.5,
+  "work_mode": "remote"
+ },
+ {
+  "job_id": "HX-019",
+  "title": "Kỹ sư dữ liệu mới tốt nghiệp",
+  "description": "LogiFast tuyển Kỹ sư dữ liệu mới tốt nghiệp. Yêu cầu Python, SQL cơ bản và quen làm việc trên Linux. Tiếng Anh cơ bản. Lương 9-12 triệu, có lộ trình đào tạo 3 tháng.",
+  "skills": [
+   "Python",
+   "SQL",
+   "Linux"
+  ],
+  "level": "fresher",
+  "salary_min": 9,
+  "salary_max": 12,
+  "work_mode": null
+ },
+ {
+  "job_id": "HX-020",
+  "title": "Computer Vision Engineer",
+  "description": "GreenGrid Energy tuyển Computer Vision Engineer phát hiện lỗi tấm pin mặt trời. Yêu cầu Python, OpenCV, PyTorch; tối ưu bằng CUDA là bắt buộc. Làm việc tại lab ở Hà Nội. Lương từ 35 triệu.",
+  "skills": [
+   "Python",
+   "OpenCV",
+   "PyTorch",
+   "CUDA"
+  ],
+  "level": null,
+  "salary_min": 35,
+  "salary_max": null,
+  "work_mode": "onsite"
+ },
+ {
+  "job_id": "HX-021",
+  "title": "Senior Data Analyst",
+  "description": "TopShop Vietnam tuyển Senior Data Analyst cho khối thương mại. Công việc chủ yếu trên SQL, BigQuery và Looker; không yêu cầu Python. Cần khả năng trình bày với lãnh đạo. Làm hybrid 2 ngày/tuần, lương 40-55tr.",
+  "skills": [
+   "SQL",
+   "BigQuery",
+   "Looker"
+  ],
+  "level": "senior",
+  "salary_min": 40,
+  "salary_max": 55,
+  "work_mode": "hybrid"
+ },
+ {
+  "job_id": "HX-022",
+  "title": "Platform Engineer",
+  "description": "Hải Âu Solutions tuyển Platform Engineer xây nền tảng nội bộ. Service viết bằng Golang, giao tiếp qua gRPC, chạy trên Kubernetes, giám sát bằng Prometheus. Công ty remote-first. Lương: thỏa thuận theo năng lực.",
+  "skills": [
+   "Golang",
+   "gRPC",
+   "Kubernetes",
+   "Prometheus"
+  ],
+  "level": null,
+  "salary_min": null,
+  "salary_max": null,
+  "work_mode": "remote"
+ },
+ {
+  "job_id": "HX-023",
+  "title": "NLP Engineer (Junior)",
+  "description": "Ánh Dương Media tuyển NLP Engineer (Junior) cho bài toán tóm tắt tin tức tiếng Việt. Yêu cầu Python, thư viện Transformers và kinh nghiệm làm việc với LLM. Lương 20-28 triệu.",
+  "skills": [
+   "Python",
+   "Transformers",
+   "LLM"
+  ],
+  "level": "junior",
+  "salary_min": 20,
+  "salary_max": 28,
+  "work_mode": null
+ },
+ {
+  "job_id": "HX-024",
+  "title": "Data Engineer Intern",
+  "description": "MediCare Tech tuyển Data Engineer Intern. Yêu cầu Python, SQL và dùng Git hằng ngày. Tiếng Anh đọc tài liệu kỹ thuật là đủ. Trợ cấp 5tr/tháng, full-time tại văn phòng.",
+  "skills": [
+   "Python",
+   "SQL",
+   "Git"
+  ],
+  "level": "intern",
+  "salary_min": 5,
+  "salary_max": 5,
+  "work_mode": "onsite"
+ },
+ {
+  "job_id": "HX-025",
+  "title": "Analytics Engineer",
+  "description": "BlueWhale Analytics tuyển Analytics Engineer, level Middle, xây tầng mô hình dữ liệu cho khách hàng Mỹ. Stack: dbt, SQL, Snowflake, Airflow. Làm remote toàn thời gian, lương $1,600-$2,200.",
+  "skills": [
+   "dbt",
+   "SQL",
+   "Snowflake",
+   "Airflow"
+  ],
+  "level": "middle",
+  "salary_min": 40,
+  "salary_max": 55,
+  "work_mode": "remote"
+ },
+ {
+  "job_id": "HX-026",
+  "title": "Software Engineer - Search",
+  "description": "Mekong Soft tuyển Software Engineer - Search cải thiện tìm kiếm sản phẩm. Yêu cầu Elasticsearch, Python; biết Kafka để đồng bộ dữ liệu là lợi thế. Làm hybrid, lương 30 - 45 triệu.",
+  "skills": [
+   "Elasticsearch",
+   "Python",
+   "Kafka"
+  ],
+  "level": null,
+  "salary_min": 30,
+  "salary_max": 45,
+  "work_mode": "hybrid"
+ },
+ {
+  "job_id": "HX-027",
+  "title": "Fresher Python Backend",
+  "description": "Phượng Hoàng Games tuyển Fresher Python Backend. Yêu cầu Python, FastAPI, SQL và Git. Không yêu cầu Docker, sẽ được đào tạo. Ưu tiên bạn ham học hỏi. Lương 8 - 11 triệu.",
+  "skills": [
+   "Python",
+   "FastAPI",
+   "SQL",
+   "Git"
+  ],
+  "level": "fresher",
+  "salary_min": 8,
+  "salary_max": 11,
+  "work_mode": null
+ },
+ {
+  "job_id": "HX-028",
+  "title": "AI Product Engineer",
+  "description": "NovaHR tuyển AI Product Engineer xây tính năng sàng lọc CV. Bạn sẽ tích hợp OpenAI API, dựng RAG trên dữ liệu nội bộ bằng Python và PostgreSQL. Làm onsite tại Hà Nội, lương lên tới 50 triệu.",
+  "skills": [
+   "Python",
+   "OpenAI API",
+   "RAG",
+   "PostgreSQL"
+  ],
+  "level": null,
+  "salary_min": null,
+  "salary_max": 50,
+  "work_mode": "onsite"
+ },
+ {
+  "job_id": "HX-029",
+  "title": "Data Platform Engineer (Senior)",
+  "description": "Cửu Long Software tuyển Data Platform Engineer (Senior). Nền tảng lakehouse trên Databricks với Spark và Delta Lake; pipeline viết bằng Python. Làm remote, lương $3,000+.",
+  "skills": [
+   "Spark",
+   "Delta Lake",
+   "Databricks",
+   "Python"
+  ],
+  "level": "senior",
+  "salary_min": 75,
+  "salary_max": null,
+  "work_mode": "remote"
+ },
+ {
+  "job_id": "HX-030",
+  "title": "Junior Data Engineer",
+  "description": "Trúc Xanh Bank tuyển Junior Data Engineer. Yêu cầu Python, SQL, Airflow, Docker. Giao tiếp được bằng tiếng Anh. Làm hybrid 3 ngày/tuần tại văn phòng, lương 16-24 triệu.",
+  "skills": [
+   "Python",
+   "SQL",
+   "Airflow",
+   "Docker"
+  ],
+  "level": "junior",
+  "salary_min": 16,
+  "salary_max": 24,
+  "work_mode": "hybrid"
+ }
+]

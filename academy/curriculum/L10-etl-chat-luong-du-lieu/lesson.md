@@ -40,11 +40,11 @@ Tên 7 kiểm tra và quy tắc nằm trong docstring `quality_checks`.
 Bạn đã có T (L07) và L (L08). Bài này thêm **cổng chất lượng** giữa T và L, và đóng gói thành một lệnh.
 
 ```mermaid
-flowchart LR
+flowchart TD
     E["Extract<br/>read_csv"] --> T["Transform<br/>clean_jobs"]
     T --> Q{"Cổng chất lượng<br/>quality_checks"}
     Q -- "Lỗi cả lô" --> X["DataQualityError<br/>DB không đổi"]
-    Q -- "Lỗi từng dòng" --> R["Loại dòng + log.warning"]
+    Q -- "Lỗi từng dòng" --> R["Loại + log.warning"]
     Q -- "Đạt" --> L["Load<br/>upsert_jobs"]
     R --> L
 ```
@@ -67,12 +67,14 @@ Bài này: **upsert** cho `jobs` (khóa `job_id`), **delete-insert** kỹ năng 
 
 ```mermaid
 flowchart TD
-    A["Tin J1 tới"] --> B{"job_id J1 đã có trong jobs?"}
+    A["Tin J1 tới"] --> B{"J1 đã có?"}
     B -- "Chưa" --> C["INSERT dòng mới"]
-    B -- "Rồi" --> D["UPDATE các cột bằng giá trị mới"]
-    C --> E["DELETE kỹ năng cũ của J1, INSERT kỹ năng mới"]
+    B -- "Rồi" --> D["UPDATE giá trị mới"]
+    C --> E["Delete-insert kỹ năng"]
     D --> E
 ```
+
+> ⚠️ **Lỗi hay gặp:** upsert không xóa tin đã bị gỡ hoặc bị loại ở nguồn trong các lần chạy sau — tin cũ nằm lại trong DB. Cách xử lý: soft delete (cột `is_active`, tin vắng trong lô thì đặt 0), hoặc full refresh / delete-insert theo lô.
 
 ### Chất lượng dữ liệu
 
@@ -107,7 +109,7 @@ Khi pipeline chạy lúc 2 giờ sáng, log là thứ duy nhất kể lại chuy
 Toàn cảnh: `run_pipeline` gọi 2 hàm bạn đã có và 3 hàm viết mới.
 
 ```mermaid
-flowchart LR
+flowchart TD
     RP["run_pipeline"] --> CJ["clean_jobs (L07)"]
     RP --> QC["quality_checks"]
     RP --> SR["split_rejects"]
@@ -115,7 +117,7 @@ flowchart LR
     RP --> UJ["upsert_jobs"]
 ```
 
-Các demo dùng bảng điểm học sinh và sản phẩm — không phải dữ liệu bài.
+Các demo dùng dữ liệu cảm biến, học sinh và sản phẩm — không phải dữ liệu bài.
 
 ### Bước 1 — Chuẩn bị: copy code cũ
 
@@ -134,31 +136,31 @@ cp L08-mo-hinh-hoa-sqlite/db.py L10-etl-chat-luong-du-lieu/
 
 ### Bước 2 — Kiểm tra chất lượng → `quality_checks`
 
-Kiểm tra bảng điểm:
+Các công cụ cần dùng, trên số đo cảm biến:
 
 ```python
 import pandas as pd
 
-df = pd.DataFrame({
-    "student_id": ["S1", "S2", "S2", "S3"],
-    "name": ["An", "Bình", "Bình", None],
-    "score": [8.5, 11.0, 11.0, None],
+readings = pd.DataFrame({
+    "sensor": ["T1", "T2", "T2", "T2", "T3"],
+    "temp_c": [21.5, 95.0, 95.0, 95.0, None],
 })
-issues = []
-for sid in df.loc[df["student_id"].duplicated(), "student_id"].unique():
-    issues.append(("id_duplicate", sid))
-for row in df.to_dict("records"):
-    if pd.isna(row["name"]):
-        issues.append(("name_null", row["student_id"]))
-    if pd.notna(row["score"]) and not (0 <= row["score"] <= 10):
-        issues.append(("score_out_of_range", row["student_id"]))
-print(issues)
+dup = readings["sensor"].duplicated()
+print(readings.loc[dup, "sensor"].tolist())
+print(readings.loc[dup, "sensor"].unique().tolist())
+too_hot = readings["temp_c"].notna() & (readings["temp_c"] > 60)
+print(too_hot.tolist())
+print(readings["temp_c"].isna().tolist())
 ```
 ```output
-[('id_duplicate', 'S2'), ('score_out_of_range', 'S2'), ('score_out_of_range', 'S2'), ('name_null', 'S3')]
+['T2', 'T2']
+['T2']
+[False, True, True, True, False]
+[False, False, False, False, True]
 ```
 
-Ô điểm trống của S3 **không** phải lỗi khoảng — chỉ xét giá trị có mặt (`pd.notna`). Lương cũng vậy: thiếu lương là bình thường.
+- `duplicated()` đánh dấu từ lần xuất hiện thứ 2; `.unique()` để mỗi id chỉ báo một lần.
+- Ô trống của T3 **không** phải lỗi khoảng — chỉ xét giá trị có mặt (`notna`). Lương cũng vậy: thiếu lương là bình thường.
 
 > 💡 **Mẹo:** ngày dạng `"YYYY-MM-DD"` so sánh chuỗi được luôn: `"2027-03-01" > "2026-10-13"` là `True`.
 
@@ -297,22 +299,6 @@ PYTHONPATH=workspace/L10-etl-chat-luong-du-lieu python3 -m pytest curriculum/L10
 
 Mục tiêu: `14 passed`. Test `..._idempotent` chụp toàn bộ DB sau lần 1, chạy lần 2 rồi so từng dòng.
 
-- [ ] Tôi định nghĩa được idempotent và nêu 3 cách nạp lại an toàn.
-- [ ] Tôi phân biệt được lỗi từng dòng (loại) và lỗi cả lô (dừng).
-- [ ] Tôi giải thích được `ON CONFLICT ... DO UPDATE` và `excluded`.
-- [ ] Tôi biết vì sao pipeline dùng `logging` chứ không `print`.
-
 ## 🎤 Câu hỏi phỏng vấn
-
-Tập trả lời thành tiếng, mỗi câu 30–60 giây, rồi luyện ở tab **Phỏng vấn thử**.
-
-1. ETL và ELT khác nhau thế nào? Khi nào chọn ELT?
-2. Idempotent là gì? Vì sao pipeline dữ liệu cần idempotent?
-3. So sánh full refresh, delete-insert theo lô và upsert.
-4. Bạn kiểm tra chất lượng dữ liệu những gì? Kể theo các khía cạnh.
-5. Khi kiểm tra chất lượng thất bại, pipeline nên làm gì? Khi nào loại dòng, khi nào dừng cả lô?
-6. `INSERT OR REPLACE` khác `ON CONFLICT DO UPDATE` thế nào?
-7. Vì sao dùng `logging` thay vì `print` trong pipeline?
-8. Kể lại pipeline JobRadar của bạn từ CSV thô tới bảng SQLite trong 1 phút.
 
 > 🎯 **Phỏng vấn hay hỏi:** câu 8 — đây là câu chuyện project của bạn. Nêu con số: 302 dòng thô, 268 sau làm sạch, 4 bị chặn bởi kiểm tra chất lượng, chạy lại 2 lần ra cùng kết quả.

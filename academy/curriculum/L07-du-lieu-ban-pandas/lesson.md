@@ -1,6 +1,6 @@
 # L07 — Dữ liệu bẩn & pandas
 
-> Làm sạch ~300 tin tuyển dụng crawl thật bằng pandas — **làm sạch trước khi tin con số.**
+> Làm sạch ~300 tin tuyển dụng giả lập (mô phỏng dữ liệu crawl từ nhiều nguồn) bằng pandas — **làm sạch trước khi tin con số.**
 
 ## 🎯 Mục tiêu
 
@@ -55,10 +55,10 @@ Mỗi nhà tuyển dụng gõ tay: người viết `HCM`, người viết `Sài 
 Nghĩ DataFrame như một sheet Excel mà bạn điều khiển bằng code. `df["city"]` lấy một cột (Series), `df[df["price"] > 10]` lọc hàng bằng **mask** (Series True/False).
 
 ```mermaid
-flowchart LR
+flowchart TD
     CSV["jobs_raw.csv"] -->|"pd.read_csv"| DF["DataFrame 302 × 10"]
     DF -->|"df['city']"| S["Series: 1 cột"]
-    DF -->|"df[mask]"| F["DataFrame: các hàng thỏa điều kiện"]
+    DF -->|"df[mask]"| F["Hàng thỏa điều kiện"]
     S -->|".apply(hàm)"| S2["Series mới"]
 ```
 
@@ -90,10 +90,10 @@ Hai dòng chỉ được coi là trùng khi so trên **giá trị đã chuẩn h
 
 ```mermaid
 flowchart TD
-    A["302 dòng thô"] --> B["Bỏ dòng thiếu job_id / title"]
-    B --> C["Chuẩn hóa: city, company, level, salary, date, skills"]
-    C --> D["Bỏ trùng theo job_id (crawl 2 lần)"]
-    D --> E["Bỏ trùng theo (title, company, city) đã chuẩn hóa"]
+    A["302 dòng thô"] --> B["Bỏ dòng thiếu"]
+    B --> C["Chuẩn hóa từng cột"]
+    C --> D["Trùng job_id"]
+    D --> E["Trùng gần đúng"]
     E --> F["268 tin sạch"]
 ```
 
@@ -110,13 +110,13 @@ Nếu quy tắc làm sạch sai, bạn sửa code rồi chạy lại từ bản 
 Toàn cảnh: 4 hàm nhỏ xử lý **từng ô**, `clean_jobs` áp chúng lên **cả bảng**.
 
 ```mermaid
-flowchart LR
+flowchart TD
     R["DataFrame thô"] --> CJ["clean_jobs"]
     NC["normalize_city"] --> CJ
     PS["parse_salary"] --> CJ
     PD["parse_date"] --> CJ
     SS["split_skills"] --> CJ
-    CJ --> O["DataFrame sạch: 11 cột"]
+    CJ --> O["DataFrame sạch 11 cột"]
 ```
 
 ### Bước 1 — Chuẩn bị
@@ -157,6 +157,8 @@ Xoài    1
 NaN     1
 Name: count, dtype: int64
 ```
+
+pandas 2 in `object` thay cho `str` ở dòng `product`.
 
 `value_counts` lộ ngay vấn đề: `Táo` và `táo ` bị đếm riêng. Giờ thử `pd.read_csv(DATA_PATH)` và gọi các lệnh trên với cột `city`, `salary`.
 
@@ -206,14 +208,14 @@ Với lương, xét theo **đúng thứ tự** trong docstring: trống/thỏa t
 
 ```mermaid
 flowchart TD
-    A["raw"] --> B{"Trống hoặc 'thỏa thuận'?"}
+    A["raw"] --> B{"Trống / thỏa thuận?"}
     B -- "Có" --> N["(None, None)"]
-    B -- "Không" --> C["Lấy số bằng regex; có '$'/'usd' thì đổi tỷ giá"]
+    B -- "Không" --> C["Regex lấy số, đổi USD"]
     C --> D{"'up to' / 'tới'?"}
     D -- "Có" --> U["(None, số đầu)"]
-    D -- "Không" --> E{"'từ' / 'trên' / kết thúc '+'?"}
+    D -- "Không" --> E{"'từ' / 'trên' / '+'?"}
     E -- "Có" --> T["(số đầu, None)"]
-    E -- "Không" --> F["2 số → (a, b) · 1 số → (a, a)"]
+    E -- "Không" --> F["(a, b) hoặc (a, a)"]
 ```
 
 > 💡 **Mẹo:** `$1000` với tỷ giá 25.000 → `1000 * 25000 / 1_000_000 = 25.0` triệu.
@@ -270,38 +272,37 @@ print(list(dict.fromkeys(p for p in parts if p)))
 
 ### Bước 7 — Áp lên cả bảng → `clean_jobs`
 
-Các thao tác bảng cần dùng, trên bảng học sinh:
+Các thao tác bảng cần dùng, trên bảng đơn hàng:
 
 ```python
 import pandas as pd
 
-df = pd.DataFrame({
-    "name": ["An", " an", "Bình", "BÌNH", "Chi"],
-    "class": ["10A", "10A", "10B", "10B", "10A"],
-    "score": ["8-9", "8-9", "7", "7", ""],
+orders = pd.DataFrame({
+    "order_id": [1, 2, 2, 3, 4],
+    "shop": ["A", "B", "B", "A", "A"],
+    "size": ["30x40", "20x20", "20x20", "", "50x70"],
 })
-out = df.copy()
-out["name"] = out["name"].apply(lambda s: s.strip())
-key = out["name"].str.lower()
-print(out.groupby(key)["name"].agg(lambda s: s.mode()[0]).to_dict())
-
-pairs = out["score"].apply(lambda s: tuple(s.split("-")) if s else (None, None))
-out["lo"] = pairs.apply(lambda t: t[0])
-out["hi"] = pairs.apply(lambda t: t[-1])
-out["_k"] = key
-out = out.drop_duplicates(subset=["_k", "class"], keep="first")
-print(out[["name", "class", "lo", "hi"]].reset_index(drop=True))
+out = orders.drop_duplicates(subset=["order_id"], keep="first").copy()
+dims = out["size"].apply(lambda s: tuple(s.split("x")) if s else (None, None))
+out["w"] = dims.apply(lambda t: t[0])
+out["h"] = dims.apply(lambda t: t[1])
+per_shop = out.groupby("shop")["order_id"].agg("count")
+print(per_shop.to_dict())
+out["shop_orders"] = out["shop"].map(per_shop)
+print(out.reset_index(drop=True))
 ```
 ```output
-{'an': 'An', 'bình': 'BÌNH', 'chi': 'Chi'}
-   name class   lo   hi
-0    An   10A    8    9
-1  Bình   10B    7    7
-2   Chi   10A  NaN  NaN
+{'A': 3, 'B': 1}
+   order_id shop   size    w    h  shop_orders
+0         1    A  30x40   30   40            3
+1         2    B  20x20   20   20            1
+2         3    A         NaN  NaN            3
+3         4    A  50x70   50   70            3
 ```
 
 - `.apply(hàm)`: chạy hàm trên từng ô của cột.
-- `groupby(key).agg(...)`: gom nhóm theo khóa rồi tính 1 giá trị mỗi nhóm; `.map` để gán lại.
+- `groupby(key).agg(...)`: gom nhóm theo khóa rồi tính 1 giá trị mỗi nhóm; `.map` để gán lại từng dòng.
+- Ô trả về tuple → tách thành 2 cột bằng 2 lần `.apply`.
 - `drop_duplicates(subset=..., keep="first")`: bỏ trùng theo vài cột.
 
 > ⚠️ **Lỗi hay gặp:** `df[df["title"] != ""]` không bỏ được NaN. Dùng mask `~df["title"].apply(is_blank)`.
@@ -310,7 +311,7 @@ print(out[["name", "class", "lo", "hi"]].reset_index(drop=True))
 
 Chạy `python cleaning.py`: thấy `Thô: (302, 10)` và `Sạch: (268, 11)`, `value_counts` của `city` chỉ còn 5 tên chuẩn. Rồi bấm **Chạy test**.
 
-> 💡 **Mẹo:** còn thời gian? Đọc vài ô `description` — nhiều tin ghi lương "thỏa thuận" ở cột `salary` nhưng lộ con số trong mô tả. Ở P3 bạn sẽ dùng LLM để trích những thông tin đó.
+> 💡 **Mẹo:** còn thời gian? Đọc vài ô `description` — nhiều tin ghi lương "thỏa thuận" ở cột `salary` nhưng lộ con số trong mô tả. Ở P3 (L11–L12) bạn dùng LLM trích lương, cấp bậc, kỹ năng từ `description` ra JSON (chưa ghi ngược vào DB).
 
 ## ✅ Tự kiểm tra
 
@@ -322,23 +323,8 @@ PYTHONPATH=workspace/L07-du-lieu-ban-pandas python3 -m pytest curriculum/L07-du-
 
 > 💡 **Mẹo:** Windows PowerShell: `$env:PYTHONPATH="workspace\L07-du-lieu-ban-pandas"; python -m pytest curriculum\L07-du-lieu-ban-pandas\tests -q`
 
-Mục tiêu: `18 passed`. Test `..._du_lieu_that` chạy trên CSV thật — nếu chỉ test đó fail, so `value_counts()` từng cột để tìm biến thể bạn bỏ sót.
-
-- [ ] Tôi giải thích được vì sao `NaN == NaN` là `False` và dùng `isna()` thay thế.
-- [ ] Tôi đọc được mẫu regex `\d+(?:\.\d+)?`.
-- [ ] Tôi giải thích được vì sao phải chuẩn hóa **trước** khi khử trùng.
-- [ ] Tôi biết vì sao không sửa file dữ liệu thô.
+Mục tiêu: `18 passed`. Test `..._du_lieu_that` chạy trên toàn bộ CSV — nếu chỉ test đó fail, so `value_counts()` từng cột để tìm biến thể bạn bỏ sót.
 
 ## 🎤 Câu hỏi phỏng vấn
-
-Tập trả lời thành tiếng, mỗi câu 30–60 giây, rồi luyện ở tab **Phỏng vấn thử**.
-
-1. Dữ liệu bẩn thường gặp những dạng nào? Kể ví dụ từ project của bạn.
-2. Bạn xử lý giá trị thiếu thế nào? Khi nào bỏ dòng, khi nào điền giá trị, khi nào giữ trống?
-3. `None` và `NaN` khác nhau thế nào trong pandas? Vì sao không dùng `==` để kiểm tra NaN?
-4. Làm sao phát hiện và loại bản ghi trùng gần đúng (khác khoảng trắng, hoa thường)?
-5. `.apply()` khác thao tác vector hóa (vd. `df["a"] * 2`, `.str.lower()`) thế nào? Cái nào nhanh hơn, vì sao?
-6. Vì sao nên giữ nguyên dữ liệu thô và tạo bản sạch riêng?
-7. Bạn quy đổi lương USD sang VND thế nào? Dùng tỷ giá cố định có vấn đề gì?
 
 > 🎯 **Phỏng vấn hay hỏi:** câu 5 — `.apply` gọi hàm Python từng ô (chậm với triệu dòng); `.str.lower()` hay phép toán cột chạy bằng code C bên trong pandas/numpy.

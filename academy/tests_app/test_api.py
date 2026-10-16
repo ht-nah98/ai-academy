@@ -203,3 +203,23 @@ def test_real_curriculum_workflows_cover_tasks():
         for x in wf["inputs"] + wf["outputs"] + wf["steps"]:
             assert x["label"].strip() and len(x["label"].split()) <= 6, (p, x)
             assert len(x.get("detail", "").split()) <= 8, (p, x)
+
+
+def test_real_roadmap_project_intros():
+    """Mỗi project có trang giới thiệu: lời hứa, kỹ năng; project đã có bài thì phải có thành phẩm thật."""
+    from pathlib import Path
+    cur = Path(__file__).resolve().parent.parent / "curriculum"
+    rm = json.loads((cur / "roadmap.json").read_text(encoding="utf-8"))
+    concepts = {c["id"] for c in rm["concepts"]}
+    for p in rm["projects"]:
+        b = p["brief"]
+        assert b["promise"].strip() and b["goal"].strip() and b["deliverable"].strip(), p["id"]
+        assert 2 <= len(b["can_do"]) <= 5 and all(x.strip() for x in b["can_do"]), p["id"]
+        if any(l["status"] == "ready" for l in p["lessons"]):
+            sc = b["showcase"]["markdown"]
+            assert sc.strip() and sc.count("```") % 2 == 0, p["id"]
+        for l in p["lessons"]:
+            if l["status"] == "planned":
+                assert set(l.get("concepts", [])) <= concepts, l["id"]
+            else:
+                assert (cur / l["id"] / "meta.json").exists(), l["id"]

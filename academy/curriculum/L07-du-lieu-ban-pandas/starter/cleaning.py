@@ -57,8 +57,7 @@ def normalize_city(raw):
 
     Ví dụ: normalize_city(" TP.HCM ") → "Hồ Chí Minh";  normalize_city("Mars") → None
     """
-    # TODO: is_blank(raw) → None; ' '.join(str(raw).split()).lower()
-    # TODO: bỏ tiền tố đầu tiên khớp trong CITY_PREFIXES (str.startswith), rồi CITY_ALIASES.get(...)
+    # TODO: is_blank, str.split/join, str.startswith, dict.get
     raise NotImplementedError("TODO: viết normalize_city")
 
 
@@ -75,19 +74,18 @@ def parse_salary(raw, usd_rate=USD_RATE):
 
     Ví dụ: "15-25 triệu" → (15.0, 25.0);  "$1000-1500" → (25.0, 37.5);  "upto 30tr" → (None, 30.0)
     """
-    # TODO: kiểm tra rỗng và NEGOTIABLE_WORDS trước
-    # TODO: re.findall(r"\d+(?:\.\d+)?", text.replace(",", "")) → list chuỗi số → float
-    # TODO: xét USD, rồi 'up to', rồi 'từ'/'+', rồi số lượng số
+    # TODO: re.findall; xét các quy tắc theo đúng thứ tự trên
     raise NotImplementedError("TODO: viết parse_salary")
 
 
 def parse_date(raw):
     """Đọc ngày ở một trong các định dạng DATE_FORMATS → chuỗi "YYYY-MM-DD".
 
-    Không đọc được (rỗng, sai định dạng, ngày không tồn tại như 31/02) → None.
+    Bỏ khoảng trắng hai đầu trước khi đọc.
+    Không đọc được (rỗng/None/NaN, sai định dạng, ngày không tồn tại như 31/02) → None.
     Ví dụ: parse_date("15/09/2026") → "2026-09-15"
     """
-    # TODO: vòng for qua DATE_FORMATS, datetime.strptime trong try/except ValueError
+    # TODO: datetime.strptime, try/except ValueError
     raise NotImplementedError("TODO: viết parse_date")
 
 
@@ -99,7 +97,7 @@ def split_skills(raw):
     - Rỗng/None/NaN → [].
     Ví dụ: " Python, SQL;python ;" → ["python", "sql"]
     """
-    # TODO: re.split(r"[,;]", ...) rồi strip().lower() từng phần
+    # TODO: re.split, dict.fromkeys
     raise NotImplementedError("TODO: viết split_skills")
 
 
@@ -119,10 +117,7 @@ def clean_jobs(df):
        giữ dòng xuất hiện ĐẦU TIÊN.
     8. Trả về chỉ các cột COLUMNS, index đánh lại từ 0 (reset_index(drop=True)).
     """
-    # TODO: out = df.copy(); lọc dòng bằng mask: ~out["title"].apply(is_blank)
-    # TODO: dùng .apply(hàm) cho từng cột; salary → 2 cột từ tuple
-    # TODO: company: groupby(key)["company"].agg(lambda s: s.mode()[0]) rồi .map
-    # TODO: khử trùng: drop_duplicates(subset=[...], keep="first")
+    # TODO: mask với is_blank, .apply, groupby().agg + .map, drop_duplicates
     raise NotImplementedError("TODO: viết clean_jobs")
 
 

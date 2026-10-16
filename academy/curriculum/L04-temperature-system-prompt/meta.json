@@ -6,7 +6,8 @@
   "concepts": [
     "temperature",
     "system-prompt",
-    "prompt-engineering"
+    "prompt-engineering",
+    "few-shot"
   ],
   "entry": "prompting.py",
   "checklist": [

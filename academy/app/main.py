@@ -40,10 +40,6 @@ class GradeIn(BaseModel):
     answer: str
 
 
-def _ready_lessons():
-    return [l for l in curriculum.all_lessons() if l.get("status", "ready") != "planned"]
-
-
 def _workspace(lesson_id: str) -> Path:
     return config.workspace_dir() / lesson_id
 
@@ -91,29 +87,30 @@ def _require_unlocked(lesson_id: str) -> None:
 def get_roadmap():
     rm = curriculum.load_roadmap()
     statuses = all_statuses()
-    prog = progress.load()
+    lessons = curriculum.all_lessons(rm)
+    metas = {l["id"]: curriculum.load_meta(l["id"]) or {} for l in lessons}
     learned: set[str] = set()
-    for pid, st in statuses.items():
-        if st == "passed":
-            learned.update((curriculum.load_meta(pid) or {}).get("concepts", []))
+    taught: dict[str, list[str]] = {}  # concept → các bài dạy nó (theo thứ tự lộ trình)
+    for les in lessons:
+        meta = metas[les["id"]]
+        if statuses[les["id"]] == "passed":
+            learned.update(meta.get("concepts", []))
+        for c in les.get("concepts") or meta.get("concepts", []):
+            taught.setdefault(c, []).append(les["id"])
     for proj in rm.get("projects", []):
         for les in proj.get("lessons", []):
-            les["status_declared"] = les.get("status", "ready")
+            meta = metas[les["id"]]
+            brief = meta.get("brief") if isinstance(meta.get("brief"), dict) else {}
             les["status"] = statuses[les["id"]]
-            brief = (curriculum.load_meta(les["id"]) or {}).get("brief") or {}
-            les["product_nodes"] = brief.get("product_nodes", []) if isinstance(brief, dict) else []
-    taught: dict[str, list[str]] = {}  # concept → các bài dạy nó (theo thứ tự lộ trình)
-    for les in curriculum.all_lessons(rm):
-        cs = les.get("concepts") or (curriculum.load_meta(les["id"]) or {}).get("concepts", [])
-        for c in cs:
-            taught.setdefault(c, []).append(les["id"])
+            les["product_nodes"] = brief.get("product_nodes", [])
+            les["duration_min"] = meta.get("duration_min")
     for c in rm.get("concepts", []):
         c["learned"] = c["id"] in learned
         c["lessons"] = taught.get(c["id"], [])
     rm.setdefault("concept_edges", [])
-    ready = _ready_lessons()
+    ready = [l for l in lessons if statuses[l["id"]] != "planned"]
     rm["summary"] = {"total": len(ready), "passed": sum(1 for l in ready if statuses[l["id"]] == "passed"),
-                     "planned": len(curriculum.all_lessons()) - len(ready)}
+                     "planned": len(lessons) - len(ready)}
     rm["workspace_root"] = str(config.workspace_dir())
     rm["platform"] = "windows" if os.name == "nt" else "posix"
     rm["has_key"] = llm.get_api_key() is not None
@@ -145,7 +142,7 @@ def start_lesson(lesson_id: str):
     created = False
     if not ws.exists():
         if starter.is_dir():
-            shutil.copytree(starter, ws)
+            shutil.copytree(starter, ws, ignore=shutil.ignore_patterns("__pycache__", "*.pyc", ".omc", ".pytest_cache"))
         else:
             ws.mkdir(parents=True)
         created = True
@@ -166,7 +163,6 @@ def test_lesson(lesson_id: str):
     if res["ok"]:
         fields["passed"] = True
     progress.update(lesson_id, **fields)
-    res["lesson_passed"] = bool(res["ok"]) or bool(progress.load()["lessons"][lesson_id].get("passed"))
     return res
 
 

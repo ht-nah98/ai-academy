@@ -51,9 +51,9 @@ Chuẩn hóa là chia dữ liệu thành các bảng sao cho **mỗi sự thật
 Ô `skills = ["python", "sql"]` vi phạm quy tắc "một ô một giá trị" (dạng chuẩn 1, **1NF**): không lọc, không đếm bằng SQL được. Cách sửa: mỗi kỹ năng thành một dòng riêng.
 
 ```mermaid
-flowchart LR
-    A["jobs: J1 | skills = 'python, sql'"] --> B["job_skills: J1 | python"]
-    A --> C["job_skills: J1 | sql"]
+flowchart TD
+    A["J1: 'python, sql'"] --> B["J1 | python"]
+    A --> C["J1 | sql"]
 ```
 
 > 💡 **Mẹo:** chuẩn hóa đầy đủ sẽ có thêm bảng `skills(skill_id, name)`. Ở đây giữ thẳng tên kỹ năng trong `job_skills` cho gọn — một **đánh đổi** bạn nên nói được khi phỏng vấn.
@@ -100,10 +100,10 @@ Nạp 268 tin mà lỗi ở tin thứ 200: không có transaction → DB còn 19
 
 ```mermaid
 flowchart TD
-    A["with conn:"] --> B["INSERT companies, jobs, job_skills ..."]
+    A["with conn:"] --> B["INSERT 3 bảng"]
     B --> C{"Có lỗi?"}
-    C -- "Không" --> D["COMMIT: dữ liệu được lưu"]
-    C -- "Có" --> E["ROLLBACK: DB như trước khi chạy, lỗi được ném ra"]
+    C -- "Không" --> D["COMMIT: lưu"]
+    C -- "Có" --> E["ROLLBACK, ném lỗi"]
 ```
 
 ### SQLite
@@ -119,7 +119,7 @@ Cú pháp SQL gần giống PostgreSQL/MySQL, nên những gì học ở đây d
 Toàn cảnh: DataFrame sạch từ L07 đi qua `load_jobs`, tách ra 3 bảng.
 
 ```mermaid
-flowchart LR
+flowchart TD
     DF["DataFrame sạch (L07)"] --> L["load_jobs"]
     L -->|"get_or_create_company"| C["companies"]
     L -->|"executemany"| J["jobs"]
@@ -277,21 +277,6 @@ PYTHONPATH=workspace/L08-mo-hinh-hoa-sqlite python3 -m pytest curriculum/L08-mo-
 
 Mục tiêu: `13 passed`. Test dùng DB trong RAM nên không đụng `jobradar.db` của bạn.
 
-- [ ] Tôi giải thích được vì sao tách `companies` ra khỏi `jobs`.
-- [ ] Tôi vẽ được sơ đồ 3 bảng, chỉ ra khóa chính và khóa ngoại.
-- [ ] Tôi giải thích được vì sao luôn dùng `?` thay vì f-string trong SQL.
-- [ ] Tôi giải thích được chuyện gì xảy ra khi lỗi giữa chừng trong `with conn:`.
-
 ## 🎤 Câu hỏi phỏng vấn
-
-Tập trả lời thành tiếng, mỗi câu 30–60 giây, rồi luyện ở tab **Phỏng vấn thử**.
-
-1. Chuẩn hóa dữ liệu (normalization) là gì? Nêu ví dụ 1NF bị vi phạm.
-2. Khóa chính và khóa ngoại khác nhau thế nào? Khóa ghép dùng khi nào?
-3. Thiết kế schema cho quan hệ nhiều–nhiều giữa tin tuyển dụng và kỹ năng.
-4. Transaction là gì? ACID là gì (giải thích chữ A)?
-5. SQL injection là gì và phòng tránh thế nào?
-6. Khi nào nên phi chuẩn hóa (denormalize)?
-7. Vì sao `executemany` nhanh hơn gọi `execute` trong vòng lặp?
 
 > 🎯 **Phỏng vấn hay hỏi:** câu 3 — vẽ 3 bảng, nói rõ khóa ghép `(job_id, skill)` ngăn trùng, và đánh đổi khi không có bảng `skills` riêng.

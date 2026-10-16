@@ -10,6 +10,7 @@ Chạy test:  bấm "Chạy test" (client GIẢ, không gọi mạng, không t�
 """
 import math
 import os
+from pathlib import Path
 
 BASE_URL = "https://integrate.api.nvidia.com/v1"
 DEFAULT_MODEL = "nvidia/nemotron-3-super-120b-a12b"
@@ -101,16 +102,20 @@ def chat_turn(conv, text, client, max_context_tokens=3000, model=DEFAULT_MODEL, 
 # Phần dưới ĐÃ VIẾT SẴN: client thật + vòng chat trong terminal.
 # ----------------------------------------------------------------------------
 
-def load_api_key(env_path=".env"):
+def load_api_key():
+    """NVIDIA_API_KEY: biến môi trường trước, rồi .env cạnh file này, rồi .env ở gốc repo (như L02)."""
     key = os.environ.get("NVIDIA_API_KEY")
-    if not key and os.path.exists(env_path):
-        with open(env_path, encoding="utf-8") as f:
-            for line in f:
+    here = Path(__file__).resolve().parent
+    for env_path in (here / ".env", here.parents[2] / ".env"):  # workspace/<bài>/ → gốc repo
+        if key:
+            break
+        if env_path.exists():
+            for line in env_path.read_text(encoding="utf-8").splitlines():
                 name, _, value = line.strip().partition("=")
                 if name.strip() == "NVIDIA_API_KEY":
                     key = value.strip().strip('"').strip("'")
-    if not key:
-        raise RuntimeError("Thiếu NVIDIA_API_KEY — tạo file .env cạnh conversation.py (xem lesson.md)")
+    if not key or "..." in key:
+        raise RuntimeError("Thiếu NVIDIA_API_KEY — điền key vào file .env ở gốc repo (xem README)")
     return key
 
 

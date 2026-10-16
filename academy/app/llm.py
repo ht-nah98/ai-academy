@@ -15,7 +15,7 @@ FALLBACK_MODEL = "z-ai/glm-5.3-flash"
 NO_THINK = {"chat_template_kwargs": {"enable_thinking": False}}
 MAX_TRIES = 4
 NO_KEY_MSG = ("Chưa có NVIDIA_API_KEY. Hãy thêm dòng NVIDIA_API_KEY=nvapi-... vào file "
-              "academy/.env (hoặc biến môi trường) rồi thử lại.")
+              ".env ở gốc repo (hoặc biến môi trường) rồi thử lại.")
 
 
 class LLMError(Exception):
@@ -27,7 +27,8 @@ class NoKeyError(LLMError):
 
 
 def _env_candidates() -> list[Path]:
-    return [config.root() / ".env", config.DEFAULT_ROOT / ".env", config.DEFAULT_ROOT.parent / ".env"]
+    """Gốc repo (nơi setup tạo .env) trước; academy/.env vẫn được đọc cho bản cài cũ."""
+    return list(dict.fromkeys([config.DEFAULT_ROOT.parent / ".env", config.root() / ".env", config.DEFAULT_ROOT / ".env"]))
 
 
 def _is_real_key(v: str) -> bool:

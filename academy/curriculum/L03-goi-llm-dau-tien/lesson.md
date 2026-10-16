@@ -4,7 +4,7 @@
 
 ## 🎯 Mục tiêu
 
-Sau buổi này (khoảng 3 giờ) bạn sẽ:
+Sau buổi này (khoảng 3,5 giờ) bạn sẽ:
 
 - Giải thích được **LLM** (Large Language Model) ở mức trực giác: **dự đoán token tiếp theo**.
 - Hiểu **token**, vì sao giá và giới hạn tính theo token, và tự đo: **tiếng Việt tốn token hơn tiếng Anh**.
@@ -33,10 +33,10 @@ Bạn viết 3 hàm (thay chỗ `raise NotImplementedError`); docstring ghi rõ 
 LLM giống **gợi ý bàn phím điện thoại** phiên bản khổng lồ: nhìn toàn bộ đoạn văn phía trước rồi đoán **token tiếp theo**, lặp lại cho tới khi đoán ra token "kết thúc".
 
 ```mermaid
-flowchart LR
-    A["Đoạn văn hiện tại"] --> B["LLM đoán token tiếp theo"]
-    B --> C["Nối token vào cuối đoạn văn"]
-    C --> D{"Token = kết thúc hoặc đủ max_tokens?"}
+flowchart TD
+    A["Đoạn văn hiện tại"] --> B["Đoán token tiếp"]
+    B --> C["Nối vào cuối"]
+    C --> D{"Kết thúc / max_tokens?"}
     D -- "Chưa" --> A
     D -- "Rồi" --> E["Trả câu trả lời"]
 ```
@@ -85,13 +85,13 @@ Tách vai trò giúp model phân biệt chỉ dẫn của nhà phát triển v�
 Gần như cả ngành (NVIDIA, Groq, vLLM, Ollama…) theo định dạng `POST /v1/chat/completions` của OpenAI, nên một thư viện `openai` gọi được tất cả — chỉ đổi `base_url`, `api_key`, `model`.
 
 ```mermaid
-flowchart LR
-    M["messages (system + user)"] --> T["Tách thành token"]
-    T --> L["LLM trên GPU NVIDIA"]
+flowchart TD
+    M["messages"] --> T["Tách token"]
+    T --> L["LLM trên GPU"]
     L --> R["response"]
-    R --> C["choices[0].message.content"]
-    R --> U["usage: prompt_tokens, completion_tokens"]
-    R --> F["finish_reason: stop / length"]
+    R --> C["message.content"]
+    R --> U["usage"]
+    R --> F["finish_reason"]
 ```
 
 - `finish_reason = "stop"`: model tự kết thúc; `"length"`: bị cắt vì chạm `max_tokens`.
@@ -108,7 +108,7 @@ Test vì thế chạy trong vài mili-giây, không cần mạng, không tốn t
 
 ### Bước 1 — Chuẩn bị
 
-Kích hoạt venv gốc của repo (như L02): `source .venv/bin/activate` (Windows: `.venv\Scripts\Activate.ps1`). Kiểm tra `python -c "import openai; print(openai.__version__)"`. Chép file `.env` từ bài L02 sang `workspace/L03-goi-llm-dau-tien/.env` (Windows: `Copy-Item`).
+Kích hoạt venv gốc của repo (như L02): `source .venv/bin/activate` (Windows: `.venv\Scripts\Activate.ps1`). Kiểm tra `python -c "import openai; print(openai.__version__)"`. Code tự đọc key từ `.env` ở gốc repo — không cần chép.
 
 > ⚠️ **Lỗi hay gặp:** `ModuleNotFoundError: openai` → chưa kích hoạt venv.
 
@@ -213,7 +213,7 @@ Bạn thấy câu trả lời và dòng `[token] prompt=... completion=...`.
 
 | Lỗi | Nghĩa |
 |---|---|
-| `RuntimeError: Thiếu NVIDIA_API_KEY` / 401 | Kiểm tra file `.env` |
+| `RuntimeError: Thiếu NVIDIA_API_KEY` / 401 | Điền key thật vào `.env` ở gốc repo |
 | HTTP 404 | Sai tên model |
 | HTTP 429 | Gọi quá nhanh, đợi một phút |
 
@@ -255,18 +255,6 @@ PYTHONPATH=workspace/L03-goi-llm-dau-tien python3 -m pytest curriculum/L03-goi-l
 
 Mục tiêu: `12 passed` — **không cần mạng, không cần key**. Sau đó chạy thật một lần (Bước 6).
 
-- [ ] Tôi giải thích được vì sao "hi" có `prompt_tokens=17`.
-- [ ] Tôi biết `finish_reason="length"` nghĩa là gì và sửa thế nào.
-- [ ] Tôi có bảng số đo token tiếng Việt vs tiếng Anh của riêng mình.
-
 ## 🎤 Câu hỏi phỏng vấn
-
-1. LLM là gì? Giải thích cơ chế "dự đoán token tiếp theo" một cách đơn giản.
-2. Token là gì? Vì sao chi phí và giới hạn của LLM tính theo token chứ không theo ký tự hay từ?
-3. Vì sao cùng một nội dung, tiếng Việt thường tốn nhiều token hơn tiếng Anh? Điều đó ảnh hưởng gì khi làm sản phẩm cho người Việt?
-4. Các role `system`, `user`, `assistant` trong messages khác nhau thế nào?
-5. "OpenAI-compatible API" nghĩa là gì? Lợi ích khi đổi nhà cung cấp model?
-6. `max_tokens` dùng để làm gì? `finish_reason = "length"` nghĩa là gì?
-7. Làm sao để viết unit test cho code gọi LLM mà không tốn tiền và kết quả ổn định?
 
 > 🎯 **Phỏng vấn hay hỏi:** câu 3 là điểm cộng lớn ở Việt Nam. Trả lời bằng **số đo của chính bạn** từ Bước 7 ("em đo thử thì bản tiếng Việt tốn khoảng 1,6 lần token…"). Người phỏng vấn đánh giá cao ứng viên tự đo thay vì nhắc lý thuyết.

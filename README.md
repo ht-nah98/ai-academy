@@ -2,10 +2,20 @@
 
 Phần mềm học tập chạy **trên máy của bạn**, dành cho người đã biết web cơ bản nhưng chưa biết Python/AI, muốn chuẩn bị phỏng vấn **AI Engineer / Data Engineer Intern** trong 3–4 tuần.
 
-- 10 bài học xuyên suốt một sản phẩm: **JobRadar — trợ lý thị trường việc làm IT**.
+- 13 bài học (P0–P3: Python, chatbot, data pipeline, LLM trích xuất có cấu trúc) xuyên suốt một sản phẩm: **JobRadar — trợ lý thị trường việc làm IT**.
 - Mỗi bài: đề bài, code khung (`# TODO`), **test tự chấm**, câu hỏi phỏng vấn.
 - Web app local: lộ trình, đọc bài, bấm **Chạy test**, bản đồ kiến thức, gia sư AI.
 - Không cần tài khoản, không cần database server. Tiến độ lưu ngay trên máy bạn.
+
+| Project | Làm xong bạn có |
+|---|---|
+| P0 · Khởi động Python | Code Python xử lý dữ liệu có test, gọi được API model AI của NVIDIA |
+| P1 · Chatbot đầu tiên | Chatbot web nhớ ngữ cảnh, chữ hiện dần, tự thử lại khi bị rate limit |
+| P2 · Data pipeline | Pipeline 302 tin thô → CSDL SQLite sạch, kèm báo cáo SQL về thị trường |
+| P3 · LLM trích xuất | Bộ trích xuất JSON bằng LLM chạy cả bộ dữ liệu có cache, đo được precision/recall |
+| P4–P6 · Sắp có | RAG có trích nguồn, agent text-to-SQL, Docker + giám sát + phần trình bày project |
+
+Trước mỗi project, app có một trang giới thiệu: thành phẩm thật bạn sẽ chạy được, kỹ năng có được và dòng ghi vào CV.
 
 ## 1. Chuẩn bị (làm một lần)
 
@@ -91,17 +101,16 @@ File `.env` (ở thư mục gốc repo) có một dòng:
 NVIDIA_API_KEY=nvapi-...
 ```
 
-Thay `nvapi-...` bằng key của bạn, lưu file, rồi khởi động lại app. File `.env` đã được Git bỏ qua nên sẽ không bị đẩy lên GitHub. Mẫu nằm ở `.env.example`.
+Thay `nvapi-...` bằng key của bạn rồi lưu file (app và code các bài đều tự đọc file này, không cần chép sang thư mục bài). File `.env` đã được Git bỏ qua nên sẽ không bị đẩy lên GitHub. Mẫu nằm ở `.env.example`.
 
 ## 3. Một bài học diễn ra thế nào
 
-1. Mở app → chọn bài trong **lộ trình** → đọc đề.
-2. Bấm **🚀 Bắt đầu**: app tạo thư mục `academy/workspace/<mã-bài>/` chứa code khung.
-3. Mở thư mục đó bằng **VS Code** (app hiển thị sẵn lệnh `code ...` để copy), mở file chính của bài.
-4. Viết code vào chỗ có `# TODO`. Bí thì xem tab **Hướng dẫn** hoặc hỏi gia sư AI.
+1. Mở app → chọn project trong **lộ trình** → đọc trang giới thiệu project.
+2. Vào bài → tab **Bối cảnh**: bài toán, các hàm cần viết, đầu ra để nghiệm thu.
+3. Bấm **Bắt đầu làm**: app tạo thư mục `academy/workspace/<mã-bài>/` chứa code khung.
+4. Mở thư mục đó bằng **VS Code** (app hiển thị sẵn lệnh `code ...` để copy), viết code vào chỗ có `# TODO`. Tab **Bài học** có kiến thức và từng bước; bí thì hỏi gia sư AI.
 5. Bấm **▶ Chạy test**. Đạt hết test là qua bài, bài tiếp theo được mở.
-
-Mỗi bài có một vòng: Mục tiêu → Đề bài → Tại sao → Làm → Tự kiểm tra → Câu hỏi phỏng vấn.
+6. Tab **Phỏng vấn thử**: trả lời câu hỏi, gia sư AI chấm điểm và gợi ý câu trả lời tốt hơn.
 
 ## 4. Code và tiến độ của bạn nằm ở đâu
 
@@ -119,8 +128,11 @@ Các thư mục này **không** được đưa lên Git (đã nằm trong `.giti
 setup.sh / setup.ps1     cài đặt một lệnh
 start.sh / start.ps1     chạy app một lệnh
 .env.example             mẫu file chứa API key
-academy/                 ứng dụng + giáo trình (curriculum/) + web/
-docs/                    tài liệu thiết kế, dành cho giáo viên/người phát triển
+academy/
+  curriculum/            giáo trình: roadmap.json + mỗi bài một thư mục (lesson.md, meta.json, starter/, tests/)
+  datasets/              bộ dữ liệu tin tuyển dụng giả lập dùng trong các bài
+  app/, web/             ứng dụng (FastAPI + JavaScript thuần)
+docs/design.md           thiết kế hệ thống và quy ước viết bài, dành cho giáo viên/người phát triển
 CLAUDE.md, scripts/      công cụ nội bộ của người soạn giáo trình
 ```
 
@@ -136,7 +148,7 @@ Học sinh chỉ cần quan tâm `academy/` và hai file `setup`/`start`. Thư m
 | WSL: `ensurepip is not available` / lỗi tạo venv | `sudo apt install python3 python3-venv python3-pip` rồi `./setup.sh` |
 | WSL: nút/lệnh `code` không mở được VS Code | Cài VS Code trên Windows + extension **WSL**; chạy `code .` từ terminal Ubuntu |
 | Chữ tiếng Việt bị lỗi font trong terminal | Dùng Windows Terminal; PowerShell: `chcp 65001`. Test của app đã tự ép UTF-8 |
-| Thiếu API key / lỗi 401 | Kiểm tra `.env` ở thư mục gốc repo, đúng dòng `NVIDIA_API_KEY=nvapi-...`, rồi khởi động lại app |
+| Thiếu API key / lỗi 401 | Kiểm tra `.env` ở thư mục gốc repo, đúng dòng `NVIDIA_API_KEY=nvapi-...` |
 | `ModuleNotFoundError` khi chạy file bài trong terminal | Chưa kích hoạt venv: WSL `source .venv/bin/activate` · Windows `.venv\Scripts\Activate.ps1` |
 | Muốn cài lại từ đầu | Xóa thư mục `.venv`, chạy lại `setup` |
 
@@ -144,4 +156,5 @@ Học sinh chỉ cần quan tâm `academy/` và hai file `setup`/`start`. Thư m
 
 ```bash
 cd academy && ../.venv/bin/python -m pytest tests_app -q     # Windows: ..\.venv\Scripts\python -m pytest tests_app -q
+./run.sh                                                    # chạy app chế độ dev (tự reload khi sửa code)
 ```

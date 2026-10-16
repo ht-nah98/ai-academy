@@ -42,7 +42,7 @@ Với pandas bạn viết từng bước. Với SQL bạn viết một câu, DB 
 Câu SQL **viết** từ `SELECT` nhưng DB **chạy** từ `FROM`; hiểu thứ tự này là tránh được nửa số lỗi.
 
 ```mermaid
-flowchart LR
+flowchart TD
     A["FROM / JOIN"] --> B["WHERE"] --> C["GROUP BY"] --> D["HAVING"] --> E["SELECT"] --> F["ORDER BY"] --> G["LIMIT"]
 ```
 
@@ -56,9 +56,9 @@ Vì vậy `WHERE` không lọc được theo `COUNT(*)` (lúc đó chưa gom nh�
 
 ```mermaid
 flowchart TD
-    J["jobs: J1 → công ty 1, J2 → công ty 9 (không tồn tại)"]
-    J --> I["INNER JOIN companies: chỉ còn J1"]
-    J --> L["LEFT JOIN companies: J1 + J2 (tên công ty = NULL)"]
+    J["J2: công ty không tồn tại"]
+    J --> I["INNER: chỉ J1"]
+    J --> L["LEFT: J1, J2 (NULL)"]
 ```
 
 ### NULL không phải là 0
@@ -79,11 +79,11 @@ Window function tính một giá trị cho **mỗi hàng** dựa trên một nh�
 `ROW_NUMBER() OVER (PARTITION BY city ORDER BY n DESC)`: chia theo `city`, trong mỗi nhóm đánh số 1, 2, 3… theo `n` giảm dần. Lọc `= 1` là ra "đứng đầu mỗi nhóm" — bài toán top-N-per-group kinh điển.
 
 ```mermaid
-flowchart LR
-    T["Bảng (city, skill, n)"] --> P["PARTITION BY city: chia nhóm"]
-    P --> O["ORDER BY n DESC: xếp trong nhóm"]
-    O --> R["ROW_NUMBER: 1, 2, 3 ... mỗi nhóm"]
-    R --> W["WHERE rn = 1: hạng nhất mỗi city"]
+flowchart TD
+    T["(city, skill, n)"] --> P["PARTITION BY city"]
+    P --> O["ORDER BY n DESC"]
+    O --> R["ROW_NUMBER: 1, 2, 3"]
+    R --> W["WHERE rn = 1"]
 ```
 
 ### CTE: đặt tên cho bước trung gian
@@ -282,22 +282,6 @@ PYTHONPATH=workspace/L09-sql-phan-tich python3 -m pytest curriculum/L09-sql-phan
 
 Mục tiêu: `11 passed`. Test fail → so kết quả của bạn với dòng `assert` (thường lệch thứ tự sắp xếp hoặc làm tròn).
 
-- [ ] Tôi kể được thứ tự thực thi: FROM → WHERE → GROUP BY → HAVING → SELECT → ORDER BY → LIMIT.
-- [ ] Tôi giải thích được khi nào dùng `WHERE`, khi nào dùng `HAVING`.
-- [ ] Tôi phân biệt được `INNER JOIN` và `LEFT JOIN` bằng ví dụ.
-- [ ] Tôi viết được truy vấn top-1 mỗi nhóm bằng `ROW_NUMBER` mà không nhìn tài liệu.
-
 ## 🎤 Câu hỏi phỏng vấn
-
-Tập trả lời thành tiếng, mỗi câu 30–60 giây, rồi luyện ở tab **Phỏng vấn thử**.
-
-1. `WHERE` và `HAVING` khác nhau thế nào? Vì sao `WHERE COUNT(*) > 1` lỗi?
-2. `INNER JOIN` và `LEFT JOIN` khác nhau thế nào? Cho ví dụ cần `LEFT JOIN`.
-3. `ROW_NUMBER`, `RANK`, `DENSE_RANK` khác nhau thế nào khi có giá trị bằng nhau?
-4. Viết SQL lấy 2 tin lương cao nhất mỗi thành phố.
-5. Window function khác `GROUP BY` ở điểm nào?
-6. `COUNT(*)` và `COUNT(cột)` khác nhau thế nào? `NULL = NULL` trả về gì?
-7. CTE (`WITH`) là gì? Khi nào dùng thay cho subquery?
-8. Tính trung bình trượt 7 ngày bằng SQL thế nào?
 
 > 🎯 **Phỏng vấn hay hỏi:** câu 4 là dạng "top-N mỗi nhóm" — gần như công ty nào cũng hỏi. Trả lời: CTE + `ROW_NUMBER()`/`RANK() OVER (PARTITION BY ...)` rồi lọc ở câu ngoài, và nói rõ chọn hàm nào khi có bằng nhau.

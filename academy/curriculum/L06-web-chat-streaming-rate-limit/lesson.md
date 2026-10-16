@@ -44,7 +44,7 @@ sequenceDiagram
     N-->>S: chunk ". L"
     S-->>B: ". L"
     N-->>S: ... (35 chunk)
-    N-->>S: chunk cuối: usage
+    N-->>S: chunk cuối: finish_reason
     S-->>B: đóng kết nối
 ```
 
@@ -106,6 +106,8 @@ full jitter:  [1.3, 0.6, 2.6, 0.3, 2.1]
 
 > 🎯 **Phỏng vấn hay hỏi:** "Vì sao backoff phải có jitter?" — để tránh **thundering herd**: nhiều client thử lại đồng loạt tạo ra đợt quá tải mới.
 
+> ⚠️ **Lỗi hay gặp:** bỏ qua header `Retry-After` của 429 — có thì chờ đúng số giây server báo. Backoff vài giây (1+2+4 ≈ 7s) không cứu được cửa sổ RPM 60 giây; cần thêm bộ giới hạn chủ động (L12).
+
 ### Timeout
 
 Mọi lời gọi mạng phải có **giới hạn thời gian chờ**; không có thì một request treo có thể giữ server mãi. `make_client()` đặt `timeout=30` giây.
@@ -117,10 +119,10 @@ Thư viện `openai` tự retry sẵn 2 lần. Ta đặt `max_retries=0` để *
 FastAPI biến hàm Python thành endpoint HTTP. Bạn khai báo dữ liệu vào bằng class **Pydantic**; FastAPI tự đọc JSON, kiểm tra kiểu, sai thì trả **422** — bạn không phải tự viết.
 
 ```mermaid
-flowchart LR
-    B["Trình duyệt giữ history"] -- "POST /chat JSON" --> V["Pydantic kiểm tra ChatRequest"]
+flowchart TD
+    B["Trình duyệt + history"] -- "POST /chat" --> V["Pydantic kiểm tra"]
     V -- "sai kiểu" --> E["422"]
-    V -- "hợp lệ" --> H["Handler: build_messages + with_retry"]
+    V -- "hợp lệ" --> H["Handler + with_retry"]
     H --> L["NVIDIA API"]
     H -- "hết lượt 429" --> X["503"]
     H -- "ok" --> J["200 {answer}"]
@@ -132,7 +134,7 @@ Server **không lưu** lịch sử: trình duyệt gửi kèm `history` mỗi l�
 
 ### Bước 1 — Chuẩn bị
 
-Kích hoạt venv gốc của repo (`source .venv/bin/activate`; Windows: `.venv\Scripts\Activate.ps1`). `fastapi` và `uvicorn` đã được cài sẵn bởi bước setup (nếu thiếu: `pip install fastapi uvicorn`). Chép `.env` sang `workspace/L06-web-chat-streaming-rate-limit/.env`. Mở `webchat.py`: phần dưới đã có `create_app`, endpoint stream và `make_client`.
+Kích hoạt venv gốc của repo (`source .venv/bin/activate`; Windows: `.venv\Scripts\Activate.ps1`). `fastapi` và `uvicorn` đã được cài sẵn bởi bước setup (nếu thiếu: `pip install fastapi uvicorn`). Code tự đọc key từ `.env` ở gốc repo — không cần chép. Mở `webchat.py`: phần dưới đã có `create_app`, endpoint stream và `make_client`.
 
 > ⚠️ **Lỗi hay gặp:** `ModuleNotFoundError: fastapi` → chưa cài vào venv, hoặc chưa kích hoạt venv.
 
@@ -226,7 +228,7 @@ DATA
 X-Y
 ```
 
-Mỗi chunk của stream có dạng sau; chunk cuối có `choices` **rỗng** (chỉ chứa usage):
+Mỗi chunk của stream có dạng sau. Chunk có thể có `choices` **rỗng** — vd. chunk `usage` cuối, chỉ được gửi khi bật `stream_options={"include_usage": True}` (code bài này không bật):
 
 ```python
 from types import SimpleNamespace as NS
@@ -273,6 +275,8 @@ print(c.post("/order", json={"qty": 1}).status_code)
 ```
 
 Handler `/chat` của bạn: `build_messages(req)` → gọi API **bên trong** `with_retry` → bắt lỗi còn sót: đáng retry thì đổi thành `HTTPException(503, BUSY_MESSAGE)` → trả `{"answer": ...}`. Xem endpoint `/chat/stream` viết sẵn ngay bên dưới để tham khảo cấu trúc.
+
+> ⚠️ **Lỗi hay gặp:** tưởng lỗi giữa stream cũng thành 503. `/chat/stream` chỉ retry lời gọi **mở** stream; khi mẩu đầu đã gửi thì header và mã 200 đã đi — lỗi giữa chừng chỉ làm câu trả lời bị cụt.
 
 ### Bước 7 — Chạy web chat thật
 
@@ -322,18 +326,6 @@ PYTHONPATH=workspace/L06-web-chat-streaming-rate-limit python3 -m pytest curricu
 
 Mục tiêu: `32 passed` — không cần mạng, không cần key. Sau đó chạy web chat thật (Bước 7).
 
-- [ ] Tôi giải thích được vì sao streaming không làm model nhanh hơn nhưng người dùng thấy nhanh hơn.
-- [ ] Tôi kể được 3 lỗi đáng retry và 3 lỗi không đáng retry.
-- [ ] Tôi chat được trên trình duyệt và thấy chữ hiện dần.
-
 ## 🎤 Câu hỏi phỏng vấn
-
-1. Streaming trong LLM API là gì? Nó cải thiện chỉ số nào (time to first token) và không cải thiện chỉ số nào?
-2. HTTP 429 nghĩa là gì? Bạn xử lý thế nào trong production?
-3. Exponential backoff là gì? Vì sao cần thêm jitter?
-4. Lỗi nào nên retry, lỗi nào không? Vì sao không retry lỗi 401?
-5. Vì sao mọi lời gọi mạng cần timeout? Chuyện gì xảy ra khi có hai lớp retry chồng nhau?
-6. Trong web chat, lịch sử hội thoại nên lưu ở đâu? Ưu nhược điểm khi để trình duyệt gửi lên?
-7. FastAPI kiểm tra dữ liệu đầu vào thế nào? Mã 422 nghĩa là gì?
 
 > 🎯 **Phỏng vấn hay hỏi:** câu 2–4 gần như chắc chắn gặp ở vị trí AI/Data Engineer (gọi API bên ngoài là việc hằng ngày). Trả lời kèm con số: "em retry tối đa 4 lần, chờ 1–2–4 giây có full jitter, chỉ với 429/5xx/timeout; hết lượt thì trả 503 cho client".

@@ -6,7 +6,8 @@
   "concepts": [
     "etl",
     "idempotency",
-    "data-quality"
+    "data-quality",
+    "monitoring-logging"
   ],
   "entry": "pipeline.py",
   "checklist": [
@@ -26,7 +27,8 @@
     "Khi kiểm tra chất lượng thất bại, pipeline nên làm gì? Khi nào loại dòng, khi nào dừng cả lô?",
     "INSERT OR REPLACE khác ON CONFLICT DO UPDATE thế nào?",
     "Vì sao dùng logging thay vì print trong pipeline?",
-    "Kể lại pipeline JobRadar của bạn từ CSV thô tới bảng SQLite trong 1 phút."
+    "Kể lại pipeline JobRadar của bạn từ CSV thô tới bảng SQLite trong 1 phút.",
+    "Upsert có xóa tin đã bị gỡ hoặc bị loại ở nguồn trong lần chạy sau không? Bạn xử lý thế nào?"
   ],
   "tutor_notes": "Bài ghép L07 + L08: học sinh phải copy cleaning.py và db.py của mình vào workspace L10 (nếu thiếu → ModuleNotFoundError ở test upsert/run_pipeline). Lỗi hay gặp: (1) quality_checks coi lương trống (NaN) là lỗi, hoặc so min > max khi một bên NaN, hoặc báo job_id trùng nhiều lần; (2) gán cứng ngày hôm nay thay vì dùng as_of; (3) split_rejects loại cả dòng vì lỗi BLOCKING_CHECKS, lý do không sắp A→Z, quên reset_index; (4) upsert_jobs dùng INSERT thường (lần 2 lỗi UNIQUE) hoặc INSERT OR REPLACE, quên xóa kỹ năng cũ nên kỹ năng bị bỏ vẫn còn; (5) run_pipeline mở DB/create_schema trước khi kiểm tra chất lượng nên lỗi vẫn tạo bảng; nuốt lỗi bằng try/except; dùng print thay log.warning nên test log fail; (6) summary đếm 'clean' sau khi loại thay vì trước. Gợi ý: chạy test idempotent và in snapshot DB 2 lần để so; hỏi 'nếu chạy lại lúc 2 giờ sáng thì sao?'. Không đưa nguyên hàm; có thể đưa cú pháp riêng lẻ (ON CONFLICT(job_id) DO UPDATE SET a = excluded.a, logging.getLogger, raise).",
   "tasks": [

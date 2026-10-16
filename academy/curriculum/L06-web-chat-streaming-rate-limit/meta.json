@@ -11,7 +11,7 @@
   ],
   "entry": "webchat.py",
   "checklist": [
-    "Giải thích được streaming và time to first token",
+    "Giải thích được streaming, time to first token và vì sao stream không làm model nhanh hơn",
     "Phân biệt được lỗi đáng retry (429, 5xx, timeout) và không đáng retry (400, 401, 404)",
     "Giải thích được exponential backoff và vì sao cần jitter",
     "Biết vì sao mọi lời gọi mạng cần timeout",
@@ -75,7 +75,7 @@
   ],
   "brief": {
     "context": "Chatbot chạy được trong terminal. Chưa có giao diện web; mỗi lỗi 429 từ API làm app dừng.",
-    "problem": "Người dùng chờ hàng chục giây trước khi thấy chữ đầu tiên. API trả 429 khi vượt rate limit và 5xx/timeout không định kỳ; cần tự thử lại đúng lỗi tạm thời, không spam server khi lỗi do mình.",
+    "problem": "Không stream, người dùng nhìn màn hình trống tới khi model viết xong (1,57 giây cho câu ~5 dòng, lâu hơn với câu dài), dù chữ đầu tiên đã có sau 0,63 giây. API trả 429 khi vượt rate limit và 5xx/timeout không định kỳ; cần tự thử lại đúng lỗi tạm thời, không spam server khi lỗi do mình.",
     "requirements": [
       {
         "task": "backoff_delays",

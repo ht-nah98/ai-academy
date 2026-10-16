@@ -16,9 +16,11 @@
     "Chạy được `python jobs.py` trong terminal",
     "Viết được list comprehension để lọc một danh sách theo điều kiện",
     "Phân biệt được list và dict, biết lấy giá trị bằng d[\"key\"] và d.get(\"key\")",
+    "Giải thích được vì sao `job.city` lỗi còn `job[\"city\"]` thì không",
     "Giải thích được vì sao None + 1 gây TypeError và cách tránh",
     "Viết được list comprehension có điều kiện if",
     "Hiểu `if __name__ == \"__main__\":` dùng để làm gì",
+    "Giải thích được vì sao average_salary không chia cho len(jobs)",
     "Qua hết test của bài"
   ],
   "interview_questions": [

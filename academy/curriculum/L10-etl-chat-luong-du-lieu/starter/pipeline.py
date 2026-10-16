@@ -47,9 +47,7 @@ def quality_checks(df, as_of=AS_OF, min_rows=1):
     - "date_in_future"      : posted_date > as_of (so sánh chuỗi "YYYY-MM-DD" được luôn)
     Một dòng có thể dính nhiều lỗi. Thứ tự các phần tử trong list không quan trọng.
     """
-    # TODO: issues = []; kiểm tra len(df) trước
-    # TODO: trùng: df.loc[df["job_id"].duplicated(), "job_id"].unique()
-    # TODO: duyệt df.to_dict("records"), dùng pd.isna / pd.notna cho ô trống
+    # TODO: len(df), Series.duplicated, pd.isna / pd.notna
     raise NotImplementedError("TODO: viết quality_checks")
 
 
@@ -62,8 +60,7 @@ def split_rejects(df, issues):
       nối bằng ", ". Thứ tự list theo thứ tự dòng trong df.
     Ví dụ: [("J7", "company_null, salary_out_of_range")]
     """
-    # TODO: gom lý do theo job_id: dict job_id → set tên kiểm tra (bỏ BLOCKING_CHECKS)
-    # TODO: mask = df["job_id"].isin(...)
+    # TODO: dict.setdefault, Series.isin
     raise NotImplementedError("TODO: viết split_rejects")
 
 
@@ -71,15 +68,14 @@ def upsert_jobs(conn, df):
     """Nạp df vào DB theo kiểu IDEMPOTENT, trả về số tin đã nạp/cập nhật (= len(df)).
 
     - Tất cả trong MỘT transaction (`with conn:`).
-    - jobs: INSERT ... ON CONFLICT(job_id) DO UPDATE SET <mọi cột còn lại> = excluded.<cột>
-      → tin mới thì thêm, tin cũ thì cập nhật, không bao giờ trùng.
+    - jobs: upsert theo khóa job_id — tin mới thì thêm, tin cũ thì cập nhật MỌI cột còn lại,
+      không bao giờ trùng.
     - job_skills của mỗi tin: DELETE hết kỹ năng cũ của tin đó rồi INSERT lại (delete-insert).
     - company_id: get_or_create_company từ db.py của bạn (L08).
     Chạy 2 lần với cùng df → DB y hệt như chạy 1 lần.
     """
     # TODO: from db import get_or_create_company, to_db   (db.py bạn copy từ L08)
-    # TODO: INSERT INTO jobs (...) VALUES (...) ON CONFLICT(job_id) DO UPDATE SET title = excluded.title, ...
-    # TODO: mỗi tin: DELETE FROM job_skills WHERE job_id = ? rồi INSERT lại
+    # TODO: ON CONFLICT ... DO UPDATE, excluded; delete-insert cho job_skills
     raise NotImplementedError("TODO: viết upsert_jobs")
 
 
@@ -97,7 +93,7 @@ def run_pipeline(csv_path, db_path, as_of=AS_OF, min_rows=1, max_reject_ratio=0.
        log.info số tin đã nạp.
     """
     # TODO: from cleaning import clean_jobs; from db import create_schema   (Bước 1)
-    # TODO: extract → transform → quality (raise DataQualityError) → load; log.info / log.warning ở mỗi bước
+    # TODO: log.info / log.warning, raise DataQualityError
     raise NotImplementedError("TODO: viết run_pipeline")
 
 

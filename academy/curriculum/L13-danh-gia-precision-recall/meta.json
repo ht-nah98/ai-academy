@@ -1,0 +1,138 @@
+{
+  "id": "L13-danh-gia-precision-recall",
+  "title": "Đánh giá: tập nhãn, precision/recall",
+  "goal": "Đo chất lượng bộ trích xuất trên 30 tin đã gán nhãn: precision/recall/F1 cho kỹ năng, accuracy cho từng trường, phân tích lỗi để chọn giữa prompt v1 và v2 — 4 hàm trong evaluate.py qua hết 17 test.",
+  "duration_min": 180,
+  "concepts": [
+    "labeled-eval-set",
+    "precision-recall",
+    "error-analysis"
+  ],
+  "entry": "evaluate.py",
+  "checklist": [
+    "Đọc hướng dẫn gán nhãn, tự gán lại 5 tin trong gold_30.json và so với nhãn có sẵn",
+    "Tính tay được precision, recall, F1 cho một ví dụ nhỏ",
+    "Phân biệt được micro-average và macro-average",
+    "Chạy `python evaluate.py`, đọc bảng v1 vs v2 và chỉ ra lỗi nào prompt v2 đã sửa",
+    "Giải thích được vì sao kết quả trên chính tập dùng để sửa prompt là lạc quan",
+    "Giải thích được vì sao cần hướng dẫn gán nhãn trước khi đo",
+    "Qua hết test của bài"
+  ],
+  "interview_questions": [
+    "Làm sao biết bộ trích xuất bằng LLM của bạn chạy tốt?",
+    "Precision và recall là gì? Khi nào ưu tiên cái nào?",
+    "F1 là gì? Vì sao dùng trung bình điều hòa?",
+    "Micro-average khác macro-average thế nào?",
+    "Tập nhãn (golden set) được xây dựng thế nào? Cần bao nhiêu mẫu?",
+    "Bạn đã sửa prompt dựa trên kết quả đánh giá. Con số sau khi sửa có đáng tin không?",
+    "Phân tích lỗi (error analysis) là gì? Kể một lỗi bạn tìm ra và cách sửa.",
+    "Khi đổi model hoặc prompt, làm sao đảm bảo chất lượng không giảm?"
+  ],
+  "tutor_notes": "Dữ liệu: gold_30.json (30 tin viết theo kiểu tin thật, nhãn theo hướng dẫn trong lesson.md), predictions_v1.json và predictions_v2.json là output THẬT của nemotron-3-super với prompt L11 (v1) và prompt sửa (v2). Kết quả đúng của `python evaluate.py`: kỹ năng P=1.0 R=0.9821 F1=0.991 ở cả hai bản (sót LLM, RAG ở HX-002); level 0.9667 → 1.0 (v1 suy 'middle' từ '2+ năm' ở HX-001); salary_min 0.8 → 1.0, salary_max 0.8333 → 1.0 (v1 để null lương USD ở 6 tin; salary_max chỉ sai 5 vì HX-029 '$3,000+' không có trần). Lỗi hay gặp: (1) normalize_skill quên gộp khoảng trắng hoặc tra alias trước khi lower; (2) evaluate_skills tính precision từng tin rồi lấy trung bình (đó là samples average, không phải micro) thay vì cộng dồn tp/fp/fn; dùng list thay set nên đếm trùng; chia cho 0; quên tin thiếu trong pred; (3) field_accuracy coi None==None là sai, hoặc quên ghi confusions cho tin thiếu; (4) error_report sắp xếp sai thứ tự phụ (A→Z). Gợi ý: cho học sinh tính tay ví dụ trong test (tp=6 fp=3 fn=1) trước khi code. Không đưa nguyên hàm; được đưa cú pháp (set &, -, Counter.update, sorted key=lambda kv: (-kv[1], kv[0])).",
+  "tasks": [
+    {
+      "fn": "normalize_skill",
+      "signature": "normalize_skill(skill)",
+      "summary": "Đưa tên kỹ năng về dạng chuẩn trước khi so",
+      "example": "\"  Postgres \" → \"postgresql\"",
+      "test_prefix": "test_normalize_skill"
+    },
+    {
+      "fn": "evaluate_skills",
+      "signature": "evaluate_skills(gold, pred)",
+      "summary": "Precision, recall, F1 (micro) cho kỹ năng",
+      "example": "tp=6 fp=3 fn=1 → P 0.6667, R 0.8571, F1 0.75",
+      "test_prefix": "test_evaluate_skills"
+    },
+    {
+      "fn": "field_accuracy",
+      "signature": "field_accuracy(gold, pred, field)",
+      "summary": "Accuracy cho một trường, kèm bảng nhầm lẫn",
+      "example": "level: 2/3 đúng, nhầm (None, \"middle\")",
+      "test_prefix": "test_field_accuracy"
+    },
+    {
+      "fn": "error_report",
+      "signature": "error_report(gold, pred, top=5)",
+      "summary": "Kỹ năng hay bị thừa và hay bị sót nhất",
+      "example": "false_positives: [(\"docker\", 2), ...]",
+      "test_prefix": "test_error_report"
+    }
+  ],
+  "brief": {
+    "context": "Bộ trích xuất (L11, L12) đã chạy trên toàn bộ dữ liệu. Có một bản prompt v2 sửa quy tắc cấp bậc, lương USD và hình thức làm việc.",
+    "problem": "Chưa có con số nào cho biết bộ trích xuất đúng bao nhiêu, nên chưa quyết được có dùng prompt v2 hay không. Cần đo trên 30 tin đã gán nhãn tay và chỉ ra lỗi cụ thể.",
+    "requirements": [
+      {
+        "task": "normalize_skill",
+        "purpose": "So kỹ năng công bằng: \"k8s\" và \"Kubernetes\" là một."
+      },
+      {
+        "task": "evaluate_skills",
+        "purpose": "Đo kỹ năng: bao nhiêu cái lấy ra là đúng, bao nhiêu cái đúng bị sót."
+      },
+      {
+        "task": "field_accuracy",
+        "purpose": "Đo từng trường đơn (level, lương, work_mode) và loại nhầm lẫn."
+      },
+      {
+        "task": "error_report",
+        "purpose": "Chỉ ra lỗi lặp lại để biết sửa prompt ở đâu."
+      }
+    ],
+    "deliverable": "evaluate.py qua 17/17 test. `python evaluate.py` in bảng v1 vs v2 và kết luận chọn bản nào, dựa trên số liệu.",
+    "constraints": [
+      "Chỉ dùng thư viện chuẩn.",
+      "Kỹ năng chấm theo tập đã normalize: không phân biệt hoa thường, không đếm trùng.",
+      "Tin không có dự đoán tính là sai, không bị bỏ qua."
+    ],
+    "product_nodes": [
+      "extraction"
+    ],
+    "workflow": {
+      "flow": "chain",
+      "inputs": [
+        {
+          "label": "gold_30.json",
+          "detail": "30 tin gán nhãn tay"
+        },
+        {
+          "label": "predictions v1, v2",
+          "detail": "Output thật của 2 prompt"
+        }
+      ],
+      "steps": [
+        {
+          "task": "normalize_skill",
+          "label": "Chuẩn hóa tên kỹ năng"
+        },
+        {
+          "task": "evaluate_skills",
+          "label": "Precision, recall, F1"
+        },
+        {
+          "task": "field_accuracy",
+          "label": "Accuracy từng trường"
+        },
+        {
+          "task": "error_report",
+          "label": "Xếp hạng lỗi lặp lại"
+        }
+      ],
+      "outputs": [
+        {
+          "label": "Kỹ năng F1 0.991",
+          "detail": "Sót LLM, RAG ở HX-002"
+        },
+        {
+          "label": "Lương 0.80 → 1.00",
+          "detail": "v2 quy đổi lương USD"
+        },
+        {
+          "label": "Chọn prompt v2",
+          "detail": "Có số liệu, kèm cảnh báo"
+        }
+      ]
+    }
+  }
+}

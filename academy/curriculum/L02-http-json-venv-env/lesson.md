@@ -4,7 +4,7 @@
 
 ## 🎯 Mục tiêu
 
-Sau buổi này (khoảng 3 giờ) bạn sẽ:
+Sau buổi này (khoảng 3,5 giờ) bạn sẽ:
 
 - Tạo và dùng **venv** (hộp thư viện riêng cho project), cài thư viện bằng **pip**.
 - Cất **API key** trong file **`.env`**, không bao giờ để trong code.
@@ -54,11 +54,11 @@ Bot quét GitHub tìm chuỗi như `nvapi-`, `sk-` liên tục; key lộ có th�
 Trên server, hệ thống deploy (Docker, cloud) đặt biến môi trường; trên máy dev ta dùng `.env` cho tiện. Vì thế `get_api_key` **ưu tiên biến môi trường** rồi mới tới `.env`: cùng code chạy được ở cả hai nơi.
 
 ```mermaid
-flowchart LR
-    A[".env (máy dev, có trong .gitignore)"] --> C["get_api_key()"]
-    B["Biến môi trường (server, Docker)"] -->|"ưu tiên"| C
-    C --> D["Code gọi API với key"]
-    E["Code trên GitHub"] -.->|"KHÔNG chứa key"| D
+flowchart TD
+    B["Biến môi trường"] -->|"ưu tiên"| C["get_api_key()"]
+    A[".env (gitignore)"] --> C
+    C --> D["Gọi API"]
+    E["Code trên GitHub"] -.->|"không chứa key"| D
 ```
 
 ### HTTP API
@@ -138,13 +138,22 @@ False
 
 Ngoài venv in `False`; sau khi kích hoạt, chạy lại sẽ in `True`.
 
-Ghi `pytest` và `openai` vào `L02-http-json-venv-env/requirements.txt` để tập viết danh sách phụ thuộc.
+Ghi `pytest` và `openai` vào `workspace/L02-http-json-venv-env/requirements.txt` để tập viết danh sách phụ thuộc.
 
-### Bước 2 — Lấy API key, tạo `.env`
+### Bước 2 — Lấy API key, điền `.env` ở gốc repo
 
 1. Vào https://build.nvidia.com → chọn một model → **Get API Key** → copy chuỗi `nvapi-...`.
-2. Trong `workspace/L02-http-json-venv-env/` tạo file `.env` một dòng: `NVIDIA_API_KEY=nvapi-...`
-3. Tạo `academy/workspace/.gitignore` gồm 2 dòng: `.venv/` và `.env` (repo gốc đã có `.gitignore` tương tự; tự tay viết để hiểu vì sao cần).
+2. Mở `.env` ở **gốc repo** (setup đã tạo từ `.env.example`; chưa có thì tạo) và thay dòng `NVIDIA_API_KEY=nvapi-...` bằng key thật. Đây là nơi duy nhất chứa key — mọi bài đều đọc file này.
+3. Từ gốc repo, xem vì sao git bỏ qua file này:
+
+```bash
+git check-ignore -v .env
+```
+```output
+.gitignore:1:.env	.env
+```
+
+Nghĩa là: dòng 1 của `.gitignore` (mẫu `.env`) khớp file `.env`. Không in gì → file **chưa** bị bỏ qua, đừng commit.
 
 > ⚠️ **Lỗi hay gặp:** dán key vào chat, ảnh chụp màn hình hay tin nhắn — kể cả cho gia sư AI. Đừng bao giờ.
 
@@ -243,7 +252,7 @@ giả gọi https://vi-du.vn/api
 ```
 
 ```mermaid
-flowchart LR
+flowchart TD
     T["Test"] -->|"fetch = hàm giả"| F["fetch_model_ids"]
     R["Chạy thật"] -->|"fetch = http_get_json"| F
     F --> P["parse_model_ids"] --> L["list id"]
@@ -277,7 +286,7 @@ cd academy/workspace/L02-http-json-venv-env
 python models.py nemotron
 ```
 
-Bạn thấy tổng số model, 5 hãng nhiều model nhất và các id chứa "nemotron". Số lượng đổi theo thời gian — chính vì thế test không dựa vào dữ liệu thật.
+Dòng đầu in 8 ký tự đầu của key đọc từ `.env` gốc repo (qua `get_api_key` của bạn) — thấy `nvapi-...` 9 ký tự là chưa thay key thật. Sau đó là tổng số model, 5 hãng nhiều model nhất và các id chứa "nemotron". Số lượng đổi theo thời gian — chính vì thế test không dựa vào dữ liệu thật.
 
 > 💡 **Mẹo:** còn thời gian? Thêm cờ `--json` in kết quả `group_by_publisher` bằng `json.dumps(..., indent=2, ensure_ascii=False)`.
 
@@ -295,18 +304,6 @@ Mục tiêu: `15 passed`. Thử tắt wifi rồi chạy lại — vẫn pass, đ
 
 > 🧠 **Ghi nhớ:** test dùng `tmp_path` (thư mục tạm pytest tạo cho mỗi test) để viết `.env` giả, nên không đụng tới `.env` thật của bạn.
 
-- [ ] Tôi giải thích được vì sao `pip install` ngoài venv bị chặn.
-- [ ] `git status` **không** liệt kê file `.env` của tôi.
-- [ ] Tôi nói được 401 và 429 nghĩa là gì và nên làm gì khi gặp.
-
 ## 🎤 Câu hỏi phỏng vấn
-
-1. Virtual environment là gì? Vì sao mỗi project Python nên có venv riêng?
-2. Bạn quản lý API key và mật khẩu trong project thế nào? Nếu lỡ commit key lên GitHub thì làm gì?
-3. Giải thích các status code 200, 400, 401, 404, 429, 500. Gặp 429 thì xử lý thế nào?
-4. GET và POST khác nhau thế nào? Thế nào là một REST API?
-5. JSON là gì? `json.loads` và `json.dumps` khác nhau ra sao?
-6. Làm sao để test một hàm có gọi API bên ngoài mà không gọi mạng thật?
-7. `requirements.txt` dùng để làm gì? Vì sao nên ghim (pin) phiên bản thư viện?
 
 > 🎯 **Phỏng vấn hay hỏi:** câu 2 — trả lời tốt có đủ 3 ý: **thu hồi (revoke) key ngay** và tạo key mới; xóa khỏi lịch sử git là chưa đủ vì key đã coi như lộ; phòng ngừa bằng `.gitignore`, biến môi trường, công cụ quét secret trước khi commit.

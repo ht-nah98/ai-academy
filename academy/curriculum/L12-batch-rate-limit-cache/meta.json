@@ -1,0 +1,140 @@
+{
+  "id": "L12-batch-rate-limit-cache",
+  "title": "Batch: rate limit, cache, retry, chi phí",
+  "goal": "Chạy trích xuất cho cả bộ 264 tin với cache đĩa, giới hạn RPM, retry (từ L06) và ước tính chi phí — 4 phần trong batch.py qua hết 13 test; chạy lại lần 2 không tốn lần gọi API nào.",
+  "duration_min": 210,
+  "concepts": [
+    "rate-limit",
+    "caching",
+    "cost-estimation"
+  ],
+  "entry": "batch.py",
+  "checklist": [
+    "Copy extract.py (L11) vào thư mục bài, chạy được `python batch.py 40` hai lần",
+    "Phân biệt được giới hạn tốc độ chủ động (rate limiter) và xử lý 429 bị động (retry, L06)",
+    "Giải thích được cửa sổ trượt 60 giây và vì sao sleep cố định là lãng phí",
+    "Giải thích được vì sao khóa cache phải gồm model + prompt + tham số",
+    "Giải thích được vì sao không cache output lỗi và vì sao ghi file qua .tmp + os.replace",
+    "Ước tính được chi phí cho 100.000 tin từ một lần chạy thử",
+    "Qua hết test của bài"
+  ],
+  "interview_questions": [
+    "Bạn cần gọi LLM cho 100.000 bản ghi. Thiết kế batch job thế nào?",
+    "Rate limit là gì? Tránh 429 chủ động khác gì xử lý 429 sau khi gặp?",
+    "Cache kết quả LLM thế nào cho đúng? Khóa cache gồm những gì?",
+    "Vì sao không nên cache output bị lỗi định dạng?",
+    "Batch chạy được nửa chừng thì mất mạng. Làm sao chạy tiếp mà không trả tiền lại phần đã xong?",
+    "Làm sao ước tính chi phí trước khi chạy một batch lớn?",
+    "Một tin trong lô bị lỗi. Pipeline nên dừng hay chạy tiếp? Vì sao?",
+    "Ngoài cache, còn cách nào giảm chi phí LLM? (prompt ngắn hơn, model nhỏ hơn, batch API...)"
+  ],
+  "tutor_notes": "Bài nối L11: chạy thật cần copy extract.py của học sinh vào workspace L12 (test KHÔNG cần, vì test truyền build_messages/parse giả). call_with_retry và is_retryable đã viết sẵn (khác L06: max_retries = số lần thử thêm, không jitter). Lỗi hay gặp: (1) cache_key: quên sort_keys hoặc không đưa params vào khóa; dùng hash() của Python (thay đổi giữa các lần chạy do hash randomization) thay vì hashlib. (2) RateLimiter.wait: dùng sleep(60) cố định; quên bỏ mốc cũ sau khi sleep; dùng < thay vì <= khi bỏ mốc; ghi mốc trước khi chờ. (3) estimate_cost: làm tròn per_job rồi mới nhân n_total (sai số phóng đại 100.000 lần); chia cho n_total thay vì n_sampled. (4) run_batch: dừng cả lô khi một tin lỗi; ghi cache trước khi parse (cache cả output hỏng); cộng token cho cache hit; gọi limiter.wait() cả khi cache hit; ghi thẳng file thay vì .tmp + os.replace; quên mkdir cache_dir; gọi time.sleep thay vì truyền sleep vào call_with_retry. Gợi ý: hỏi 'chạy lại sau khi mất mạng giữa chừng thì tốn bao nhiêu?', 'nếu đổi prompt thì cache cũ có dùng được không?'. Không đưa nguyên hàm; được đưa cú pháp riêng lẻ (hashlib.sha256(b).hexdigest(), deque.popleft, os.replace).",
+  "tasks": [
+    {
+      "fn": "cache_key",
+      "signature": "cache_key(model, messages, params)",
+      "summary": "SHA-256 của mọi thứ quyết định câu trả lời",
+      "example": "cùng prompt, khác temperature → khác khóa",
+      "test_prefix": "test_cache_key"
+    },
+    {
+      "fn": "RateLimiter",
+      "signature": "RateLimiter(rpm, clock, sleep).wait()",
+      "summary": "Không quá rpm lần gọi trong mọi cửa sổ 60 giây",
+      "example": "rpm=3, lần thứ 4 ở giây 15 → chờ 45 giây",
+      "test_prefix": "test_rate_limiter"
+    },
+    {
+      "fn": "run_batch",
+      "signature": "run_batch(jobs, client, cache_dir, model, limiter, ...)",
+      "summary": "Chạy cả lô: cache → limiter → retry → parse, thống kê token",
+      "example": "lần 2 → cache_hits=264, api_calls=0, cost_usd=0",
+      "test_prefix": "test_run_batch"
+    },
+    {
+      "fn": "estimate_cost",
+      "signature": "estimate_cost(prompt_tokens, completion_tokens, n_sampled, n_total, prices)",
+      "summary": "Chạy thử mẫu nhỏ → ước tính chi phí cả bộ",
+      "example": "20 tin mẫu → 100.000 tin ≈ 36.9 USD",
+      "test_prefix": "test_estimate_cost"
+    }
+  ],
+  "brief": {
+    "context": "extract_job (L11) trích đúng từng tin. Bộ dữ liệu có 264 tin có mô tả; mỗi tuần thêm tin mới.",
+    "problem": "Gọi tuần tự 60 lần liên tục vẫn nhận 10 lỗi 429 dù đã có retry ngầm (giới hạn ~40 request/phút). Mỗi lần chạy lại đang trả tiền lại cho cả những tin đã trích xong, một tin lỗi làm dừng cả lô, và chưa ai biết chạy 100.000 tin thì tốn bao nhiêu.",
+    "requirements": [
+      {
+        "task": "cache_key",
+        "purpose": "Định danh duy nhất cho một request để tra cache."
+      },
+      {
+        "task": "RateLimiter",
+        "purpose": "Giữ tốc độ gọi dưới giới hạn, tránh 429 thay vì chờ bị 429."
+      },
+      {
+        "task": "run_batch",
+        "purpose": "Chạy cả lô bền bỉ: tin lỗi được ghi lại, phần đã xong không gọi lại."
+      },
+      {
+        "task": "estimate_cost",
+        "purpose": "Ra con số chi phí trước khi chạy thật ở quy mô lớn."
+      }
+    ],
+    "deliverable": "batch.py qua 13/13 test. Chạy thật: lần 1 trích 264 tin, lần 2 cache_hits = 264, api_calls = 0, cost_usd = 0.",
+    "constraints": [
+      "Tối đa 35 request/phút (dưới giới hạn ~40 của build.nvidia.com).",
+      "Chỉ cache output đã parse và validate thành công.",
+      "Một tin lỗi không được dừng cả lô.",
+      "Test dùng client giả và đồng hồ giả: không gọi mạng, không chờ thật."
+    ],
+    "product_nodes": [
+      "llm-gateway",
+      "extraction"
+    ],
+    "workflow": {
+      "flow": "chain",
+      "inputs": [
+        {
+          "label": "264 tin",
+          "detail": "jobradar.db của L10"
+        },
+        {
+          "label": "extract.py",
+          "detail": "Prompt và JobInfo từ L11"
+        }
+      ],
+      "steps": [
+        {
+          "task": "cache_key",
+          "label": "Tra cache theo khóa"
+        },
+        {
+          "task": "RateLimiter",
+          "label": "Chờ nếu vượt RPM"
+        },
+        {
+          "task": "run_batch",
+          "label": "Gọi, parse, ghi cache"
+        },
+        {
+          "task": "estimate_cost",
+          "label": "Ước tính chi phí cả bộ"
+        }
+      ],
+      "outputs": [
+        {
+          "label": "264/264 tin trích xong",
+          "detail": "0 lỗi 429, 483 giây"
+        },
+        {
+          "label": "Lần 2: 0 lần gọi",
+          "detail": "264 cache hit, 0,4 giây"
+        },
+        {
+          "label": "100.000 tin ≈ 33 USD",
+          "detail": "Theo giá giả định PRICE_PER_M"
+        }
+      ]
+    }
+  }
+}

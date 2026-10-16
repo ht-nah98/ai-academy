@@ -16,6 +16,7 @@
     "Viết được class Conversation với messages() trả bản sao",
     "Cắt được lịch sử theo ngân sách: giữ system + các lượt mới nhất",
     "So sánh được cắt lịch sử và tóm tắt lịch sử",
+    "Thấy tận mắt chatbot \"quên\" khi ngân sách quá nhỏ",
     "Qua hết test của bài"
   ],
   "interview_questions": [

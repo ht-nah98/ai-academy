@@ -34,11 +34,11 @@ Bạn viết 5 hàm (thay chỗ `raise NotImplementedError`); docstring ghi rõ 
 Ở mỗi bước, model không "chọn chắc chắn" một token mà tính **xác suất** cho mọi token rồi **bốc thăm**. Temperature chỉnh độ "nhọn" của xác suất: thấp → gần như luôn chọn token khả năng cao nhất; cao → token hiếm cũng có cơ hội.
 
 ```mermaid
-flowchart LR
-    A["Đoạn văn hiện tại"] --> B["Model chấm điểm mọi token (logits)"]
-    B --> C["Chia điểm cho temperature"]
-    C --> D["Đổi điểm thành xác suất (softmax)"]
-    D --> E["Cắt đuôi theo top_p"]
+flowchart TD
+    A["Đoạn văn hiện tại"] --> B["Chấm điểm (logits)"]
+    B --> C["Chia cho temperature"]
+    C --> D["Softmax → xác suất"]
+    D --> E["Cắt đuôi top_p"]
     E --> F["Bốc thăm 1 token"]
     F --> A
 ```
@@ -108,11 +108,11 @@ Hỏi `nemotron-3-super` 5 lần câu "Đặt một tên ngắn cho ứng dụng
 System prompt là "bản mô tả công việc" cho model: nó là ai, được làm gì, không được làm gì, trả lời theo khuôn nào. Người dùng không thấy nó, nhưng nó ảnh hưởng **mọi** câu trả lời.
 
 ```mermaid
-flowchart TB
-    P["Vai trò: Bạn là JobRadar..."] --> S["System prompt"]
-    R["Luật: tiếng Việt, tối đa 3 ý, không bịa"] --> S
-    F["Định dạng: gạch đầu dòng / JSON"] --> S
-    S --> M["messages = system + (ví dụ mẫu) + user"]
+flowchart TD
+    P["Vai trò"] --> S["System prompt"]
+    R["Luật"] --> S
+    F["Định dạng"] --> S
+    S --> M["system + ví dụ + user"]
     M --> L["LLM"]
 ```
 
@@ -144,9 +144,9 @@ Prompt engineering = viết chỉ dẫn sao cho model làm đúng ý **ngay lầ
 
 ### Bước 1 — Chuẩn bị
 
-Kích hoạt venv gốc của repo: `source .venv/bin/activate` (Windows: `.venv\Scripts\Activate.ps1`). Chép `.env` từ bài L03 sang `workspace/L04-temperature-system-prompt/.env` (Windows: `Copy-Item`). Mở `prompting.py`, đọc lướt 5 docstring.
+Kích hoạt venv gốc của repo: `source .venv/bin/activate` (Windows: `.venv\Scripts\Activate.ps1`). Code tự đọc key từ `.env` ở gốc repo — không cần chép. Mở `prompting.py`, đọc lướt 5 docstring.
 
-> ⚠️ **Lỗi hay gặp:** quên chép `.env` → `RuntimeError: Thiếu NVIDIA_API_KEY` khi chạy thật (test thì vẫn chạy được).
+> ⚠️ **Lỗi hay gặp:** `.env` gốc repo còn `nvapi-...` → `RuntimeError: Thiếu NVIDIA_API_KEY` khi chạy thật (test thì vẫn chạy được).
 
 ### Bước 2 — Lọc và nối chuỗi → `build_system_prompt`
 
@@ -240,7 +240,7 @@ Lỗi: Không biết size 'xl'
 
 ```mermaid
 flowchart TD
-    Q{"Việc cần MỘT đáp án đúng?"} -- "Có: extract, classify, sql" --> Z["0.0"]
+    Q{"Cần MỘT đáp án?"} -- "Có: extract, classify, sql" --> Z["0.0"]
     Q -- "Không" --> C{"Cần ý tưởng mới?"}
     C -- "Có: brainstorm, slogan" --> H["1.0"]
     C -- "Không: chat, qa" --> M["0.5"]
@@ -304,17 +304,6 @@ PYTHONPATH=workspace/L04-temperature-system-prompt python3 -m pytest curriculum/
 
 Mục tiêu: `26 passed` — không cần mạng, không cần key. Sau đó làm Bước 7–8 với model thật.
 
-- [ ] Tôi giải thích được temperature bằng hình ảnh "bốc thăm có trọng số".
-- [ ] Tôi có bảng số đo: temperature → số câu khác nhau / 5 lần.
-- [ ] Tôi viết được system prompt có vai trò, luật, định dạng cho JobRadar.
-
 ## 🎤 Câu hỏi phỏng vấn
-
-1. Temperature là gì? Đặt temperature = 0 thì kết quả có chắc chắn giống hệt nhau mỗi lần không?
-2. top_p khác temperature thế nào? Có nên chỉnh cả hai cùng lúc?
-3. Với việc trích xuất thông tin từ tin tuyển dụng, bạn chọn temperature bao nhiêu? Còn đặt slogan?
-4. System prompt khác user prompt thế nào? Một system prompt tốt gồm những phần nào?
-5. Zero-shot và few-shot prompting khác nhau ra sao? Khi nào nên dùng few-shot?
-6. Làm sao **đo** được chatbot trả lời có ổn định hay không?
 
 > 🎯 **Phỏng vấn hay hỏi:** câu 6 phân biệt người "chỉ chỉnh prompt cho vui" với kỹ sư. Trả lời bằng **số đo của bạn**: "em hỏi cùng một câu 5 lần, ở temperature 0 ra 1 đáp án, ở 1.2 ra 5 đáp án và có câu lỗi…".

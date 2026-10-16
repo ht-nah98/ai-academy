@@ -47,7 +47,7 @@ def create_schema(conn):
     Đồng thời bật kiểm tra khóa ngoại: PRAGMA foreign_keys = ON.
     Gợi ý: conn.executescript(chuỗi_nhiều_lệnh_SQL).
     """
-    # TODO: conn.executescript(""" PRAGMA foreign_keys = ON; CREATE TABLE IF NOT EXISTS ... ; ... """)
+    # TODO: conn.executescript, CREATE TABLE IF NOT EXISTS
     raise NotImplementedError("TODO: viết create_schema")
 
 
@@ -74,9 +74,7 @@ def load_jobs(conn, df):
     - Mỗi kỹ năng trong list skills → 1 dòng (job_id, skill) trong job_skills.
     - Dùng conn.executemany cho jobs và job_skills (nhanh hơn gọi execute từng dòng).
     """
-    # TODO: with conn:  (mọi thứ bên trong khối này)
-    # TODO: duyệt df.to_dict("records"), gom list tuple cho jobs và job_skills
-    # TODO: conn.executemany("INSERT INTO jobs (...) VALUES (?, ?, ...)", job_rows)
+    # TODO: with conn:, df.to_dict("records"), conn.executemany
     raise NotImplementedError("TODO: viết load_jobs")
 
 

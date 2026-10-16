@@ -70,7 +70,7 @@ def with_retry(fn, max_tries=4, base=1.0, cap=30.0, sleep=time.sleep, rand=rando
 def stream_text(chunks):
     """GENERATOR: với mỗi chunk của stream, yield chunk.choices[0].delta.content.
 
-    Bỏ qua chunk có choices rỗng (chunk cuối chỉ chứa usage) và chunk có content
+    Bỏ qua chunk có choices rỗng (vd. chunk usage khi bật include_usage) và chunk có content
     None hoặc "". Phải dùng `yield` để trình duyệt nhận chữ NGAY khi model sinh ra.
     """
     # TODO
@@ -149,16 +149,20 @@ def create_app(client, model=DEFAULT_MODEL, system=DEFAULT_SYSTEM, sleep=time.sl
 # Phần dưới ĐÃ VIẾT SẴN: client thật và chạy server.
 # ----------------------------------------------------------------------------
 
-def load_api_key(env_path=".env"):
+def load_api_key():
+    """NVIDIA_API_KEY: biến môi trường trước, rồi .env cạnh file này, rồi .env ở gốc repo (như L02)."""
     key = os.environ.get("NVIDIA_API_KEY")
-    if not key and os.path.exists(env_path):
-        with open(env_path, encoding="utf-8") as f:
-            for line in f:
+    here = Path(__file__).resolve().parent
+    for env_path in (here / ".env", here.parents[2] / ".env"):  # workspace/<bài>/ → gốc repo
+        if key:
+            break
+        if env_path.exists():
+            for line in env_path.read_text(encoding="utf-8").splitlines():
                 name, _, value = line.strip().partition("=")
                 if name.strip() == "NVIDIA_API_KEY":
                     key = value.strip().strip('"').strip("'")
-    if not key:
-        raise RuntimeError("Thiếu NVIDIA_API_KEY — tạo file .env cạnh webchat.py (xem lesson.md)")
+    if not key or "..." in key:
+        raise RuntimeError("Thiếu NVIDIA_API_KEY — điền key vào file .env ở gốc repo (xem README)")
     return key
 
 

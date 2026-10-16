@@ -6,7 +6,7 @@ academy/workspace/
 academy/data/
 academy/cache/
 .omc/
-**/.omc/
+
 *.db
 
 .venv/

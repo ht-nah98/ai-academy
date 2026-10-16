@@ -13,10 +13,10 @@
   ],
   "entry": "models.py",
   "checklist": [
-    "Tạo và kích hoạt được virtual environment (.venv), cài gói bằng pip trong đó",
+    "Tạo và kích hoạt được virtual environment (.venv), cài gói bằng pip trong đó; giải thích được vì sao pip install ngoài venv bị chặn",
     "Có file requirements.txt liệt kê thư viện cần cài",
-    "Có file .env chứa NVIDIA_API_KEY và .env nằm trong .gitignore",
-    "Giải thích được GET/POST, status code 200/401/404/429/500",
+    "`.env` ở gốc repo có NVIDIA_API_KEY; `git check-ignore -v .env` chỉ ra dòng .gitignore bỏ qua nó",
+    "Giải thích được GET/POST, status code 200/401/404/429/500 và nên làm gì khi gặp 401, 429",
     "Phân biệt được chuỗi JSON và dict Python (json.loads / json.dumps)",
     "Chạy thật `python models.py nemotron` và thấy danh sách model",
     "Giải thích được vì sao fetch_model_ids nhận tham số fetch",

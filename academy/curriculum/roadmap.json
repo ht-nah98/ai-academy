@@ -138,6 +138,16 @@
       "group": "llm"
     },
     {
+      "id": "validation-pydantic",
+      "title": "Kiểm định dữ liệu (pydantic)",
+      "group": "llm"
+    },
+    {
+      "id": "few-shot",
+      "title": "Few-shot prompting",
+      "group": "llm"
+    },
+    {
       "id": "pandas",
       "title": "pandas DataFrame",
       "group": "data"
@@ -235,6 +245,11 @@
     {
       "id": "precision-recall",
       "title": "Precision / Recall / F1",
+      "group": "rag"
+    },
+    {
+      "id": "error-analysis",
+      "title": "Phân tích lỗi (error analysis)",
       "group": "rag"
     },
     {
@@ -578,10 +593,6 @@
       "citation"
     ],
     [
-      "semantic-search",
-      "labeled-eval-set"
-    ],
-    [
       "labeled-eval-set",
       "precision-recall"
     ],
@@ -724,6 +735,38 @@
     [
       "cost-estimation",
       "project-storytelling"
+    ],
+    [
+      "schema",
+      "validation-pydantic"
+    ],
+    [
+      "validation-pydantic",
+      "structured-output"
+    ],
+    [
+      "prompt-engineering",
+      "few-shot"
+    ],
+    [
+      "few-shot",
+      "structured-output"
+    ],
+    [
+      "structured-output",
+      "labeled-eval-set"
+    ],
+    [
+      "precision-recall",
+      "error-analysis"
+    ],
+    [
+      "labeled-eval-set",
+      "error-analysis"
+    ],
+    [
+      "structured-output",
+      "caching"
     ]
   ],
   "product_map": {
@@ -848,7 +891,6 @@
     {
       "id": "P0",
       "title": "Khởi động Python",
-      "goal": "Viết và test được code Python xử lý dữ liệu, gọi được HTTP API — nền cho mọi bài sau.",
       "track": "AI×Data",
       "lessons": [
         {
@@ -866,13 +908,22 @@
       ],
       "brief": {
         "goal": "Xây nền xử lý dữ liệu bằng Python và kết nối an toàn tới model AI trên build.nvidia.com.",
-        "deliverable": "Bộ hàm phân tích tin tuyển dụng và module lấy danh sách model NVIDIA, có test offline."
+        "deliverable": "Bộ hàm phân tích tin tuyển dụng và module lấy danh sách model NVIDIA, có test offline.",
+        "promise": "Sau 2 bài, bạn tự viết và test được code Python xử lý dữ liệu, và gọi được API model AI của NVIDIA bằng key của chính mình.",
+        "can_do": [
+          "Viết hàm Python với list, dict, vòng lặp; đọc lỗi pytest để tự sửa",
+          "Tạo môi trường ảo, cài thư viện, giữ API key trong `.env` thay vì trong code",
+          "Gọi HTTP API, đọc JSON trả về và xử lý lỗi mạng"
+        ],
+        "showcase": {
+          "caption": "Hai chương trình bạn viết, chạy thật",
+          "markdown": "```output\n$ python jobs.py\nTin cần Python: 6\nTheo thành phố: {'Hà Nội': 2, 'Hồ Chí Minh': 5, 'Đà Nẵng': 1}\nLương TB: 12.0 triệu\nTop kỹ năng: [('python', 6), ('sql', 4), ('llm', 2)]\n\n$ python models.py nemotron-3\nCó 81 model trên build.nvidia.com\n  nvidia          33 model\n  google          9 model\n  meta            6 model\n  - nvidia/nemotron-3-super-120b-a12b\n  - nvidia/nemotron-3-ultra-550b-a55b\n  …\n```"
+        }
       }
     },
     {
       "id": "P1",
       "title": "Chatbot đầu tiên",
-      "goal": "Chatbot hỏi đáp về thị trường việc làm IT, chạy trên web, chịu được lỗi và rate limit.",
       "track": "AI",
       "lessons": [
         {
@@ -902,13 +953,24 @@
       ],
       "brief": {
         "goal": "Cho người dùng hỏi về thị trường việc làm IT bằng ngôn ngữ tự nhiên thay vì chờ viết hàm cho từng câu hỏi.",
-        "deliverable": "Chatbot web nhớ ngữ cảnh, giọng trả lời nhất quán, stream chữ và tự retry khi gặp 429."
+        "deliverable": "Chatbot web nhớ ngữ cảnh, giọng trả lời nhất quán, stream chữ và tự retry khi gặp 429.",
+        "promise": "Sau 4 bài, bạn có một chatbot chạy trên trình duyệt: hỏi đáp về thị trường việc làm IT, nhớ ngữ cảnh, chữ hiện dần và không sập khi API báo quá tải.",
+        "can_do": [
+          "Gọi LLM qua API, đếm token và tính chi phí mỗi câu hỏi",
+          "Điều khiển câu trả lời bằng system prompt và temperature",
+          "Quản lý lịch sử hội thoại để không vượt context window",
+          "Stream câu trả lời lên web và tự thử lại khi gặp lỗi 429"
+        ],
+        "showcase": {
+          "caption": "Rút gọn từ một lần chat thật với model Nemotron Super",
+          "markdown": "```output\nBạn      › Mình mới học Python, nên apply Data Engineer hay AI Engineer intern?\nJobRadar › Data Engineer intern hợp hơn lúc này: vị trí này cần Python, SQL, ETL\n           và ít đòi hỏi kiến thức machine learning sâu…\n\nBạn      › Vậy 3 kỹ năng nào mình nên học trước?\nJobRadar › 1. Python + pandas  2. SQL (JOIN, GROUP BY)  3. Quy trình ETL\n           (câu hỏi thứ hai không nhắc lại \"Data Engineer\": bot nhớ từ câu trước)\n```"
+        },
+        "cv_line": "Xây chatbot web hỏi đáp thị trường việc làm IT bằng FastAPI + LLM: streaming, quản lý context window, retry có backoff khi gặp rate limit."
       }
     },
     {
       "id": "P2",
       "title": "Data pipeline tin tuyển dụng",
-      "goal": "Pipeline biến tin tuyển dụng thô thành bảng SQLite sạch, chạy lại bao nhiêu lần cũng ra cùng kết quả.",
       "track": "Data",
       "lessons": [
         {
@@ -937,134 +999,213 @@
         }
       ],
       "brief": {
-        "goal": "Biến 302 tin crawl thô, không nhất quán thành nguồn dữ liệu đáng tin cho phân tích.",
-        "deliverable": "Pipeline idempotent CSV → SQLite có kiểm tra chất lượng, kèm bộ truy vấn SQL cho báo cáo thị trường tuần."
+        "goal": "Biến 302 tin thô (giả lập dữ liệu crawl), không nhất quán thành nguồn dữ liệu đáng tin cho phân tích.",
+        "deliverable": "Pipeline idempotent CSV → SQLite có kiểm tra chất lượng, kèm bộ truy vấn SQL cho báo cáo thị trường tuần.",
+        "promise": "Sau 4 bài, bạn có một pipeline biến 302 tin tuyển dụng thô, lộn xộn thành CSDL SQLite sạch, kèm bộ truy vấn trả lời câu hỏi thị trường bằng số liệu.",
+        "can_do": [
+          "Làm sạch dữ liệu bảng bằng pandas: chuẩn hóa tên, lương, ngày, bỏ trùng",
+          "Thiết kế bảng quan hệ và nạp dữ liệu vào SQLite",
+          "Viết SQL phân tích: GROUP BY, JOIN, window function",
+          "Dựng pipeline ETL chạy lại bao nhiêu lần cũng ra cùng kết quả, có kiểm tra chất lượng"
+        ],
+        "showcase": {
+          "caption": "Pipeline và báo cáo chạy thật trên bộ dữ liệu của khóa học",
+          "markdown": "```output\n$ python pipeline.py\nextract: 302 dòng thô\ntransform: 268 dòng sạch\nreject JR-10283: salary_out_of_range\nreject JR-10282: salary_min_gt_max\nreject JR-10285: date_in_future\nreject JR-10286: company_null\nload: 264 tin vào jobradar.db\n\n$ python queries.py\nLương TB theo cấp: [('senior', 55.6), ('middle', 31.9), ('junior', 19.1), ('fresher', 12.5), ('intern', 6.9)]\nTop kỹ năng: [('docker', 100), ('python', 89), ('sql', 68), ('scikit-learn', 34), ('postgresql', 33)]\n```\n\nTrước khi có bước kiểm tra chất lượng, một tin ghi lương 800 triệu kéo lương trung bình senior lên 72.6 triệu. Pipeline loại tin đó và ghi lý do, nên báo cáo còn 55.6 triệu."
+        },
+        "cv_line": "Xây ETL pipeline idempotent cho 302 tin tuyển dụng (pandas → SQLite) với kiểm tra chất lượng dữ liệu, kèm bộ truy vấn SQL phân tích thị trường."
       }
     },
     {
       "id": "P3",
       "title": "LLM trích xuất có cấu trúc",
-      "goal": "Dùng LLM trích kỹ năng, cấp bậc, lương từ mô tả công việc thành JSON có kiểm định, đo được độ chính xác.",
       "track": "AI×Data",
       "lessons": [
         {
           "id": "L11-structured-output",
           "title": "Structured output & validate",
           "goal": "Trích JSON đúng schema từ mô tả công việc và tự sửa/loại output sai định dạng.",
-          "status": "planned"
+          "status": "ready"
         },
         {
           "id": "L12-batch-rate-limit-cache",
           "title": "Batch: rate limit, cache, retry, chi phí",
-          "goal": "Chạy trích xuất cho 500 tin với cache đĩa, giới hạn RPM, retry và báo cáo chi phí token.",
-          "status": "planned"
+          "goal": "Chạy trích xuất cho 264 tin với cache đĩa, giới hạn RPM, retry và ước tính chi phí.",
+          "status": "ready"
         },
         {
           "id": "L13-danh-gia-precision-recall",
           "title": "Đánh giá: tập nhãn, precision/recall",
-          "goal": "Gán nhãn 30 tin và tính precision/recall/F1 cho việc trích kỹ năng.",
-          "status": "planned"
+          "goal": "Đo bộ trích xuất trên 30 tin gán nhãn: precision/recall/F1, phân tích lỗi, chọn prompt.",
+          "status": "ready"
         }
       ],
       "brief": {
         "goal": "Trích kỹ năng, cấp bậc, lương từ mô tả công việc dạng văn bản tự do mà không nhập tay.",
-        "deliverable": "Bộ trích xuất bằng LLM ra JSON đúng schema, chạy batch có cache và đo được độ chính xác."
+        "deliverable": "Bộ trích xuất bằng LLM ra JSON đúng schema, chạy batch có cache và đo được độ chính xác.",
+        "promise": "Sau 3 bài, bạn có một bộ trích xuất dùng LLM: đọc mô tả công việc viết tự do, trả về JSON đúng schema, chạy hết 264 tin với cache, và có số đo độ chính xác để chứng minh.",
+        "can_do": [
+          "Ép LLM trả JSON đúng schema bằng Pydantic, few-shot và vòng sửa lỗi",
+          "Chạy batch hàng trăm lời gọi API: rate limit, cache, ước tính chi phí",
+          "Đo chất lượng bằng precision, recall, F1 trên tập nhãn tay",
+          "Đọc lỗi theo từng trường để quyết định sửa prompt ở đâu"
+        ],
+        "showcase": {
+          "caption": "Kết quả thật của bộ trích xuất",
+          "markdown": "```output\nMô tả  › …Dịch vụ viết bằng Go, dữ liệu trên Postgres và Redis, triển khai trên k8s.\n         Không yêu cầu Java — team đã chuyển hết khỏi stack cũ. Mô hình hybrid,\n         2 ngày lên văn phòng. Thu nhập lên đến 40M.\nJSON   › {\"skills\": [\"Go\", \"Postgres\", \"Redis\", \"k8s\"], \"level\": null,\n          \"salary_min\": null, \"salary_max\": 40.0, \"work_mode\": \"hybrid\"}\n```\n\n```output\n$ python batch.py      # lần 1: 264/264 tin, 0 lỗi, 483 giây, 0.09 USD\n$ python batch.py      # lần 2: 264 tin lấy từ cache, 0 lời gọi API, 0.4 giây\n$ python evaluate.py   # trên 30 tin gán nhãn tay\n        skill F1   level   work_mode   salary_min\nv1      0.991      0.967   1.0         0.8\nv2      0.991      1.0     1.0         1.0\n```"
+        },
+        "cv_line": "Trích xuất thông tin có cấu trúc từ 264 tin tuyển dụng bằng LLM (Pydantic, few-shot), chạy batch có cache và rate limit với chi phí 0.09 USD; đánh giá trên tập nhãn 30 tin, F1 kỹ năng 0.99."
       }
     },
     {
       "id": "P4",
       "title": "Tìm kiếm ngữ nghĩa & RAG",
-      "goal": "Hỏi đáp về tin tuyển dụng có trích nguồn, đo được chất lượng truy hồi.",
       "track": "AI",
       "lessons": [
         {
           "id": "L14-embedding-cosine",
           "title": "Embedding & cosine",
           "goal": "Tìm 5 tin tuyển dụng gần nghĩa nhất với một câu truy vấn bằng embedding và cosine similarity.",
-          "status": "planned"
+          "status": "planned",
+          "concepts": [
+            "embeddings",
+            "cosine-similarity",
+            "semantic-search"
+          ]
         },
         {
           "id": "L15-chunking-vector-index",
           "title": "Chunking & vector index",
           "goal": "Chia mô tả dài thành chunk, xây vector index lưu đĩa và truy vấn dưới 100 ms.",
-          "status": "planned"
+          "status": "planned",
+          "concepts": [
+            "chunking",
+            "vector-index"
+          ]
         },
         {
           "id": "L16-rag-trich-nguon",
           "title": "RAG có trích nguồn",
           "goal": "Trả lời câu hỏi chỉ dựa trên chunk truy hồi được, mỗi ý kèm id nguồn.",
-          "status": "planned"
+          "status": "planned",
+          "concepts": [
+            "rag",
+            "citation"
+          ]
         },
         {
           "id": "L17-danh-gia-rag",
           "title": "Đánh giá RAG",
           "goal": "Đo recall@k của retrieval và tỉ lệ câu trả lời có căn cứ trên bộ 20 câu hỏi.",
-          "status": "planned"
+          "status": "planned",
+          "concepts": [
+            "rag-eval"
+          ]
         }
       ],
       "brief": {
         "goal": "Trả lời câu hỏi về tin tuyển dụng kèm nguồn để người dùng tự kiểm chứng.",
-        "deliverable": "Tìm kiếm ngữ nghĩa và RAG trả lời kèm id tin nguồn, có số đo chất lượng truy hồi."
+        "deliverable": "Tìm kiếm ngữ nghĩa và RAG trả lời kèm id tin nguồn, có số đo chất lượng truy hồi.",
+        "promise": "Bạn sẽ xây chức năng hỏi đáp về tin tuyển dụng: model trả lời kèm id tin nguồn để người dùng tự kiểm chứng, và có số đo chất lượng tìm kiếm.",
+        "can_do": [
+          "Biến văn bản thành vector (embedding) và tìm theo nghĩa thay vì theo từ khóa",
+          "Chia nhỏ tài liệu và dựng chỉ mục vector",
+          "Xây RAG trả lời có trích nguồn",
+          "Đo chất lượng truy hồi bằng recall@k"
+        ]
       }
     },
     {
       "id": "P5",
       "title": "Agent dùng công cụ",
-      "goal": "Agent trả lời câu hỏi bằng cách tự gọi công cụ và truy vấn SQL an toàn.",
       "track": "AI",
       "lessons": [
         {
           "id": "L18-function-calling",
           "title": "Function calling",
           "goal": "Cho LLM gọi 2 công cụ Python (tìm tin, thống kê lương) và ghép kết quả thành câu trả lời.",
-          "status": "planned"
+          "status": "planned",
+          "concepts": [
+            "function-calling",
+            "agent-loop"
+          ]
         },
         {
           "id": "L19-agent-text-to-sql",
           "title": "Agent text-to-SQL an toàn",
           "goal": "Agent sinh SQL chỉ-đọc, chặn câu lệnh nguy hiểm, trả lời đúng ≥ 8/10 câu hỏi mẫu.",
-          "status": "planned"
+          "status": "planned",
+          "concepts": [
+            "text-to-sql",
+            "guardrails"
+          ]
         }
       ],
       "brief": {
         "goal": "Trả lời câu hỏi cần số liệu thật bằng cách truy vấn CSDL, không cho model chạy SQL tùy ý.",
-        "deliverable": "Agent tự chọn công cụ và sinh SQL chỉ-đọc, trả lời đúng ít nhất 8/10 câu hỏi mẫu."
+        "deliverable": "Agent tự chọn công cụ và sinh SQL chỉ-đọc, trả lời đúng ít nhất 8/10 câu hỏi mẫu.",
+        "promise": "Bạn sẽ xây một agent tự chọn công cụ và viết SQL chỉ-đọc để trả lời câu hỏi cần số liệu thật từ CSDL JobRadar.",
+        "can_do": [
+          "Cho model gọi hàm Python (function calling)",
+          "Sinh SQL từ câu hỏi tiếng Việt và chặn câu lệnh nguy hiểm",
+          "Đánh giá agent trên bộ câu hỏi mẫu"
+        ]
       }
     },
     {
       "id": "P6",
       "title": "Nâng cao cạnh tranh",
-      "goal": "Đóng gói, vận hành và kể lại JobRadar như một sản phẩm thật trong buổi phỏng vấn.",
       "track": "Nâng cao",
       "lessons": [
         {
           "id": "L20-fastapi-docker",
           "title": "FastAPI + Docker",
           "goal": "Đóng gói API JobRadar bằng FastAPI và chạy được bằng một lệnh docker run.",
-          "status": "planned"
+          "status": "planned",
+          "concepts": [
+            "docker"
+          ]
         },
         {
           "id": "L21-dag-airflow-giam-sat",
           "title": "Điều phối pipeline (DAG, Airflow) & giám sát",
           "goal": "Viết DAG chạy ETL hằng ngày có retry, log và cảnh báo khi kiểm tra chất lượng thất bại.",
-          "status": "planned"
+          "status": "planned",
+          "concepts": [
+            "dag-orchestration"
+          ]
         },
         {
           "id": "L22-ml-du-doan-luong",
           "title": "ML cổ điển: dự đoán lương",
           "goal": "Huấn luyện mô hình dự đoán lương, so với baseline bằng MAE trên tập test tách riêng.",
-          "status": "planned"
+          "status": "planned",
+          "concepts": [
+            "train-test-split",
+            "overfitting",
+            "regression-metrics",
+            "feature-engineering"
+          ]
         },
         {
           "id": "L23-capstone-ke-chuyen",
           "title": "Capstone & kể chuyện project",
           "goal": "Hoàn thiện README + demo JobRadar và trả lời trôi chảy 10 câu phỏng vấn về project.",
-          "status": "planned"
+          "status": "planned",
+          "concepts": [
+            "project-storytelling"
+          ]
         }
       ],
       "brief": {
         "goal": "Vận hành JobRadar ổn định như một sản phẩm thật và trình bày được trong phỏng vấn.",
-        "deliverable": "JobRadar đóng gói Docker, pipeline có giám sát, mô hình dự đoán lương và phần trình bày project."
+        "deliverable": "JobRadar đóng gói Docker, pipeline có giám sát, mô hình dự đoán lương và phần trình bày project.",
+        "promise": "Bạn sẽ đóng gói JobRadar thành sản phẩm chạy được ở mọi máy, có giám sát, và chuẩn bị phần trình bày project cho buổi phỏng vấn.",
+        "can_do": [
+          "Đóng gói API bằng FastAPI và Docker",
+          "Lập lịch và giám sát pipeline",
+          "Huấn luyện mô hình dự đoán lương đơn giản",
+          "Kể lại toàn bộ project theo cấu trúc bài toán, giải pháp, số đo"
+        ]
       }
     }
   ]

@@ -65,7 +65,7 @@
     }
   ],
   "brief": {
-    "context": "Có 302 tin crawl thật trong datasets/jobs_raw.csv. Thành phố, lương, ngày đăng, kỹ năng mỗi nguồn ghi một kiểu.",
+    "context": "Có 302 tin giả lập, mô phỏng dữ liệu crawl từ nhiều nguồn, trong datasets/jobs_raw.csv. Thành phố, lương, ngày đăng, kỹ năng mỗi nguồn ghi một kiểu.",
     "problem": "\"TP.HCM\", \"Ho Chi Minh\", \"Sài Gòn\" đang được đếm như ba thành phố; lương lẫn USD, triệu và \"thỏa thuận\"; có dòng trùng và dòng thiếu dữ liệu. Mọi số liệu tính trên bảng này hiện đều sai.",
     "requirements": [
       {
@@ -89,7 +89,7 @@
         "purpose": "Pipeline làm sạch cả bảng: bỏ dòng hỏng, chuẩn hóa cột, khử trùng."
       }
     ],
-    "deliverable": "cleaning.py qua 18/18 test; chạy trên dữ liệu thật ra 268 tin sạch từ 302 dòng thô, đúng 11 cột.",
+    "deliverable": "cleaning.py qua 18/18 test; chạy trên toàn bộ CSV ra 268 tin sạch từ 302 dòng thô, đúng 11 cột.",
     "constraints": [
       "Không sửa DataFrame đầu vào.",
       "Giá trị không đọc được thì trả None, không đoán.",
@@ -104,7 +104,7 @@
       "inputs": [
         {
           "label": "jobs_raw.csv",
-          "detail": "302 dòng crawl thô"
+          "detail": "302 dòng thô giả lập"
         }
       ],
       "steps": [

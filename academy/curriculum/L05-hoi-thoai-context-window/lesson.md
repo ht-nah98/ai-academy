@@ -110,10 +110,10 @@ Cách đơn giản và phổ biến nhất: **luôn giữ system**, **luôn gi�
 
 ```mermaid
 flowchart TD
-    S["Giữ system + câu mới nhất"] --> N{"Còn message cũ hơn?"}
-    N -- "Không" --> E["Trả kết quả theo thứ tự gốc"]
-    N -- "Có" --> F{"Thêm nó vẫn ≤ ngân sách?"}
-    F -- "Có" --> K["Giữ, lùi về message cũ hơn"] --> N
+    S["Giữ system + câu cuối"] --> N{"Còn message cũ?"}
+    N -- "Không" --> E["Trả, giữ thứ tự"]
+    N -- "Có" --> F{"Vẫn ≤ ngân sách?"}
+    F -- "Có" --> K["Giữ, lùi tiếp"] --> N
     F -- "Không" --> E
 ```
 
@@ -124,10 +124,10 @@ Gặp message không vừa thì **dừng hẳn**, không nhảy cóc lấy messa
 Cắt thì **mất** thông tin cũ (vd. tên người dùng nói từ lượt 1). Cách nâng cao: khi lịch sử dài, nhờ LLM **tóm tắt** các lượt cũ thành 1 message ngắn, thay cho chúng.
 
 ```mermaid
-flowchart LR
-    H["20 lượt cũ ~4.000 token"] --> T["LLM tóm tắt"]
-    T --> S["1 message tóm tắt ~150 token"]
-    S --> M["system + tóm tắt + 4 lượt mới nhất"]
+flowchart TD
+    H["20 lượt ~4.000 token"] --> T["LLM tóm tắt"]
+    T --> S["Tóm tắt ~150 token"]
+    S --> M["system + tóm tắt + 4 lượt"]
 ```
 
 | Cách | Ưu | Nhược |
@@ -142,7 +142,7 @@ Bài này làm cách **cắt**; tóm tắt là bài tập mở rộng.
 
 ### Bước 1 — Chuẩn bị
 
-Kích hoạt venv gốc của repo (`source .venv/bin/activate`; Windows: `.venv\Scripts\Activate.ps1`), chép `.env` sang `workspace/L05-hoi-thoai-context-window/.env`, mở `conversation.py`. Đọc docstring của `class Conversation` trước.
+Kích hoạt venv gốc của repo (`source .venv/bin/activate`; Windows: `.venv\Scripts\Activate.ps1`), mở `conversation.py`. Code tự đọc key từ `.env` ở gốc repo — không cần chép. Đọc docstring của `class Conversation` trước.
 
 ### Bước 2 — Class đầu tiên → `Conversation`
 
@@ -192,15 +192,15 @@ Gọi API chỉ để đếm token thì chậm và tốn tiền; ta ước lư�
 ```python
 import math
 print(7 / 3, math.ceil(7 / 3), math.ceil(0 / 3))
-orders = [{"item": "cafe", "price": 30}, {"item": "bánh", "price": 15}]
-print(sum(5 + o["price"] for o in orders))
+words = ["cafe", "bánh mì", "trà"]
+print(sum(len(w) for w in words))
 ```
 ```output
 2.3333333333333335 3 0
-55
+14
 ```
 
-Mỗi message tốn thêm `MESSAGE_OVERHEAD` token "khung" (nhớ L03: "hi" có `prompt_tokens=17`).
+Mỗi message cộng thêm `MESSAGE_OVERHEAD = 4` token "khung" (role, dấu phân cách) — con số ước lượng/message. Khác với khuôn ~16 token/lần gọi ở L03 ("hi" → `prompt_tokens=17`).
 
 ### Bước 4 — Đi ngược danh sách → `trim_history`
 
@@ -228,11 +228,11 @@ Thứ tự trong hàm của bạn: tách system (nếu có) → giữ message cu
 ### Bước 5 — Ghép lại → `chat_turn`
 
 ```mermaid
-flowchart LR
-    T["text người dùng"] --> A["conv.add_user"]
-    A --> C["trim_history(conv.messages(), ngân sách)"]
-    C --> L["client...create (1 lần)"]
-    L --> S["conv.add_assistant(answer)"]
+flowchart TD
+    T["text"] --> A["conv.add_user"]
+    A --> C["trim_history"]
+    C --> L["create (1 lần)"]
+    L --> S["conv.add_assistant"]
     S --> R["return answer"]
 ```
 
@@ -265,17 +265,6 @@ PYTHONPATH=workspace/L05-hoi-thoai-context-window python3 -m pytest curriculum/L
 
 Mục tiêu: `25 passed` — không cần mạng, không cần key. Sau đó chat thật (Bước 6–7).
 
-- [ ] Tôi giải thích được vì sao chatbot "nhớ" dù LLM stateless.
-- [ ] Tôi tính được tổng token của hội thoại 10 lượt khi gửi lại toàn bộ lịch sử.
-- [ ] Tôi thấy tận mắt chatbot "quên" khi ngân sách quá nhỏ.
-
 ## 🎤 Câu hỏi phỏng vấn
-
-1. LLM có nhớ cuộc trò chuyện không? Chatbot "nhớ" bằng cách nào?
-2. Context window là gì? Điều gì xảy ra khi hội thoại vượt context window?
-3. Vì sao chi phí một cuộc hội thoại dài tăng nhanh hơn tuyến tính theo số lượt?
-4. Bạn cắt lịch sử hội thoại thế nào? Vì sao luôn giữ system prompt và câu mới nhất?
-5. So sánh cắt lịch sử và tóm tắt lịch sử. Khi nào dùng cách nào?
-6. Làm sao ước lượng số token mà không gọi API? Vì sao nên làm tròn lên?
 
 > 🎯 **Phỏng vấn hay hỏi:** câu 3 — trả lời bằng phép tính: "lượt N gửi lại N lượt, nên tổng là 1+2+…+N ≈ N²/2 lần số token mỗi lượt; 10 lượt × 150 token tốn 8.250 token chứ không phải 1.500".

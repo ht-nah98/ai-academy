@@ -15,9 +15,16 @@ const store = {
   get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (_) { return d; } },
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (_) { /* private mode */ } },
 };
-function md(text) {
-  if (window.marked) return marked.parse(text || "", { gfm: true, breaks: false });
-  return "<pre>" + esc(text) + "</pre>";
+let safeMarked = null;
+function md(text, safe = false) {
+  if (!window.marked) return "<pre>" + esc(text) + "</pre>";
+  if (!safe) return marked.parse(text || "", { gfm: true, breaks: false });
+  // Văn bản do LLM sinh: hiện HTML thô dưới dạng chữ, bỏ link không phải http(s)
+  safeMarked = safeMarked || new marked.Marked({ gfm: true, breaks: false, renderer: {
+    html: (h) => esc(typeof h === "string" ? h : h.text),
+    link: (href, title, text) => (/^https?:/i.test(href || "") ? false : text),
+  } });
+  return safeMarked.parse(text || "");
 }
 async function api(path, opts) {
   const o = opts ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(opts.body || {}) } : {};
@@ -177,22 +184,22 @@ function enhance(root) {
   renderMermaid(root);
   return root;
 }
-function mdEl(text, cls = "md") {
+function mdEl(text, cls = "md", safe = false) {
   const d = document.createElement("div");
-  d.className = cls; d.innerHTML = md(text);
+  d.className = cls; d.innerHTML = md(text, safe);
   return enhance(d);
 }
-const mdHTML = (text, cls = "md") => mdEl(text, cls).outerHTML; // chỉ dùng khi không có mermaid/nút
+const mdHTML = (text, cls = "md", safe = false) => mdEl(text, cls, safe).outerHTML; // chỉ dùng khi không có mermaid/nút
 
 /* ---------- Tách lesson.md ---------- */
 function isFence(line) { return /^\s*(```|~~~)/.test(line); }
 function splitLesson(text) {
-  const out = { intro: "", goal: "", task: "", check: "", steps: "", concepts: "", extra: [] };
+  const out = { intro: "", goal: "", task: "", check: "", steps: "", concepts: "", interview: "", extra: [] };
   let intro = [], cur = null, fence = false;
   const push = () => {
     if (!cur) return;
     const t = cur.title.toLowerCase().replace(/^[^\p{L}]+/u, "").trim(), body = cur.lines.join("\n").trim();
-    if (t.includes("phỏng vấn")) return;
+    if (t.includes("phỏng vấn")) { out.interview += body; return; } // mẹo 🎯 → tab Phỏng vấn thử
     if (t.startsWith("mục tiêu")) out.goal += body;
     else if (t.startsWith("đề bài") || t.startsWith("nhiệm vụ")) out.task += body;
     else if (t.startsWith("tự kiểm tra")) out.check += body;
@@ -231,7 +238,7 @@ function renderSidebar() {
   $("#overall-text").textContent = `${s.passed}/${s.total} bài đã xong` + (s.planned ? ` · ${s.planned} bài sắp có` : "");
   $("#nav-home").classList.toggle("active", !current);
   $("#roadmap").innerHTML = roadmap.projects.map((p) => `
-    <div class="proj t-${TRACK[p.track] || "ai"}"><h4><span class="dot"></span>${esc(p.id)} · ${esc(p.title)}</h4>
+    <div class="proj t-${TRACK[p.track] || "ai"}"><h4><a href="#/project/${encodeURIComponent(p.id)}" title="Giới thiệu project"${location.hash === "#/project/" + p.id ? ' aria-current="page"' : ""}><span class="dot"></span>${esc(p.id)} · ${esc(p.title)}</a></h4>
     ${p.lessons.filter((l) => l.status !== "planned").map((l) => {
       const active = current && current.id === l.id ? " active" : "";
       return `<a class="lesson-link st-${l.status}${active}" href="#/lesson/${encodeURIComponent(l.id)}" title="${esc(l.goal || "")}"${active ? ' aria-current="page"' : ""}>
@@ -244,12 +251,18 @@ function renderSidebar() {
 /* ---------- Router ---------- */
 async function route() {
   const h = location.hash || "#/";
-  if (h === "#/map") { location.replace("#/"); return; }
   try {
     if (!roadmap) await loadRoadmap();
-    if (h.startsWith("#/lesson/")) { await showLesson(decodeURIComponent(h.slice(9))); return; }
+    if (h.startsWith("#/lesson/")) {
+      const id = decodeURIComponent(h.slice(9)), l = lessonById(id);
+      // Lần đầu bước vào một project chưa học: xem trang giới thiệu trước
+      if (l && l.project.lessons[0].id === id && !projStarted(l.project) && !store.get(introKey(l.project.id), false)) {
+        location.replace("#/project/" + encodeURIComponent(l.project.id)); return;
+      }
+      await showLesson(id); return;
+    }
     current = null; setTutorLesson(null); $("#main").classList.remove("fill");
-    showHome();
+    if (h.startsWith("#/project/")) showProject(decodeURIComponent(h.slice(10))); else showHome();
     renderSidebar();
     $("#main").scrollTop = 0;
   } catch (e) {
@@ -272,23 +285,21 @@ function ring(pct, size = 116, stroke = 11) {
 }
 function showHome() {
   const s = roadmap.summary, pct = s.total ? Math.round((100 * s.passed) / s.total) : 0;
-  const nx = nextLesson();
+  const nx = nextLesson(), newProj = nx && !projStarted(nx.project);
   const learned = roadmap.concepts.filter((c) => c.learned).length;
   const greet = (() => { const h = new Date().getHours(); return h < 11 ? "Chào buổi sáng" : h < 18 ? "Chào buổi chiều" : "Chào buổi tối"; })();
   const projs = roadmap.projects.map((p) => {
     const ready = p.lessons.filter((l) => l.status !== "planned"), done = p.lessons.filter((l) => l.status === "passed").length;
-    const first = ready.find((l) => l.status !== "passed" && l.status !== "locked") || ready[0];
     const state = !ready.length ? "soon" : done === p.lessons.length ? "done" : (p.lessons.some((l) => l.status === "in_progress" || l.status === "passed") ? "active" : "open");
-    const tag = first ? "a" : "div", href = first ? ` href="#/lesson/${encodeURIComponent(first.id)}"` : "";
     return `<li class="tl-item t-${TRACK[p.track] || "ai"} s-${state}">
-      <${tag} class="tl-card"${href}>
+      <a class="tl-card" href="#/project/${encodeURIComponent(p.id)}">
         <span class="tl-node" aria-hidden="true">${state === "done" ? "✓" : esc(p.id.replace("P", ""))}</span>
         <span class="tl-track">${esc(p.track || "")}</span>
         <b class="tl-title">${esc(p.title)}</b>
         ${p.brief && p.brief.goal ? `<span class="tl-goal" title="${esc(p.brief.goal)}">${esc(p.brief.goal)}</span>` : ""}
         <span class="tl-count">${state === "soon" ? "Sắp có" : `${done}/${p.lessons.length} bài`}</span>
         <span class="tl-bar"><i style="width:${(100 * done) / p.lessons.length}%"></i></span>
-      </${tag}></li>`;
+      </a></li>`;
   }).join("");
   const tracks = [...new Set(roadmap.projects.map((p) => p.track).filter(Boolean))];
   view.innerHTML = `<div class="home">
@@ -305,15 +316,15 @@ function showHome() {
           </ul>
         </div>
       </div>
-      ${nx ? `<a class="continue t-${TRACK[nx.project.track] || "ai"}" href="#/lesson/${encodeURIComponent(nx.id)}">
-          <span class="continue-k">${nx.status === "in_progress" ? "Tiếp tục học" : "Bài tiếp theo"}</span>
+      ${nx ? `<a class="continue t-${TRACK[nx.project.track] || "ai"}" href="${newProj ? "#/project/" + encodeURIComponent(nx.project.id) : "#/lesson/" + encodeURIComponent(nx.id)}">
+          <span class="continue-k">${nx.status === "in_progress" ? "Tiếp tục học" : newProj ? "Project mới" : "Bài tiếp theo"}</span>
           <span class="continue-proj">${esc(nx.project.id)} · ${esc(nx.project.title)}</span>
           <b class="continue-title">${esc(nx.title)}</b>
           <span class="continue-goal">${esc(nx.goal || "")}</span>
-          <span class="btn continue-btn">${nx.status === "in_progress" ? "Học tiếp" : "Bắt đầu học"} <span aria-hidden="true">→</span></span>
+          <span class="btn continue-btn">${nx.status === "in_progress" ? "Học tiếp" : newProj ? "Xem bạn sẽ xây gì" : "Bắt đầu học"} <span aria-hidden="true">→</span></span>
         </a>` : `<div class="continue done"><span class="continue-k">Tuyệt vời!</span><b class="continue-title">Bạn đã xong mọi bài hiện có 🎉</b><span class="continue-goal">Bài mới sẽ sớm xuất hiện trong lộ trình.</span></div>`}
     </section>
-    ${roadmap.has_key ? "" : '<div class="notice">🔑 Chưa có <code>NVIDIA_API_KEY</code> — Gia sư AI và chấm phỏng vấn chưa dùng được. Thêm key vào <code>academy/.env</code>.</div>'}
+    ${roadmap.has_key ? "" : '<div class="notice">🔑 Chưa có <code>NVIDIA_API_KEY</code> — Gia sư AI và chấm phỏng vấn chưa dùng được. Mở file <code>.env</code> ở gốc repo, thay <code>nvapi-...</code> bằng key của bạn.</div>'}
     <section class="sec">
       <div class="sec-head"><h2>Lộ trình</h2>
         <div class="legend">${tracks.map((t) => `<span class="lg t-${TRACK[t] || "ai"}"><i></i>${esc(t)}</span>`).join("")}</div></div>
@@ -337,6 +348,48 @@ function showHome() {
   const hm = $("#home-map");
   if (hm) drawPmap(hm, { hl: new Set(nx ? nx.product_nodes || [] : []), done: new Set(allLessons().filter((l) => l.status === "passed").flatMap((l) => l.product_nodes || [])) });
   (document.fonts ? document.fonts.ready : Promise.resolve()).then(() => { if (!current) drawGraph(); });
+}
+
+/* ---------- Trang giới thiệu project: thành phẩm sẽ có, trước khi vào bài đầu ---------- */
+const projById = (pid) => roadmap.projects.find((p) => p.id === pid);
+const projStarted = (p) => p.lessons.some((l) => l.status === "in_progress" || l.status === "passed");
+const introKey = (pid) => "intro:" + pid;
+function showProject(pid) {
+  const p = projById(pid);
+  if (!p) { view.innerHTML = `<div class="col"><p class="err">Không tìm thấy project ${esc(pid)}.</p></div>`; return; }
+  store.set(introKey(pid), true);
+  const b = p.brief || {}, ready = p.lessons.filter((l) => l.status !== "planned");
+  const done = p.lessons.filter((l) => l.status === "passed").length, allDone = ready.length && done === ready.length;
+  const next = ready.find((l) => l.status !== "passed" && l.status !== "locked");
+  const mins = ready.reduce((s, l) => s + (l.duration_min || 0), 0);
+  const facts = [`${p.lessons.length} bài`, mins ? `khoảng ${Math.round(mins / 60)} giờ` : "", !ready.length ? "Sắp có" : ""].filter(Boolean).join(" · ");
+  const cta = !ready.length ? "" : allDone ? `<a class="btn ghost cta-btn" href="#/lesson/${encodeURIComponent(ready[0].id)}">Xem lại bài đầu</a>`
+    : next ? `<a class="btn amber cta-btn" href="#/lesson/${encodeURIComponent(next.id)}">${projStarted(p) ? "Học tiếp" : "Bắt đầu"} ${esc(shortId(next.id))} <span aria-hidden="true">→</span></a>`
+    : `<span class="pj-lock">🔒 Mở khi bạn qua hết bài của project trước</span>`;
+  const sc = b.showcase && b.showcase.markdown ? b.showcase : null;
+  const steps = p.lessons.map((l, i) => {
+    const tag = l.status === "planned" ? "div" : "a", href = tag === "a" ? ` href="#/lesson/${encodeURIComponent(l.id)}"` : "";
+    return `<li class="pj-step st-${l.status}"><${tag} class="pj-sl"${href}>
+      <span class="pj-si" aria-label="${STATUS_LABEL[l.status] || ""}">${l.status === "passed" ? "✓" : i + 1}</span>
+      <span class="pj-st"><b>${esc(shortId(l.id))} · ${esc(l.title)}</b><span>${esc(l.goal || "")}</span></span></${tag}></li>`;
+  }).join("");
+  view.innerHTML = `<div class="col pj t-${TRACK[p.track] || "ai"}">
+    <header class="pj-hero">
+      <p class="bf-label"><span class="trk t-${TRACK[p.track] || "ai"}">${esc(p.track || "")}</span> ${esc(p.id)} · ${esc(facts)}</p>
+      <h1>${esc(p.title)}</h1>
+      ${b.promise ? `<p class="pj-promise">${mdInline(b.promise)}</p>` : ""}
+      ${b.goal ? `<p class="pj-why"><b>Bài toán:</b> ${esc(b.goal)}</p>` : ""}
+      ${cta ? `<div class="pj-cta">${cta}</div>` : ""}
+    </header>
+    ${sc ? `<section class="pj-sec"><h2>Thành phẩm</h2>${sc.caption ? `<p class="pj-cap">${esc(sc.caption)}</p>` : ""}<div id="pj-show"></div></section>`
+      : b.deliverable ? `<section class="pj-sec"><h2>Thành phẩm</h2><p class="pj-deliv">${esc(b.deliverable)}</p></section>` : ""}
+    ${(b.can_do || []).length ? `<section class="pj-sec"><h2>Bạn sẽ làm được</h2>
+      <ul class="pj-can">${b.can_do.map((c) => `<li>${bfIcon("check", "ck")}<span>${mdInline(c)}</span></li>`).join("")}</ul></section>` : ""}
+    <section class="pj-sec"><h2>Các bài trong project</h2><ol class="pj-steps">${steps}</ol></section>
+    ${b.cv_line ? `<section class="pj-sec"><h2>Làm xong, bạn ghi được vào CV</h2><p class="pj-cv">${esc(b.cv_line)}</p></section>` : ""}
+    ${cta ? `<div class="cta">${cta}</div>` : ""}
+  </div>`;
+  if (sc) $("#pj-show").replaceWith(mdEl(sc.markdown, "md pj-show"));
 }
 
 function fitText(sel, maxW) { // cắt chữ SVG cho vừa bề rộng thật (đo bằng font đã tải)
@@ -472,7 +525,7 @@ function renderLesson() {
   $("#main").classList.toggle("fill", tab === "lesson");
   const concepts = (m.concepts || []).map((c) => { const k = roadmap.concepts.find((x) => x.id === c); return `<span class="chip${k && k.learned ? " on" : ""}">${esc(k ? k.title : c)}</span>`; }).join("");
   view.innerHTML = `<header class="lhead">
-    <div class="crumb">${info ? `<span class="trk t-${TRACK[info.project.track] || "ai"}">${esc(info.project.track || "")}</span> ${esc(info.project.id)} · ${esc(info.project.title)}` : ""}</div>
+    <div class="crumb">${info ? `<span class="trk t-${TRACK[info.project.track] || "ai"}">${esc(info.project.track || "")}</span> <a href="#/project/${encodeURIComponent(info.project.id)}">${esc(info.project.id)} · ${esc(info.project.title)}</a>` : ""}</div>
     <h1>${esc(m.title)}</h1>
     <div class="lmeta"><span class="chip time">⏱ ${m.duration_min ? Math.round(m.duration_min / 6) / 10 + " giờ" : "?"}</span>${concepts}</div>
     <div class="tabs" role="tablist">
@@ -740,10 +793,12 @@ function renderConcepts(sec) {
 function renderInterviewTab() {
   const { id, lesson } = current, qs = lesson.meta.interview_questions || [], body = $("#tabbody");
   if (!qs.length) { body.innerHTML = '<div class="col"><p class="meta">Bài này chưa có câu hỏi phỏng vấn.</p></div>'; return; }
-  body.innerHTML = `<div class="col iv"><p class="iv-intro">Trả lời như đang nói với nhà tuyển dụng — ngắn, rõ, có ví dụ. Gia sư AI sẽ chấm điểm và gợi ý câu trả lời tốt hơn.</p>` + qs.map((q, i) => `<div class="q" data-i="${i}">
+  const tips = splitLesson(lesson.markdown).interview;
+  body.innerHTML = `<div class="col iv"><p class="iv-intro">Trả lời như đang nói với nhà tuyển dụng — ngắn, rõ, có ví dụ, mỗi câu 30–60 giây. Gia sư AI sẽ chấm điểm và gợi ý câu trả lời tốt hơn.</p><div id="iv-tips"></div>` + qs.map((q, i) => `<div class="q" data-i="${i}">
     <div class="q-h"><span class="q-n">${i + 1}</span><p>${mdInline(q)}</p></div>
     <textarea rows="4" placeholder="Câu trả lời của bạn…" aria-label="Trả lời câu ${i + 1}">${esc(current.iv[i]?.answer || "")}</textarea>
     <div class="row"><button class="btn" type="button">Chấm điểm</button></div><div class="fb">${current.iv[i]?.html || ""}</div></div>`).join("") + "</div>";
+  if (tips) $("#iv-tips", body).replaceWith(mdEl(tips, "md iv-tips")); else $("#iv-tips", body).remove();
   $$(".q", body).forEach((el) => {
     const i = +el.dataset.i, ta = $("textarea", el), fb = $(".fb", el), btn = $("button", el);
     ta.oninput = () => { current.iv[i] = { ...(current.iv[i] || {}), answer: ta.value }; };
@@ -754,7 +809,7 @@ function renderInterviewTab() {
         const li = (a) => a.map((x) => `<li>${esc(x)}</li>`).join("");
         const html = `<div class="grade"><div class="score"><b>${g.score}</b>/10</div>
           <div class="gcols"><div><h5>Điểm tốt</h5><ul>${li(g.strengths)}</ul></div><div><h5>Còn thiếu</h5><ul>${li(g.gaps)}</ul></div></div>
-          <details class="more"><summary>Câu trả lời tốt hơn</summary>${mdHTML(g.better_answer)}</details></div>`;
+          <details class="more"><summary>Câu trả lời tốt hơn</summary>${mdHTML(g.better_answer, "md", true)}</details></div>`;
         current.iv[i] = { answer: ta.value, html }; fb.innerHTML = html;
       } catch (e) { fb.innerHTML = `<p class="err">${esc(e.message)}</p>`; }
       btn.disabled = false;
@@ -824,8 +879,7 @@ function renderWorkflow(b, tasks, tests) {
 
 function renderBriefTab() {
   const { lesson, id } = current, m = lesson.meta, b = briefOf(m), body = $("#tabbody");
-  const info = lessonById(id), proj = info && info.project, pb = proj && proj.brief;
-  const firstOfProj = proj && proj.lessons[0] && proj.lessons[0].id === id;
+  const info = lessonById(id), proj = info && info.project;
   const started = lessonStarted(lesson), passed = !!lesson.progress.passed;
   const tasks = Array.isArray(m.tasks) ? m.tasks.filter((t) => t && t.fn) : [];
   const tests = lesson.progress.last_test && lesson.progress.last_test.tests;
@@ -838,12 +892,11 @@ function renderBriefTab() {
   body.innerHTML = `<div class="col brief">
     <header class="bh">
       <div class="bh-txt">
-        ${proj ? `<p class="bf-label">${esc(proj.id)} · ${esc(proj.title)}</p>` : ""}
+        ${proj ? `<p class="bf-label"><a href="#/project/${encodeURIComponent(proj.id)}">${esc(proj.id)} · ${esc(proj.title)}</a></p>` : ""}
         ${m.goal ? `<p class="bh-goal">${esc(m.goal)}</p>` : ""}
       </div>
       <button type="button" class="btn amber sm bh-cta take-btn">${cta} <span aria-hidden="true">→</span></button>
     </header>
-    ${firstOfProj && pb && (pb.goal || pb.deliverable) ? `<dl class="bf-proj">${pb.goal ? `<div><dt>Mục tiêu project</dt><dd>${esc(pb.goal)}</dd></div>` : ""}${pb.deliverable ? `<div><dt>Đầu ra project</dt><dd>${esc(pb.deliverable)}</dd></div>` : ""}</dl>` : ""}
     <div class="bs-pair">
       ${b.context ? `<section class="bs bs-card">${bfHead(++n, "context", "Bối cảnh")}<p class="bs-p">${esc(b.context)}</p></section>` : ""}
       ${b.problem ? `<section class="bs bs-card bs-problem">${bfHead(++n, "problem", "Bài toán")}<p class="bs-p">${esc(b.problem)}</p></section>` : ""}
@@ -959,8 +1012,8 @@ function renderTutor() {
   if (msgs.length) {
     log.innerHTML = "";
     msgs.forEach((m) => {
-      const d = document.createElement("div"); d.className = "msg " + (m.role === "user" ? "user" : "bot");
-      if (m.role === "user") d.textContent = m.content; else { d.appendChild(mdEl(m.content)); }
+      const d = document.createElement("div"); d.className = "msg " + (m.role === "user" ? "user" : "bot") + (m.error ? " err" : "");
+      if (m.role === "user") d.textContent = m.content; else { d.appendChild(mdEl(m.content, "md", true)); }
       log.appendChild(d);
     });
   } else {
@@ -970,18 +1023,23 @@ function renderTutor() {
   }
   log.scrollTop = log.scrollHeight;
 }
+let tutorBusy = false;
 async function sendTutor(text) {
-  if (!current) { alert("Hãy mở một bài học trước."); return; }
+  if (!current) { $("#tutor-log").innerHTML = '<div class="tutor-empty"><p>Hãy mở một bài học trước, gia sư cần biết bạn đang học bài nào.</p></div>'; return false; }
+  if (tutorBusy) return false;
   const id = current.id, msgs = (tutorMsgs[id] = tutorMsgs[id] || []);
-  msgs.push({ role: "user", content: text }); renderTutor();
+  msgs.push({ role: "user", content: text }); renderTutor(); tutorBusy = true;
   const log = $("#tutor-log"); log.insertAdjacentHTML("beforeend", '<div class="msg bot typing" id="typing"><i></i><i></i><i></i></div>'); log.scrollTop = log.scrollHeight;
   try {
-    const r = await api("/tutor", { body: { lesson_id: id, messages: msgs } });
+    // Thông báo lỗi chỉ để hiện, không gửi lại cho model
+    const r = await api("/tutor", { body: { lesson_id: id, messages: msgs.filter((m) => !m.error) } });
     msgs.push({ role: "assistant", content: r.reply });
-  } catch (e) { msgs.push({ role: "assistant", content: "⚠️ " + e.message }); }
+  } catch (e) { msgs.push({ role: "assistant", content: "⚠️ " + e.message, error: true }); }
+  tutorBusy = false;
   if (current && current.id === id) renderTutor();
+  return true;
 }
-$("#tutor-form").onsubmit = (e) => { e.preventDefault(); const t = $("#tutor-input"), v = t.value.trim(); if (!v) return; t.value = ""; sendTutor(v); };
+$("#tutor-form").onsubmit = (e) => { e.preventDefault(); const t = $("#tutor-input"), v = t.value.trim(); if (!v || tutorBusy) return; t.value = ""; sendTutor(v); };
 $("#tutor-input").onkeydown = (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); $("#tutor-form").requestSubmit(); } };
 function tutorOpen(on) {
   $("#tutor").hidden = !on; $("#tutor-scrim").hidden = !on; $("#tutor-fab").hidden = on;
