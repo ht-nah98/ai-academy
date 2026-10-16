@@ -3,6 +3,7 @@
 Phần mềm học tập chạy **trên máy của bạn**, dành cho người đã biết web cơ bản nhưng chưa biết Python/AI, muốn chuẩn bị phỏng vấn **AI Engineer / Data Engineer Intern** trong 3–4 tuần.
 
 - 13 bài học (P0–P3: Python, chatbot, data pipeline, LLM trích xuất có cấu trúc) xuyên suốt một sản phẩm: **JobRadar — trợ lý thị trường việc làm IT**.
+  JobRadar gom tin tuyển dụng từ nhiều trang (mỗi trang viết một kiểu, lương ghi "Thỏa thuận" hay "$1,950 - $2,900", kỹ năng nằm lẫn trong mô tả), làm sạch, dùng LLM đọc hiểu, rồi trả lời câu hỏi của người tìm việc bằng số liệu thật, kèm nguồn.
 - Mỗi bài: đề bài, code khung (`# TODO`), **test tự chấm**, câu hỏi phỏng vấn.
 - Web app local: lộ trình, đọc bài, bấm **Chạy test**, bản đồ kiến thức, gia sư AI.
 - Không cần tài khoản, không cần database server. Tiến độ lưu ngay trên máy bạn.

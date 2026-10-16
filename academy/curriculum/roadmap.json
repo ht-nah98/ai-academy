@@ -1,5 +1,78 @@
 {
   "title": "JobRadar — học AI & Data qua thực chiến",
+  "product": {
+    "name": "JobRadar",
+    "tagline": "Trợ lý thị trường việc làm IT: gom tin tuyển dụng từ nhiều trang, làm sạch, dùng LLM đọc hiểu mô tả, rồi trả lời câu hỏi của người tìm việc bằng số liệu thật, kèm nguồn.",
+    "problem": "Bạn đang tìm việc IT. Tin tuyển dụng nằm rải rác trên ITviec, VietnamWorks, TopCV, LinkedIn, mỗi trang viết một kiểu. Muốn biết \"Junior Data Engineer ở Hà Nội lương bao nhiêu, cần kỹ năng gì\" thì phải tự đọc hàng trăm tin và đoán.",
+    "pains": [
+      {
+        "title": "Dữ liệu rời rạc, không thống nhất",
+        "detail": "302 tin từ 4 trang. Riêng TP.HCM được viết 9 kiểu: HCM, TP.HCM, Sài Gòn, Ho Chi Minh… Cùng một tin đăng lại ở nhiều nơi."
+      },
+      {
+        "title": "Thông tin quan trọng nằm lẫn trong văn bản",
+        "detail": "Lương ghi \"Thỏa thuận\", \"Up to 44 triệu\", \"$1,950 - $2,900\" hoặc để trống. Kỹ năng và cấp bậc nằm trong đoạn mô tả viết tự do."
+      },
+      {
+        "title": "Câu hỏi thật không có chỗ hỏi",
+        "detail": "Không trang nào trả lời \"kỹ năng nào đang được tuyển nhiều nhất\" bằng số liệu, càng không chỉ ra tin nguồn để kiểm chứng."
+      }
+    ],
+    "questions": [
+      {
+        "q": "Mình mới học Python, nên apply Data hay AI intern?",
+        "a": "Chatbot trả lời, nhớ ngữ cảnh các câu hỏi trước",
+        "project": "P1"
+      },
+      {
+        "q": "Lương trung bình theo cấp bậc là bao nhiêu?",
+        "a": "senior 55.6 · middle 31.9 · junior 19.1 · intern 6.9 triệu",
+        "project": "P2"
+      },
+      {
+        "q": "Kỹ năng nào được tuyển nhiều nhất?",
+        "a": "Docker 100 tin · Python 89 · SQL 68 (trên 264 tin sạch)",
+        "project": "P2"
+      },
+      {
+        "q": "Tin không ghi lương thì thực ra trả bao nhiêu?",
+        "a": "68 tin không ghi lương; LLM tìm ra mức lương trong mô tả của 14 tin",
+        "project": "P3"
+      },
+      {
+        "q": "Tìm việc giống \"làm pipeline dữ liệu cho ngân hàng\"",
+        "a": "Tìm theo nghĩa, trả lời kèm id tin nguồn",
+        "project": "P4"
+      },
+      {
+        "q": "Có bao nhiêu tin remote cần Python, lương trên 30 triệu?",
+        "a": "Agent tự viết SQL chỉ-đọc và trả lời bằng số liệu",
+        "project": "P5"
+      }
+    ],
+    "promise": {
+      "headline": "Một sản phẩm AI & Data chạy thật để mang đi phỏng vấn, và bạn giải thích được từng phần trong đó.",
+      "outcomes": [
+        {
+          "title": "Một project portfolio hoàn chỉnh",
+          "detail": "JobRadar trên GitHub: data pipeline, trích xuất bằng LLM, RAG, agent, đóng gói Docker. Tự tay viết, có test cho từng phần."
+        },
+        {
+          "title": "Kỹ năng Data Engineer",
+          "detail": "Python, pandas, SQL, mô hình hóa dữ liệu, ETL chạy lại an toàn, kiểm tra chất lượng dữ liệu, logging."
+        },
+        {
+          "title": "Kỹ năng AI Engineer",
+          "detail": "Gọi LLM qua API, prompt, structured output, batch có cache và rate limit, tính chi phí, đo chất lượng bằng precision/recall; sau đó là RAG và agent."
+        },
+        {
+          "title": "Sẵn sàng phỏng vấn",
+          "detail": "96 câu hỏi phỏng vấn đã luyện với AI chấm điểm. Kể project bằng số liệu thật: 302 tin, F1 kỹ năng 0.99, chạy cả bộ hết 0.09 USD."
+        }
+      ],
+      "note": "P0–P3 đã có bài; P4–P6 đang soạn."
+    }
+  },
   "concept_groups": [
     {
       "id": "python",

@@ -223,3 +223,13 @@ def test_real_roadmap_project_intros():
                 assert set(l.get("concepts", [])) <= concepts, l["id"]
             else:
                 assert (cur / l["id"] / "meta.json").exists(), l["id"]
+
+
+def test_real_roadmap_product_story():
+    """Trang chủ kể JobRadar giải quyết gì và lời hứa của cả Academy; câu hỏi trỏ tới project có thật."""
+    from pathlib import Path
+    rm = json.loads((Path(__file__).resolve().parent.parent / "curriculum" / "roadmap.json").read_text(encoding="utf-8"))
+    pr, pids = rm["product"], {p["id"] for p in rm["projects"]}
+    assert pr["name"] and pr["tagline"] and pr["problem"] and len(pr["pains"]) >= 2
+    assert pr["questions"] and all(q["q"] and q["a"] and q["project"] in pids for q in pr["questions"])
+    assert pr["promise"]["headline"] and len(pr["promise"]["outcomes"]) >= 3

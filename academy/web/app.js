@@ -307,7 +307,7 @@ function showHome() {
       <div class="hero-main">
         <p class="eyebrow">${greet} 👋</p>
         <h1>Học AI & Data<br>từng bước một.</h1>
-        <p class="hero-sub">${esc(roadmap.title)}</p>
+        <p class="hero-sub">${roadmap.product && roadmap.product.name ? `Bằng cách tự tay xây <b>${esc(roadmap.product.name)}</b>, trợ lý thị trường việc làm IT, qua ${roadmap.projects.length} project.` : esc(roadmap.title)}</p>
         <div class="hero-stats">
           <div class="ring-wrap">${ring(pct)}<div class="ring-txt"><b>${pct}%</b><small>hoàn thành</small></div></div>
           <ul class="mini-stats">
@@ -325,6 +325,7 @@ function showHome() {
         </a>` : `<div class="continue done"><span class="continue-k">Tuyệt vời!</span><b class="continue-title">Bạn đã xong mọi bài hiện có 🎉</b><span class="continue-goal">Bài mới sẽ sớm xuất hiện trong lộ trình.</span></div>`}
     </section>
     ${roadmap.has_key ? "" : '<div class="notice">🔑 Chưa có <code>NVIDIA_API_KEY</code> — Gia sư AI và chấm phỏng vấn chưa dùng được. Mở file <code>.env</code> ở gốc repo, thay <code>nvapi-...</code> bằng key của bạn.</div>'}
+    ${productHTML(roadmap.product)}
     <section class="sec">
       <div class="sec-head"><h2>Lộ trình</h2>
         <div class="legend">${tracks.map((t) => `<span class="lg t-${TRACK[t] || "ai"}"><i></i>${esc(t)}</span>`).join("")}</div></div>
@@ -348,6 +349,30 @@ function showHome() {
   const hm = $("#home-map");
   if (hm) drawPmap(hm, { hl: new Set(nx ? nx.product_nodes || [] : []), done: new Set(allLessons().filter((l) => l.status === "passed").flatMap((l) => l.product_nodes || [])) });
   (document.fonts ? document.fonts.ready : Promise.resolve()).then(() => { if (!current) drawGraph(); });
+}
+
+/* JobRadar là gì, giải quyết bài toán nào, và học xong Academy có gì */
+function productHTML(pr) {
+  if (!pr || !pr.name) return "";
+  const pj = (pid) => { const p = projById(pid); return p ? `<a class="pq-proj t-${TRACK[p.track] || "ai"}" href="#/project/${encodeURIComponent(p.id)}">${esc(p.id)} · ${esc(p.title)}${p.lessons.every((l) => l.status === "planned") ? " · sắp có" : ""}</a>` : ""; };
+  const pm = pr.promise || {};
+  return `<section class="sec prod">
+      <div class="sec-head"><h2>${esc(pr.name)} giải quyết bài toán gì?</h2></div>
+      <div class="prod-card">
+        <p class="prod-tag">${esc(pr.tagline || "")}</p>
+        ${pr.problem ? `<p class="prod-prob">${esc(pr.problem)}</p>` : ""}
+        ${(pr.pains || []).length ? `<ul class="prod-pains">${pr.pains.map((x, i) => `<li><span class="pp-n">${i + 1}</span><b>${esc(x.title)}</b><span>${esc(x.detail)}</span></li>`).join("")}</ul>` : ""}
+      </div>
+    </section>
+    ${(pr.questions || []).length ? `<section class="sec">
+      <div class="sec-head"><h2>Câu hỏi ${esc(pr.name)} trả lời được</h2><p class="sec-note">mỗi project mở khóa thêm một loại câu hỏi</p></div>
+      <ul class="pq">${pr.questions.map((x) => `<li><div class="pq-q">“${esc(x.q)}”</div><div class="pq-a">${esc(x.a)}</div>${pj(x.project)}</li>`).join("")}</ul>
+    </section>` : ""}
+    ${pm.headline ? `<section class="sec">
+      <div class="sec-head"><h2>Hoàn thành Academy, bạn có</h2>${pm.note ? `<p class="sec-note">${esc(pm.note)}</p>` : ""}</div>
+      <p class="prom-head">${esc(pm.headline)}</p>
+      <ul class="prom">${(pm.outcomes || []).map((o) => `<li>${bfIcon("check", "ck")}<div><b>${esc(o.title)}</b><span>${esc(o.detail)}</span></div></li>`).join("")}</ul>
+    </section>` : ""}`;
 }
 
 /* ---------- Trang giới thiệu project: thành phẩm sẽ có, trước khi vào bài đầu ---------- */
