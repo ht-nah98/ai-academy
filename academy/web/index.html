@@ -19,12 +19,14 @@
 <div id="app" class="layout">
   <aside id="sidebar" class="sidebar" aria-label="Lộ trình học">
     <div class="brand">
-      <a href="#/" class="logo"><span class="logo-mark" aria-hidden="true">AI</span><span>Academy</span></a>
+      <a href="#/" class="logo"><span class="logo-mark" aria-hidden="true">AI</span><span class="logo-name">Academy</span></a>
       <button id="theme-toggle" class="iconbtn" type="button" title="Đổi giao diện sáng / tối" aria-label="Đổi giao diện sáng / tối">◐</button>
       <button id="side-toggle" class="iconbtn" type="button" title="Thu gọn lộ trình" aria-label="Thu gọn lộ trình">«</button>
     </div>
+    <a class="navlink" id="nav-lib" href="#/"><span aria-hidden="true">📚</span> Thư viện khóa học</a>
+    <p id="side-course" class="side-course" hidden></p>
     <div class="overall"><div class="bar"><div id="overall-bar"></div></div><small id="overall-text"></small></div>
-    <a class="navlink" id="nav-home" href="#/"><span aria-hidden="true">🏠</span> Trang chủ</a>
+    <a class="navlink" id="nav-home" href="#/" hidden><span aria-hidden="true">🏠</span> Trang chủ khóa</a>
     <nav id="roadmap"></nav>
   </aside>
   <button id="side-open" class="iconbtn side-open" type="button" title="Mở lộ trình" aria-label="Mở lộ trình">☰</button>

@@ -1,5 +1,7 @@
 {
   "title": "JobRadar — học AI & Data qua thực chiến",
+  "short_title": "AI & Data",
+  "logo_mark": "AI",
   "product": {
     "name": "JobRadar",
     "tagline": "Trợ lý thị trường việc làm IT: gom tin tuyển dụng từ nhiều trang, làm sạch, dùng LLM đọc hiểu mô tả, rồi trả lời câu hỏi của người tìm việc bằng số liệu thật, kèm nguồn.",

@@ -1,21 +1,16 @@
 #!/usr/bin/env bash
-# Chạy app (chế độ dev, tự reload). Ưu tiên .venv ở thư mục gốc repo nếu có.
-#   ./run.sh        → khóa AI (curriculum/), cổng 8100
-#   ./run.sh node   → khóa Node.js & WebSocket (courses/node-realtime/), cổng 8200
+# Chạy app (chế độ dev, tự reload) — một server, mọi khóa học, cổng 8100. Ưu tiên .venv ở thư mục gốc repo nếu có.
 cd "$(dirname "$0")"
 PY=python3
 [ -x ../.venv/bin/python ] && PY=../.venv/bin/python
-DEFAULT_PORT=8100
-case "${1:-}" in
-  "" | ai) ;;
-  node)
-    C="$PWD/courses/node-realtime"
-    if [ ! -d "$C/node_modules" ] && [ -f "$C/package.json" ]; then
-      echo "Cài thư viện cho khóa Node (npm install)…"
-      (cd "$C" && npm install --no-audit --no-fund) || exit 1
-    fi
-    export ACADEMY_CURRICULUM="$C/curriculum" ACADEMY_WORKSPACE="$C/workspace" ACADEMY_DATA="$C/data" ACADEMY_CACHE="$C/cache"
-    DEFAULT_PORT=8200 ;;
-  *) echo "Khóa không hợp lệ: $1 (dùng: ./run.sh [ai|node])"; exit 1 ;;
-esac
-exec "$PY" -m uvicorn app.main:app --host 127.0.0.1 --port "${PORT:-$DEFAULT_PORT}" --reload
+[ -n "${1:-}" ] && echo "Lưu ý: không cần tham số khóa nữa (\"$1\" bị bỏ qua) — mọi khóa chạy chung một server, chọn ở trang Thư viện khóa học."
+# Khóa Node có package.json mà chưa có node_modules → cài thư viện
+for pkg in courses/*/package.json; do
+  [ -f "$pkg" ] || continue
+  C="$(dirname "$pkg")"
+  if [ ! -d "$C/node_modules" ] && command -v npm >/dev/null 2>&1; then
+    echo "Cài thư viện cho khóa $(basename "$C") (npm install)…"
+    (cd "$C" && npm install --no-audit --no-fund) || echo "npm install lỗi ở $C — chấm bài khóa này sẽ báo thiếu thư viện."
+  fi
+done
+exec "$PY" -m uvicorn app.main:app --host 127.0.0.1 --port "${PORT:-8100}" --reload

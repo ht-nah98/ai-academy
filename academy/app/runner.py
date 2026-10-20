@@ -6,10 +6,12 @@ import signal
 import subprocess
 import sys
 import tempfile
+import json
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
-from . import config, curriculum
+from . import curriculum
+from .config import Course
 
 TIMEOUT = 60
 MAX_OUT = 6000
@@ -106,16 +108,29 @@ def _timeout_result() -> dict:
             "output": f"Quá {TIMEOUT} giây — test bị dừng. Kiểm tra vòng lặp vô hạn, server chưa đóng hoặc lệnh gọi mạng."}
 
 
-def run_tests(lesson_id: str) -> dict:
-    ws = config.workspace_dir() / lesson_id
-    tests = config.curriculum_dir() / lesson_id / "tests"
+def run_tests(course: Course, lesson_id: str) -> dict:
+    ws = course.workspace / lesson_id
+    tests = course.curriculum / lesson_id / "tests"
     if not ws.is_dir():
         raise RunnerError('Chưa có workspace cho bài này. Hãy bấm "Bắt đầu" trước.')
     if not tests.is_dir():
         raise RunnerError("Bài này chưa có test.")
-    if curriculum.language() == "node":
+    if curriculum.language(course) == "node":
+        _require_node_modules(course)
         return _run_node(ws, tests)
     return _run_pytest(ws, tests)
+
+
+def _require_node_modules(course: Course) -> None:
+    """Khóa Node có thư viện trong package.json mà chưa `npm install` → báo rõ cách sửa thay vì lỗi import khó hiểu."""
+    pkg = course.root / "package.json"
+    try:
+        deps = json.loads(pkg.read_text(encoding="utf-8")).get("dependencies") if pkg.is_file() else None
+    except (OSError, ValueError):
+        deps = None
+    if deps and not (course.root / "node_modules").is_dir():
+        raise RunnerError(f"Khóa này chưa cài thư viện Node ({', '.join(deps)}). Mở terminal tại thư mục "
+                          f"{course.root} và chạy `npm install` (hoặc chạy lại ./start.sh / .\\start.ps1), rồi thử lại.")
 
 
 def _run_pytest(ws: Path, tests: Path) -> dict:

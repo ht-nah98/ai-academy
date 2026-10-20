@@ -1,33 +1,26 @@
 #!/usr/bin/env bash
-# Chạy AI Academy.
-#   ./start.sh        → khóa AI & Data (cổng 8100)
-#   ./start.sh node   → khóa Node.js & WebSocket (cổng 8200)
-# Đổi cổng: PORT=8300 ./start.sh node
+# Chạy AI Academy — một server phục vụ mọi khóa học (cổng 8100).
+#   ./start.sh
+# Đổi cổng: PORT=8300 ./start.sh
 cd "$(dirname "$0")"
 if [ ! -x .venv/bin/python ]; then
   echo "Chưa có .venv — hãy chạy ./setup.sh trước."
   exit 1
 fi
-NAME="AI Academy"
-DEFAULT_PORT=8100
-case "${1:-}" in
-  "" | ai) ;;
-  node)
-    C="$PWD/academy/courses/node-realtime"
-    if ! command -v node >/dev/null 2>&1; then
-      echo "Chưa có Node.js — hãy cài Node.js 22 trở lên (https://nodejs.org) rồi chạy lại."
-      exit 1
-    fi
-    if [ ! -d "$C/node_modules" ] && [ -f "$C/package.json" ]; then
-      echo "Cài thư viện cho khóa Node (npm install)…"
-      (cd "$C" && npm install --no-audit --no-fund) || exit 1
-    fi
-    export ACADEMY_CURRICULUM="$C/curriculum" ACADEMY_WORKSPACE="$C/workspace" ACADEMY_DATA="$C/data" ACADEMY_CACHE="$C/cache"
-    NAME="Khóa Node.js & WebSocket"
-    DEFAULT_PORT=8200 ;;
-  *) echo "Khóa không hợp lệ: $1 (dùng: ./start.sh [ai|node])"; exit 1 ;;
-esac
-PORT="${PORT:-$DEFAULT_PORT}"
-echo "$NAME chạy tại http://127.0.0.1:${PORT}  (Ctrl+C để dừng)"
+[ -n "${1:-}" ] && echo "Lưu ý: không cần tham số khóa nữa (\"$1\" bị bỏ qua) — mọi khóa chạy chung một server, chọn ở trang Thư viện khóa học."
+# Khóa Node (academy/courses/<id>/package.json) chưa có node_modules → npm install
+for pkg in academy/courses/*/package.json; do
+  [ -f "$pkg" ] || continue
+  C="$(dirname "$pkg")"
+  [ -d "$C/node_modules" ] && continue
+  if ! command -v npm >/dev/null 2>&1; then
+    echo "Khóa $(basename "$C") cần Node.js 22 trở lên (https://nodejs.org) — các khóa khác vẫn dùng được."
+    continue
+  fi
+  echo "Cài thư viện cho khóa $(basename "$C") (npm install)…"
+  (cd "$C" && npm install --no-audit --no-fund) || echo "npm install lỗi ở $C — chấm bài khóa này sẽ báo thiếu thư viện."
+done
+PORT="${PORT:-8100}"
+echo "AI Academy chạy tại http://127.0.0.1:${PORT}  (Ctrl+C để dừng)"
 cd academy
 exec ../.venv/bin/python -m uvicorn app.main:app --host 127.0.0.1 --port "$PORT"

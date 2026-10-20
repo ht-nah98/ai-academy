@@ -6,14 +6,21 @@ const ICON = { passed: "✓", in_progress: "●", not_started: "○", locked: "�
 const STATUS_LABEL = { passed: "Đã xong", in_progress: "Đang học", not_started: "Chưa học", locked: "Đang khóa", planned: "Sắp có" };
 const TRACK = { "AI": "ai", "Data": "data", "AI×Data": "aixdata", "Nâng cao": "adv" };
 const GROUP_COLORS = ["#E9A23B", "#3D6EF5", "#12A27A", "#E2557F", "#8B5CF6", "#5B7A99", "#C2681E", "#0EA5B7"];
+let courseId = null; // khóa đang mở (null = thư viện khóa học)
+let courses = null; // GET /api/courses
 let roadmap = null;
 let current = null; // {id, lesson, tab, iv, guide}
-let tutorMsgs = {}; // lessonId -> messages
+let tutorMsgs = {}; // "<khóa>/<bài>" -> messages
 
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const store = {
   get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (_) { return d; } },
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (_) { /* private mode */ } },
+};
+// localStorage theo khóa học (c:<khóa>:<key>); khóa "ai" còn đọc key cũ không có tiền tố
+const cstore = {
+  get(k, d) { const v = store.get(`c:${courseId}:${k}`, undefined); return v !== undefined ? v : courseId === "ai" ? store.get(k, d) : d; },
+  set(k, v) { store.set(`c:${courseId}:${k}`, v); },
 };
 let safeMarked = null;
 function md(text, safe = false) {
@@ -37,6 +44,10 @@ async function api(path, opts) {
   }
   return data;
 }
+const capi = (path, opts) => api("/c/" + encodeURIComponent(courseId) + path, opts);
+const courseHref = (cid) => "#/c/" + encodeURIComponent(cid) + "/";
+const projHref = (pid) => courseHref(courseId) + "project/" + encodeURIComponent(pid);
+const lessonHref = (id) => courseHref(courseId) + "lesson/" + encodeURIComponent(id);
 const allLessons = () => roadmap.projects.flatMap((p) => p.lessons.map((l) => ({ ...l, project: p })));
 const lessonById = (id) => allLessons().find((l) => l.id === id);
 const shortId = (id) => String(id).split("-")[0];
@@ -233,26 +244,40 @@ function splitH3(body) {
 }
 
 /* ---------- Sidebar ---------- */
-async function loadRoadmap() { roadmap = await api("/roadmap"); applyCourse(); renderSidebar(); }
+async function loadRoadmap() { roadmap = await capi("/roadmap"); renderSidebar(); }
 const isNode = () => roadmap && roadmap.language === "node";
 const productName = () => (roadmap.product && roadmap.product.name) || "";
-function applyCourse() { // tiêu đề tab + logo theo khóa học (khóa Python giữ nguyên "AI Academy")
-  if (!isNode()) return;
-  document.title = roadmap.title;
-  const mark = $(".logo-mark"), name = $(".logo > span:last-child");
-  if (mark) mark.textContent = roadmap.logo_mark || "JS";
-  if (name) name.textContent = roadmap.short_title || roadmap.title;
+function applyCourse() { // logo, tên khóa, link về thư viện và tiêu đề tab theo khóa đang mở
+  const lib = !roadmap, short = lib ? "" : roadmap.short_title || roadmap.title;
+  $(".logo-mark").textContent = lib ? "AI" : roadmap.logo_mark || (isNode() ? "JS" : "AI");
+  $(".logo-name").textContent = lib ? "Academy" : short;
+  $(".logo").href = lib ? "#/" : courseHref(courseId);
+  const nl = $("#nav-lib"), nh = $("#nav-home"), sc = $("#side-course");
+  nl.innerHTML = lib ? '<span aria-hidden="true">📚</span> Thư viện khóa học' : '<span aria-hidden="true">←</span> Tất cả khóa học';
+  nl.classList.toggle("active", lib); nl.classList.toggle("back", !lib);
+  nh.hidden = lib; nh.href = lib ? "#/" : courseHref(courseId);
+  sc.hidden = lib; sc.textContent = lib ? "" : roadmap.title;
+  document.title = lib ? "Thư viện khóa học · AI Academy" : `${short} · AI Academy`;
+}
+function renderLibSidebar() {
+  const cs = courses || [], tot = cs.reduce((a, c) => a + c.lessons, 0), done = cs.reduce((a, c) => a + c.passed, 0);
+  $("#overall-bar").style.width = (tot ? (100 * done) / tot : 0) + "%";
+  $("#overall-text").textContent = `${cs.length} khóa học · ${done}/${tot} bài đã xong`;
+  $("#roadmap").innerHTML = cs.length ? `<div class="proj"><h4>Khóa học</h4>${cs.map((c) => `<a class="lesson-link course-link" href="${courseHref(c.id)}" title="${esc(c.title)}">
+    <span class="ic cmark" aria-hidden="true">${esc(c.logo_mark)}</span><span class="lt">${esc(c.short_title)}</span><span class="tag">${c.passed}/${c.lessons}</span></a>`).join("")}</div>` : "";
 }
 function renderSidebar() {
+  applyCourse();
+  if (!roadmap) { renderLibSidebar(); return; }
   const s = roadmap.summary;
   $("#overall-bar").style.width = (s.total ? (100 * s.passed) / s.total : 0) + "%";
   $("#overall-text").textContent = `${s.passed}/${s.total} bài đã xong` + (s.planned ? ` · ${s.planned} bài sắp có` : "");
   $("#nav-home").classList.toggle("active", !current);
   $("#roadmap").innerHTML = roadmap.projects.map((p) => `
-    <div class="proj t-${TRACK[p.track] || "ai"}"><h4><a href="#/project/${encodeURIComponent(p.id)}" title="Giới thiệu project"${location.hash === "#/project/" + p.id ? ' aria-current="page"' : ""}><span class="dot"></span>${esc(p.id)} · ${esc(p.title)}</a></h4>
+    <div class="proj t-${TRACK[p.track] || "ai"}"><h4><a href="${projHref(p.id)}" title="Giới thiệu project"${location.hash === projHref(p.id) ? ' aria-current="page"' : ""}><span class="dot"></span>${esc(p.id)} · ${esc(p.title)}</a></h4>
     ${p.lessons.filter((l) => l.status !== "planned").map((l) => {
       const active = current && current.id === l.id ? " active" : "";
-      return `<a class="lesson-link st-${l.status}${active}" href="#/lesson/${encodeURIComponent(l.id)}" title="${esc(l.goal || "")}"${active ? ' aria-current="page"' : ""}>
+      return `<a class="lesson-link st-${l.status}${active}" href="${lessonHref(l.id)}" title="${esc(l.goal || "")}"${active ? ' aria-current="page"' : ""}>
         <span class="ic" aria-label="${STATUS_LABEL[l.status] || ""}">${ICON[l.status] || ""}</span><span class="lt">${esc(l.title)}</span></a>`;
     }).join("")}
     ${(() => { const soon = p.lessons.filter((l) => l.status === "planned"); return soon.length ? `<details class="soon"><summary>${soon.length} bài sắp có</summary>
@@ -260,26 +285,67 @@ function renderSidebar() {
 }
 
 /* ---------- Router ---------- */
+// #/ thư viện · #/c/<khóa>/ trang chủ khóa · #/c/<khóa>/project/<PID> · #/c/<khóa>/lesson/<id>
 async function route() {
   const h = location.hash || "#/";
+  const old = h.match(/^#\/(lesson|project)\/(.+)$/); // link cũ (trước khi có nhiều khóa) → khóa AI
+  if (old) { location.replace(`#/c/ai/${old[1]}/${old[2]}`); return; }
+  const m = h.match(/^#\/c\/([^/]+)\/?(.*)$/);
   try {
-    if (!roadmap) await loadRoadmap();
-    if (h.startsWith("#/lesson/")) {
-      const id = decodeURIComponent(h.slice(9)), l = lessonById(id);
-      // Lần đầu bước vào một project chưa học: xem trang giới thiệu trước
-      if (l && l.project.lessons[0].id === id && !projStarted(l.project) && !store.get(introKey(l.project.id), false)) {
-        location.replace("#/project/" + encodeURIComponent(l.project.id)); return;
+    if (!m) await showLibrary();
+    else {
+      const cid = decodeURIComponent(m[1]), rest = m[2];
+      if (cid !== courseId || !roadmap) { courseId = cid; roadmap = null; current = null; await loadRoadmap(); }
+      if (rest.startsWith("lesson/")) {
+        const id = decodeURIComponent(rest.slice(7)), l = lessonById(id);
+        // Lần đầu bước vào một project chưa học: xem trang giới thiệu trước
+        if (l && l.project.lessons[0].id === id && !projStarted(l.project) && !cstore.get(introKey(l.project.id), false)) {
+          location.replace(projHref(l.project.id)); return;
+        }
+        await showLesson(id); return;
       }
-      await showLesson(id); return;
+      current = null; setTutorLesson(null); $("#main").classList.remove("fill");
+      if (rest.startsWith("project/")) showProject(decodeURIComponent(rest.slice(8))); else showHome();
+      renderSidebar();
     }
-    current = null; setTutorLesson(null); $("#main").classList.remove("fill");
-    if (h.startsWith("#/project/")) showProject(decodeURIComponent(h.slice(10))); else showHome();
-    renderSidebar();
     $("#main").scrollTop = 0;
   } catch (e) {
-    view.innerHTML = `<div class="col"><p class="err">${esc(e.message)}</p></div>`;
+    current = null; $("#main").classList.remove("fill");
+    if (m && !roadmap) renderSidebar();
+    view.innerHTML = `<div class="col"><p class="err">${esc(e.message)}</p><p><a href="#/">← Về thư viện khóa học</a></p></div>`;
   }
   if (innerWidth <= 760) sideHide(true);
+}
+
+/* ---------- Thư viện khóa học ---------- */
+const greeting = () => { const h = new Date().getHours(); return h < 11 ? "Chào buổi sáng" : h < 18 ? "Chào buổi chiều" : "Chào buổi tối"; };
+async function showLibrary() {
+  courseId = null; roadmap = null; current = null;
+  setTutorLesson(null); $("#main").classList.remove("fill");
+  courses = await api("/courses");
+  renderSidebar();
+  view.innerHTML = `<div class="home lib">
+    <section class="lib-hero">
+      <p class="eyebrow">${greeting()} 👋</p>
+      <h1>Thư viện khóa học</h1>
+      <p class="hero-sub">Mỗi khóa là một sản phẩm thật bạn tự tay xây, qua từng project. Tiến độ của mỗi khóa được lưu riêng.</p>
+    </section>
+    ${courses.length ? `<ul class="lib-grid">${courses.map(courseCard).join("")}</ul>`
+      : '<p class="meta">Chưa có khóa học nào. Tạo <code>academy/courses/&lt;id&gt;/curriculum/roadmap.json</code> để thêm khóa.</p>'}
+  </div>`;
+}
+function courseCard(c) {
+  const pct = c.lessons ? Math.round((100 * c.passed) / c.lessons) : 0, started = c.passed + c.in_progress > 0;
+  return `<li><a class="lib-card lang-${esc(c.language)}" href="${courseHref(c.id)}">
+    <span class="lib-top"><span class="logo-mark lib-mark" aria-hidden="true">${esc(c.logo_mark)}</span>
+      <span class="lib-lang">${c.language === "node" ? "Node.js" : "Python"}</span></span>
+    <b class="lib-title">${esc(c.short_title)}</b>
+    ${c.product_name ? `<span class="lib-prod">Sản phẩm: <b>${esc(c.product_name)}</b></span>` : ""}
+    ${c.tagline ? `<span class="lib-tag" title="${esc(c.tagline)}">${esc(c.tagline)}</span>` : ""}
+    <span class="lib-facts">${c.projects} project · ${c.lessons} bài${c.planned ? ` · ${c.planned} bài sắp có` : ""}</span>
+    <span class="lib-prog"><span class="bar"><i style="width:${pct}%"></i></span><small>${c.passed}/${c.lessons} bài đã xong · ${pct}%</small></span>
+    <span class="btn${started ? " amber" : ""} lib-btn">${started ? "Tiếp tục" : "Bắt đầu"} <span aria-hidden="true">→</span></span>
+  </a></li>`;
 }
 
 /* ---------- Trang chủ ---------- */
@@ -298,12 +364,12 @@ function showHome() {
   const s = roadmap.summary, pct = s.total ? Math.round((100 * s.passed) / s.total) : 0;
   const nx = nextLesson(), newProj = nx && !projStarted(nx.project);
   const learned = roadmap.concepts.filter((c) => c.learned).length;
-  const greet = (() => { const h = new Date().getHours(); return h < 11 ? "Chào buổi sáng" : h < 18 ? "Chào buổi chiều" : "Chào buổi tối"; })();
+  const greet = greeting();
   const projs = roadmap.projects.map((p) => {
     const ready = p.lessons.filter((l) => l.status !== "planned"), done = p.lessons.filter((l) => l.status === "passed").length;
     const state = !ready.length ? "soon" : done === p.lessons.length ? "done" : (p.lessons.some((l) => l.status === "in_progress" || l.status === "passed") ? "active" : "open");
     return `<li class="tl-item t-${TRACK[p.track] || "ai"} s-${state}">
-      <a class="tl-card" href="#/project/${encodeURIComponent(p.id)}">
+      <a class="tl-card" href="${projHref(p.id)}">
         <span class="tl-node" aria-hidden="true">${state === "done" ? "✓" : esc(p.id.replace("P", ""))}</span>
         <span class="tl-track">${esc(p.track || "")}</span>
         <b class="tl-title">${esc(p.title)}</b>
@@ -327,7 +393,7 @@ function showHome() {
           </ul>
         </div>
       </div>
-      ${nx ? `<a class="continue t-${TRACK[nx.project.track] || "ai"}" href="${newProj ? "#/project/" + encodeURIComponent(nx.project.id) : "#/lesson/" + encodeURIComponent(nx.id)}">
+      ${nx ? `<a class="continue t-${TRACK[nx.project.track] || "ai"}" href="${newProj ? projHref(nx.project.id) : lessonHref(nx.id)}">
           <span class="continue-k">${nx.status === "in_progress" ? "Tiếp tục học" : newProj ? "Project mới" : "Bài tiếp theo"}</span>
           <span class="continue-proj">${esc(nx.project.id)} · ${esc(nx.project.title)}</span>
           <b class="continue-title">${esc(nx.title)}</b>
@@ -365,7 +431,7 @@ function showHome() {
 /* JobRadar là gì, giải quyết bài toán nào, và học xong Academy có gì */
 function productHTML(pr) {
   if (!pr || !pr.name) return "";
-  const pj = (pid) => { const p = projById(pid); return p ? `<a class="pq-proj t-${TRACK[p.track] || "ai"}" href="#/project/${encodeURIComponent(p.id)}">${esc(p.id)} · ${esc(p.title)}${p.lessons.every((l) => l.status === "planned") ? " · sắp có" : ""}</a>` : ""; };
+  const pj = (pid) => { const p = projById(pid); return p ? `<a class="pq-proj t-${TRACK[p.track] || "ai"}" href="${projHref(p.id)}">${esc(p.id)} · ${esc(p.title)}${p.lessons.every((l) => l.status === "planned") ? " · sắp có" : ""}</a>` : ""; };
   const pm = pr.promise || {};
   return `<section class="sec prod">
       <div class="sec-head"><h2>${esc(pr.name)} giải quyết bài toán gì?</h2></div>
@@ -393,18 +459,18 @@ const introKey = (pid) => "intro:" + pid;
 function showProject(pid) {
   const p = projById(pid);
   if (!p) { view.innerHTML = `<div class="col"><p class="err">Không tìm thấy project ${esc(pid)}.</p></div>`; return; }
-  store.set(introKey(pid), true);
+  cstore.set(introKey(pid), true);
   const b = p.brief || {}, ready = p.lessons.filter((l) => l.status !== "planned");
   const done = p.lessons.filter((l) => l.status === "passed").length, allDone = ready.length && done === ready.length;
   const next = ready.find((l) => l.status !== "passed" && l.status !== "locked");
   const mins = ready.reduce((s, l) => s + (l.duration_min || 0), 0);
   const facts = [`${p.lessons.length} bài`, mins ? `khoảng ${Math.round(mins / 60)} giờ` : "", !ready.length ? "Sắp có" : ""].filter(Boolean).join(" · ");
-  const cta = !ready.length ? "" : allDone ? `<a class="btn ghost cta-btn" href="#/lesson/${encodeURIComponent(ready[0].id)}">Xem lại bài đầu</a>`
-    : next ? `<a class="btn amber cta-btn" href="#/lesson/${encodeURIComponent(next.id)}">${projStarted(p) ? "Học tiếp" : "Bắt đầu"} ${esc(shortId(next.id))} <span aria-hidden="true">→</span></a>`
+  const cta = !ready.length ? "" : allDone ? `<a class="btn ghost cta-btn" href="${lessonHref(ready[0].id)}">Xem lại bài đầu</a>`
+    : next ? `<a class="btn amber cta-btn" href="${lessonHref(next.id)}">${projStarted(p) ? "Học tiếp" : "Bắt đầu"} ${esc(shortId(next.id))} <span aria-hidden="true">→</span></a>`
     : `<span class="pj-lock">🔒 Mở khi bạn qua hết bài của project trước</span>`;
   const sc = b.showcase && b.showcase.markdown ? b.showcase : null;
   const steps = p.lessons.map((l, i) => {
-    const tag = l.status === "planned" ? "div" : "a", href = tag === "a" ? ` href="#/lesson/${encodeURIComponent(l.id)}"` : "";
+    const tag = l.status === "planned" ? "div" : "a", href = tag === "a" ? ` href="${lessonHref(l.id)}"` : "";
     return `<li class="pj-step st-${l.status}"><${tag} class="pj-sl"${href}>
       <span class="pj-si" aria-label="${STATUS_LABEL[l.status] || ""}">${l.status === "passed" ? "✓" : i + 1}</span>
       <span class="pj-st"><b>${esc(shortId(l.id))} · ${esc(l.title)}</b><span>${esc(l.goal || "")}</span></span></${tag}></li>`;
@@ -536,7 +602,7 @@ function drawGraph() {
     tip.style.left = x + "px"; tip.style.top = y + "px";
   }
   function hide() { svg.classed("focus", false); node.classed("hl", false); link.classed("hl", false); tip.hidden = true; }
-  const go = (n) => { if (n.target) location.hash = "#/lesson/" + encodeURIComponent(n.target.id); };
+  const go = (n) => { if (n.target) location.hash = lessonHref(n.target.id); };
   node.on("mouseenter", show).on("mouseleave", hide).on("focus", show).on("blur", hide)
     .on("click", (ev, n) => go(n)).on("keydown", (ev, n) => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); go(n); } });
 }
@@ -545,10 +611,10 @@ addEventListener("resize", () => { clearTimeout(resizeT); resizeT = setTimeout((
 
 /* ---------- Trang bài học ---------- */
 async function showLesson(id) {
-  const lesson = await api("/lessons/" + encodeURIComponent(id));
+  const lesson = await capi("/lessons/" + encodeURIComponent(id));
   const keep = current && current.id === id ? current : null;
   const tab0 = keep ? keep.tab : (briefOf(lesson.meta) && !lessonStarted(lesson) ? "brief" : "lesson");
-  current = { id, lesson, tab: tab0 === "brief" && !briefOf(lesson.meta) ? "lesson" : tab0, iv: keep ? keep.iv : {}, guide: store.get("guide:" + id, "steps"), pane: keep ? keep.pane : "left" };
+  current = { id, lesson, tab: tab0 === "brief" && !briefOf(lesson.meta) ? "lesson" : tab0, iv: keep ? keep.iv : {}, guide: cstore.get("guide:" + id, "steps"), pane: keep ? keep.pane : "left" };
   setTutorLesson(lesson.meta.title);
   renderLesson();
   renderSidebar();
@@ -561,7 +627,7 @@ function renderLesson() {
   $("#main").classList.toggle("fill", tab === "lesson");
   const concepts = (m.concepts || []).map((c) => { const k = roadmap.concepts.find((x) => x.id === c); return `<span class="chip${k && k.learned ? " on" : ""}">${esc(k ? k.title : c)}</span>`; }).join("");
   view.innerHTML = `<header class="lhead">
-    <div class="crumb">${info ? `<span class="trk t-${TRACK[info.project.track] || "ai"}">${esc(info.project.track || "")}</span> <a href="#/project/${encodeURIComponent(info.project.id)}">${esc(info.project.id)} · ${esc(info.project.title)}</a>` : ""}</div>
+    <div class="crumb">${info ? `<span class="trk t-${TRACK[info.project.track] || "ai"}">${esc(info.project.track || "")}</span> <a href="${projHref(info.project.id)}">${esc(info.project.id)} · ${esc(info.project.title)}</a>` : ""}</div>
     <h1>${esc(m.title)}</h1>
     <div class="lmeta"><span class="chip time">⏱ ${m.duration_min ? Math.round(m.duration_min / 6) / 10 + " giờ" : "?"}</span>${concepts}</div>
     <div class="tabs" role="tablist">
@@ -633,7 +699,7 @@ function renderLessonTab() {
   if (sec.check) $("#selfcheck", body).appendChild(mdEl(sec.check));
   $$(".checklist input", body).forEach((c) => c.onchange = async () => {
     try {
-      const r = await api(`/lessons/${id}/checklist`, { body: { index: +c.dataset.i, done: c.checked } });
+      const r = await capi(`/lessons/${id}/checklist`, { body: { index: +c.dataset.i, done: c.checked } });
       current.lesson.progress.checklist = r.checklist;
       const n = Object.values(r.checklist).filter(Boolean).length;
       $("#cl-count", body).textContent = `${n}/${nCl}`;
@@ -644,7 +710,7 @@ function renderLessonTab() {
   renderSteps(sec);
   renderConcepts(sec);
   const setGuide = (g) => {
-    current.guide = g; store.set("guide:" + id, g);
+    current.guide = g; cstore.set("guide:" + id, g);
     $$(".subtabs button", body).forEach((b) => { b.classList.toggle("on", b.dataset.g === g); b.setAttribute("aria-selected", b.dataset.g === g); });
     $("#guide-steps", body).hidden = g !== "steps"; $("#guide-concepts", body).hidden = g !== "concepts";
   };
@@ -689,18 +755,18 @@ function renderStatus() {
   </div>`;
   const c = $(".cmd", host); if (c) c.appendChild(copyBtn(() => cmd));
   const un = $("#unlock", host);
-  if (un) un.onclick = async () => { await api(`/lessons/${id}/unlock`, { body: {} }); await loadRoadmap(); showLesson(id); };
+  if (un) un.onclick = async () => { await capi(`/lessons/${id}/unlock`, { body: {} }); await loadRoadmap(); showLesson(id); };
   const st = $("#start", host);
   if (st) st.onclick = async () => {
     st.disabled = true; st.textContent = "Đang tạo…";
-    try { await api(`/lessons/${id}/start`, { body: {} }); await loadRoadmap(); current.lesson.workspace_exists = true; current.lesson.status = "in_progress"; renderStatus(); renderSidebar(); }
+    try { await capi(`/lessons/${id}/start`, { body: {} }); await loadRoadmap(); current.lesson.workspace_exists = true; current.lesson.status = "in_progress"; renderStatus(); renderSidebar(); }
     catch (e) { $("#runmsg", host).innerHTML = `<p class="err">${esc(e.message)}</p>`; st.disabled = false; st.textContent = "🚀 Bắt đầu"; }
   };
   const rt = $("#runtest", host);
   if (rt) rt.onclick = async () => {
     rt.disabled = true; rt.innerHTML = '<span class="spin" aria-hidden="true"></span> Đang chạy…';
     try {
-      const r = await api(`/lessons/${id}/test`, { body: {} });
+      const r = await capi(`/lessons/${id}/test`, { body: {} });
       current.lesson.progress.last_test = { passed: r.passed, failed: r.failed, total: r.total, tests: r.tests || [] };
       if (r.ok) { current.lesson.progress.passed = true; await loadRoadmap(); }
       renderStatus(); renderTasks();
@@ -759,7 +825,7 @@ function renderSteps(sec) {
   if (!isStepper) { host.appendChild(mdEl(sec.steps)); return; }
   if (parts.pre) host.appendChild(mdEl(parts.pre, "md lead"));
   const key = "steps:" + id;
-  let done = new Set(store.get(key, []));
+  let done = new Set(cstore.get(key, []));
   const items = parts.items.map((it, i) => {
     const m = it.title.match(/^bước\s*(\d+)\s*[—–:\-.]*\s*(.*)$/i);
     return { i, num: m ? m[1] : "★", title: m ? (m[2] || it.title) : it.title, body: it.body, extra: !m };
@@ -768,7 +834,7 @@ function renderSteps(sec) {
   const list = document.createElement("ol"); list.className = "stepper";
   host.append(prog, list);
   let open = items.findIndex((it) => !done.has(it.i)); if (open < 0) open = items.length - 1;
-  const save = () => store.set(key, [...done]);
+  const save = () => cstore.set(key, [...done]);
   function paint() {
     const n = items.filter((it) => done.has(it.i)).length;
     prog.innerHTML = `<span>${n}/${items.length} bước đã xong</span><span class="sbar"><i style="width:${(100 * n) / items.length}%"></i></span>`;
@@ -841,7 +907,7 @@ function renderInterviewTab() {
     btn.onclick = async () => {
       btn.disabled = true; fb.innerHTML = '<p class="meta">Đang chấm…</p>';
       try {
-        const g = await api("/interview/grade", { body: { lesson_id: id, question: qs[i], answer: ta.value } });
+        const g = await capi("/interview/grade", { body: { lesson_id: id, question: qs[i], answer: ta.value } });
         const li = (a) => a.map((x) => `<li>${esc(x)}</li>`).join("");
         const html = `<div class="grade"><div class="score"><b>${g.score}</b>/10</div>
           <div class="gcols"><div><h5>Điểm tốt</h5><ul>${li(g.strengths)}</ul></div><div><h5>Còn thiếu</h5><ul>${li(g.gaps)}</ul></div></div>
@@ -928,7 +994,7 @@ function renderBriefTab() {
   body.innerHTML = `<div class="col brief">
     <header class="bh">
       <div class="bh-txt">
-        ${proj ? `<p class="bf-label"><a href="#/project/${encodeURIComponent(proj.id)}">${esc(proj.id)} · ${esc(proj.title)}</a></p>` : ""}
+        ${proj ? `<p class="bf-label"><a href="${projHref(proj.id)}">${esc(proj.id)} · ${esc(proj.title)}</a></p>` : ""}
         ${m.goal ? `<p class="bh-goal">${esc(m.goal)}</p>` : ""}
       </div>
       <button type="button" class="btn amber sm bh-cta take-btn">${cta} <span aria-hidden="true">→</span></button>
@@ -961,7 +1027,7 @@ function renderBriefTab() {
     if (!lessonStarted(lesson) && lesson.status !== "locked") {
       btns.forEach((x) => { x.disabled = true; }); btn.textContent = "Đang tạo thư mục bài…";
       try {
-        await api(`/lessons/${id}/start`, { body: {} });
+        await capi(`/lessons/${id}/start`, { body: {} });
         await loadRoadmap();
         current.lesson.workspace_exists = true; current.lesson.status = "in_progress";
       } catch (e) {
@@ -1044,7 +1110,7 @@ function drawPmap(host, opts) {
 const SUGGEST = ["Lỗi này nghĩa là gì?", "Gợi ý cho mình bước tiếp theo", "Giải thích lại bằng ví dụ đời thường"];
 function setTutorLesson(title) { $("#tutor-lesson").textContent = title ? "Bài: " + title : "Mở một bài để hỏi gia sư"; renderTutor(); }
 function renderTutor() {
-  const log = $("#tutor-log"), msgs = (current && tutorMsgs[current.id]) || [];
+  const log = $("#tutor-log"), msgs = (current && tutorMsgs[courseId + "/" + current.id]) || [];
   if (msgs.length) {
     log.innerHTML = "";
     msgs.forEach((m) => {
@@ -1063,16 +1129,16 @@ let tutorBusy = false;
 async function sendTutor(text) {
   if (!current) { $("#tutor-log").innerHTML = '<div class="tutor-empty"><p>Hãy mở một bài học trước, gia sư cần biết bạn đang học bài nào.</p></div>'; return false; }
   if (tutorBusy) return false;
-  const id = current.id, msgs = (tutorMsgs[id] = tutorMsgs[id] || []);
+  const id = current.id, tk = courseId + "/" + id, msgs = (tutorMsgs[tk] = tutorMsgs[tk] || []);
   msgs.push({ role: "user", content: text }); renderTutor(); tutorBusy = true;
   const log = $("#tutor-log"); log.insertAdjacentHTML("beforeend", '<div class="msg bot typing" id="typing"><i></i><i></i><i></i></div>'); log.scrollTop = log.scrollHeight;
   try {
     // Thông báo lỗi chỉ để hiện, không gửi lại cho model
-    const r = await api("/tutor", { body: { lesson_id: id, messages: msgs.filter((m) => !m.error) } });
+    const r = await capi("/tutor", { body: { lesson_id: id, messages: msgs.filter((m) => !m.error) } });
     msgs.push({ role: "assistant", content: r.reply });
   } catch (e) { msgs.push({ role: "assistant", content: "⚠️ " + e.message, error: true }); }
   tutorBusy = false;
-  if (current && current.id === id) renderTutor();
+  if (current && courseId + "/" + current.id === tk) renderTutor();
   return true;
 }
 $("#tutor-form").onsubmit = (e) => { e.preventDefault(); const t = $("#tutor-input"), v = t.value.trim(); if (!v || tutorBusy) return; t.value = ""; sendTutor(v); };

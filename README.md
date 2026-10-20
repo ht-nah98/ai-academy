@@ -7,6 +7,7 @@ Phần mềm học tập chạy **trên máy của bạn**, dành cho người �
 - Mỗi bài: đề bài, code khung (`# TODO`), **test tự chấm**, câu hỏi phỏng vấn.
 - Web app local: lộ trình, đọc bài, bấm **Chạy test**, bản đồ kiến thức, gia sư AI.
 - Không cần tài khoản, không cần database server. Tiến độ lưu ngay trên máy bạn.
+- Là **nền tảng nhiều khóa học**: một lệnh `start`, một địa chỉ (http://127.0.0.1:8100), trang đầu là **Thư viện khóa học** liệt kê mọi khóa (hiện có **AI & Data** và **Node.js & WebSocket**), mỗi khóa có tiến độ riêng.
 
 | Project | Làm xong bạn có |
 |---|---|
@@ -95,16 +96,9 @@ Mở trình duyệt tại **http://127.0.0.1:8100**. Dừng app: `Ctrl+C`.
 
 > Ghi chú: `setup` chạy lại nhiều lần vẫn an toàn (không ghi đè `.env`, không cài lại `.venv`).
 
-### Mở khóa Node.js & WebSocket
+### Khóa Node.js & WebSocket
 
-App có khóa thứ hai, **Node.js & WebSocket**, chấm bài bằng `node --test`. Cần cài thêm **Node.js 22 trở lên** (https://nodejs.org; WSL: cài trong Ubuntu, vd. qua `nvm`) — kiểm tra bằng `node --version`.
-
-```bash
-./start.sh node        # WSL / Linux / macOS
-.\start.ps1 node       # Windows PowerShell
-```
-
-Mở **http://127.0.0.1:8200**. Lần đầu lệnh tự chạy `npm install` trong `academy/courses/node-realtime/`. Khóa Node chạy song song được với khóa AI (cổng 8100); bài làm và tiến độ của nó nằm riêng trong `academy/courses/node-realtime/workspace/` và `data/`.
+Khóa **Node.js & WebSocket** nằm chung trong app (chọn ở trang Thư viện khóa học), chấm bài bằng `node --test`. Để học khóa này cần cài thêm **Node.js 22 trở lên** (https://nodejs.org; WSL: cài trong Ubuntu, vd. qua `nvm`) — kiểm tra bằng `node --version`. Lần đầu, `./start.sh` / `.\start.ps1` tự chạy `npm install` cho mọi khóa có `package.json` mà chưa có `node_modules/`. Bài làm và tiến độ của khóa này nằm riêng trong `academy/courses/node-realtime/workspace/` và `data/`.
 
 ### Điền API key
 
@@ -118,7 +112,7 @@ Thay `nvapi-...` bằng key của bạn rồi lưu file (app và code các bài 
 
 ## 3. Một bài học diễn ra thế nào
 
-1. Mở app → chọn project trong **lộ trình** → đọc trang giới thiệu project.
+1. Mở app → chọn khóa ở **Thư viện khóa học** → chọn project trong **lộ trình** → đọc trang giới thiệu project.
 2. Vào bài → tab **Bối cảnh**: bài toán, các hàm cần viết, đầu ra để nghiệm thu.
 3. Bấm **Bắt đầu làm**: app tạo thư mục `academy/workspace/<mã-bài>/` chứa code khung.
 4. Mở thư mục đó bằng **VS Code** (app hiển thị sẵn lệnh `code ...` để copy), viết code vào chỗ có `# TODO`. Tab **Bài học** có kiến thức và từng bước; bí thì hỏi gia sư AI.
@@ -132,8 +126,9 @@ Thay `nvapi-...` bằng key của bạn rồi lưu file (app và code các bài 
 | `academy/workspace/` | Code bài làm của bạn |
 | `academy/data/` | Tiến độ (`progress.json`) |
 | `academy/cache/` | Cache các lần gọi LLM |
+| `academy/courses/<khóa>/workspace/`, `data/`, `cache/` | Như trên, cho từng khóa khác (vd. `node-realtime`) |
 
-Các thư mục này **không** được đưa lên Git (đã nằm trong `.gitignore`). Hãy **sao lưu** `academy/workspace/` và `academy/data/` (copy sang chỗ khác, hoặc tạo repo riêng cho code của bạn). Xóa chúng đồng nghĩa mất bài làm và tiến độ.
+Các thư mục này **không** được đưa lên Git (đã nằm trong `.gitignore`). Hãy **sao lưu** `academy/workspace/`, `academy/data/` (và `workspace/`, `data/` của các khóa trong `academy/courses/`) (copy sang chỗ khác, hoặc tạo repo riêng cho code của bạn). Xóa chúng đồng nghĩa mất bài làm và tiến độ.
 
 ## 5. Cấu trúc repo
 
@@ -142,8 +137,8 @@ setup.sh / setup.ps1     cài đặt một lệnh
 start.sh / start.ps1     chạy app một lệnh
 .env.example             mẫu file chứa API key
 academy/
-  curriculum/            giáo trình: roadmap.json + mỗi bài một thư mục (lesson.md, meta.json, starter/, tests/)
-  courses/node-realtime/ khóa Node.js & WebSocket: curriculum/, package.json (+ node_modules, workspace, data)
+  curriculum/            giáo trình khóa AI & Data: roadmap.json + mỗi bài một thư mục (lesson.md, meta.json, starter/, tests/)
+  courses/<khóa>/        mỗi khóa khác một thư mục, vd. node-realtime/: curriculum/, package.json (+ node_modules, workspace, data)
   datasets/              bộ dữ liệu tin tuyển dụng giả lập dùng trong các bài
   app/, web/             ứng dụng (FastAPI + JavaScript thuần)
 docs/design.md           thiết kế hệ thống và quy ước viết bài, dành cho giáo viên/người phát triển
@@ -156,8 +151,9 @@ Học sinh chỉ cần quan tâm `academy/` và hai file `setup`/`start`. Thư m
 
 | Triệu chứng | Cách xử lý |
 |---|---|
-| Cổng 8100 đang bị dùng (`address already in use`) | WSL: `PORT=8300 ./start.sh` · Windows: `.\start.ps1 -Port 8300`; rồi mở `http://127.0.0.1:8300` (khóa Node: `PORT=8300 ./start.sh node` · `.\start.ps1 node -Port 8300`) |
+| Cổng 8100 đang bị dùng (`address already in use`) | WSL: `PORT=8300 ./start.sh` · Windows: `.\start.ps1 -Port 8300`; rồi mở `http://127.0.0.1:8300` |
 | Khóa Node báo "Không tìm thấy lệnh `node`" | Cài Node.js 22+, mở lại terminal, kiểm tra `node --version` rồi chạy lại `start` |
+| Khóa Node báo "chưa cài thư viện Node" | Chạy lại `start` (tự `npm install`), hoặc `npm install` trong `academy/courses/<khóa>/` |
 | `python: command not found` / `python is not recognized` | Linux/WSL dùng `python3`; Windows thử `py -3` hoặc `python`. Trong `.venv` đã kích hoạt thì `python` luôn dùng được |
 | PowerShell: "running scripts is disabled" | `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`, đóng và mở lại PowerShell |
 | WSL: `ensurepip is not available` / lỗi tạo venv | `sudo apt install python3 python3-venv python3-pip` rồi `./setup.sh` |
@@ -171,6 +167,7 @@ Học sinh chỉ cần quan tâm `academy/` và hai file `setup`/`start`. Thư m
 
 ```bash
 cd academy && ../.venv/bin/python -m pytest tests_app -q     # Windows: ..\.venv\Scripts\python -m pytest tests_app -q
-./run.sh                                                    # chạy app chế độ dev (tự reload khi sửa code), cổng 8100
-./run.sh node                                               # như trên cho khóa Node.js & WebSocket, cổng 8200
+./run.sh                                                    # chạy app chế độ dev (tự reload khi sửa code), mọi khóa, cổng 8100
 ```
+
+**Thêm một khóa học:** tạo `academy/courses/<id>/curriculum/roadmap.json` (id: chữ thường, số, `-`) và các thư mục bài `curriculum/<mã-bài>/` (lesson.md, meta.json, starter/, tests/); khóa Node thêm `package.json` ở `academy/courses/<id>/`. Không cần khởi động lại server — khóa mới hiện ngay ở Thư viện khóa học. Chi tiết: `docs/design.md`.

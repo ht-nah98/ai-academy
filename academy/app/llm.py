@@ -85,7 +85,8 @@ def _call_with_retry(client, model, messages, params, sleep=time.sleep) -> str:
 
 
 def chat(messages: list[dict], model: str, temperature: float = 0.6,
-         use_cache: bool = False, max_tokens: int = 1500, client=None, sleep=time.sleep) -> str:
+         cache_dir: Path | None = None, max_tokens: int = 1500, client=None, sleep=time.sleep) -> str:
+    """cache_dir (cache LLM của khóa) → bật cache đĩa; None → không cache."""
     key = None
     if client is None:
         key = get_api_key()
@@ -93,8 +94,8 @@ def chat(messages: list[dict], model: str, temperature: float = 0.6,
             raise NoKeyError(NO_KEY_MSG)
     params = {"temperature": temperature, "max_tokens": max_tokens, "extra_body": NO_THINK}
     cpath = None
-    if use_cache:
-        cpath = config.cache_dir() / f"{_cache_key(model, messages, params)}.json"
+    if cache_dir is not None:
+        cpath = cache_dir / f"{_cache_key(model, messages, params)}.json"
         if cpath.exists():
             try:
                 return json.loads(cpath.read_text(encoding="utf-8"))["text"]
@@ -186,10 +187,11 @@ def build_tutor_messages(meta: dict, lesson_md: str, files: dict[str, str], mess
     return [{"role": "system", "content": system + "\n\n" + ctx}] + clean
 
 
-def grade(question: str, answer: str, client=None, sleep=time.sleep, language: str = "python") -> dict:
+def grade(question: str, answer: str, client=None, sleep=time.sleep, language: str = "python",
+          cache_dir: Path | None = None) -> dict:
     msgs = [{"role": "system", "content": GRADER_SYSTEM_NODE if language == "node" else GRADER_SYSTEM},
             {"role": "user", "content": f"Câu hỏi: {question}\n\nCâu trả lời của học sinh:\n{answer}"}]
-    text = chat(msgs, GRADER_MODEL, temperature=0.2, use_cache=True, max_tokens=1200, client=client, sleep=sleep)
+    text = chat(msgs, GRADER_MODEL, temperature=0.2, cache_dir=cache_dir, max_tokens=1200, client=client, sleep=sleep)
     try:
         d = parse_json(text)
     except ValueError as e:

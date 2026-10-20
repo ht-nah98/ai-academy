@@ -35,8 +35,9 @@ def _w(p, text):
 @pytest.fixture
 def node_env(tmp_path, monkeypatch):
     """Khóa Node tí hon: package.json "type": "module" ở gốc khóa (bao cả curriculum/ và workspace/)."""
-    _w(tmp_path / "package.json", json.dumps({"type": "module", "private": True}))
-    cur = tmp_path / "curriculum"
+    root = tmp_path / "courses" / "node-x"
+    _w(root / "package.json", json.dumps({"type": "module", "private": True}))
+    cur = root / "curriculum"
     roadmap = {"title": "Node.js & WebSocket", "language": "node",
                "projects": [{"id": "P1", "title": "P", "track": "Node", "lessons": [
                    {"id": "N01-calc", "title": "Calc", "goal": "g", "status": "ready"}]}]}
@@ -53,17 +54,17 @@ def node_env(tmp_path, monkeypatch):
     monkeypatch.setattr(llm, "_env_candidates", lambda: [tmp_path / "nope.env"])
     monkeypatch.delenv("NVIDIA_API_KEY", raising=False)
     from app.main import app
-    return tmp_path, TestClient(app)
+    return root, TestClient(app)
 
 
 def test_language_defaults_to_python(client):
-    rm = client.get("/api/roadmap").json()
+    rm = client.get("/api/c/ai/roadmap").json()
     assert rm["language"] == "python" and rm["title"] == "T"
 
 
 def test_roadmap_exposes_language_and_title(node_env):
     _, c = node_env
-    rm = c.get("/api/roadmap").json()
+    rm = c.get("/api/c/node-x/roadmap").json()
     assert (rm["language"], rm["title"]) == ("node", "Node.js & WebSocket")
     assert rm["concepts"] == [] and rm["concept_groups"] == []  # trường tùy chọn thiếu → mảng rỗng
 
@@ -71,8 +72,8 @@ def test_roadmap_exposes_language_and_title(node_env):
 @needs_node
 def test_node_fail_then_pass(node_env):
     root, c = node_env
-    assert c.post("/api/lessons/N01-calc/start").json()["created"] is True
-    r = c.post("/api/lessons/N01-calc/test").json()
+    assert c.post("/api/c/node-x/lessons/N01-calc/start").json()["created"] is True
+    r = c.post("/api/c/node-x/lessons/N01-calc/test").json()
     assert (r["passed"], r["failed"], r["total"], r["ok"], r["timeout"]) == (0, 2, 2, False, False)
     by = {t["name"]: t for t in r["tests"]}
     assert set(by) == {"add cộng hai số", "sub › trừ hai số"}  # test bị skip không tính
@@ -81,18 +82,18 @@ def test_node_fail_then_pass(node_env):
     assert "ℹ fail 2" in r["output"]
 
     (root / "workspace" / "N01-calc" / "calc.js").write_text(SOLUTION)
-    r = c.post("/api/lessons/N01-calc/test").json()
+    r = c.post("/api/c/node-x/lessons/N01-calc/test").json()
     assert (r["passed"], r["failed"], r["ok"]) == (2, 0, True)
     assert [t["outcome"] for t in r["tests"]] == ["passed", "passed"]
-    assert c.get("/api/lessons/N01-calc").json()["progress"]["passed"] is True
+    assert c.get("/api/c/node-x/lessons/N01-calc").json()["progress"]["passed"] is True
 
 
 @needs_node
 def test_node_syntax_error_is_error(node_env):
     root, c = node_env
-    c.post("/api/lessons/N01-calc/start")
+    c.post("/api/c/node-x/lessons/N01-calc/start")
     (root / "workspace" / "N01-calc" / "calc.js").write_text("export function add(a, b) { return a +\n")
-    r = c.post("/api/lessons/N01-calc/test").json()
+    r = c.post("/api/c/node-x/lessons/N01-calc/test").json()
     assert not r["ok"] and r["failed"] == 1
     assert r["tests"] == [{"name": "calc.test.js", "outcome": "error", "message": "SyntaxError: Unexpected end of input"}]
 
@@ -102,9 +103,9 @@ def test_node_timeout_kills_tree(node_env, monkeypatch):
     root, c = node_env
     from app import runner
     monkeypatch.setattr(runner, "TIMEOUT", 3)
-    c.post("/api/lessons/N01-calc/start")
+    c.post("/api/c/node-x/lessons/N01-calc/start")
     (root / "workspace" / "N01-calc" / "calc.js").write_text("while (true) {}\nexport const add = 1, sub = 1;\n")
-    r = c.post("/api/lessons/N01-calc/test").json()
+    r = c.post("/api/c/node-x/lessons/N01-calc/test").json()
     assert r["timeout"] is True and not r["ok"]
 
 
@@ -112,20 +113,21 @@ def test_missing_node_binary(node_env, monkeypatch):
     _, c = node_env
     from app import runner
     monkeypatch.setattr(runner.shutil, "which", lambda name: None)
-    c.post("/api/lessons/N01-calc/start")
-    r = c.post("/api/lessons/N01-calc/test")
+    c.post("/api/c/node-x/lessons/N01-calc/start")
+    r = c.post("/api/c/node-x/lessons/N01-calc/test")
     assert r.status_code == 400 and "Node.js" in r.json()["detail"]
 
 
 def test_workspace_files_include_js_skip_node_modules(node_env):
     root, c = node_env
-    c.post("/api/lessons/N01-calc/start")
+    c.post("/api/c/node-x/lessons/N01-calc/start")
     ws = root / "workspace" / "N01-calc"
     _w(ws / "public" / "index.html", "<h1>x</h1>")
     _w(ws / "node_modules" / "ws" / "index.js", "module.exports = 1")
     _w(ws / "package-lock.json", "{}")
+    from app import config
     from app.main import _workspace_files
-    assert sorted(_workspace_files("N01-calc")) == ["calc.js", "public/index.html"]
+    assert sorted(_workspace_files(config.get_course("node-x"), "N01-calc")) == ["calc.js", "public/index.html"]
 
 
 def test_tutor_and_grader_prompts_follow_language():

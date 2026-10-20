@@ -1,66 +1,73 @@
 # AI Academy — Thiết kế (trạng thái hiện tại)
 
-Nguồn sự thật: code trong `academy/app/`, `academy/web/app.js`, `academy/curriculum/`.
+Nguồn sự thật: code trong `academy/app/`, `academy/web/app.js`, `academy/curriculum/`, `academy/courses/`.
 
 ## 1. Mục đích & người học
+- AI Academy là **nền tảng nhiều khóa học**: một server (cổng 8100) phục vụ mọi khóa; trang đầu là Thư viện khóa học, mỗi khóa có lộ trình, bài làm và tiến độ riêng. Mục dưới mô tả khóa đầu tiên (AI & Data); khóa Node.js & WebSocket cùng khuôn, xây sản phẩm TeamPulse.
 - 1 học viên, chuẩn bị phỏng vấn thực tập AI Engineer / Data Engineer, lộ trình 3–4 tuần.
 - Học qua project: sản phẩm xuyên suốt **JobRadar** (làm sạch, lưu, phân tích, trích xuất bằng LLM, RAG, agent, triển khai).
 - Mỗi bài: đọc bối cảnh, viết code theo starter, chấm bằng test cục bộ, tự kiểm tra, luyện phỏng vấn với người chấm AI.
 - Chạy cục bộ; LLM dùng model miễn phí trên build.nvidia.com.
 
 ## 2. Kiến trúc
-FastAPI (`academy/app/`) phục vụ `/api/*` và SPA JS thuần (`academy/web/`, không build step). Chạy bằng `academy/run.sh` (hoặc `start.sh`/`start.ps1` ở gốc repo).
+FastAPI (`academy/app/`) phục vụ `/api/*` và SPA JS thuần (`academy/web/`, không build step). Chạy bằng `academy/run.sh` (hoặc `start.sh`/`start.ps1` ở gốc repo): một lệnh, không tham số khóa, cổng 8100 (tham số cũ như `node` được bỏ qua kèm thông báo). Các script này `npm install` cho mọi `academy/courses/<id>/` có `package.json` mà chưa có `node_modules/`.
 
 | Thư mục (`academy/`) | Vai trò |
 |---|---|
-| `curriculum/` | Nội dung bài, chỉ đọc: `roadmap.json` + `L*/{meta.json, lesson.md, starter/, tests/}` |
+| `curriculum/` | Nội dung bài khóa `ai`, chỉ đọc: `roadmap.json` + `L*/{meta.json, lesson.md, starter/, tests/}` |
 | `workspace/<lesson_id>/` | Code của học viên, copy từ `starter/` khi bấm "Bắt đầu" (không ghi đè nếu đã có) |
 | `data/progress.json` | Tiến độ (ghi nguyên tử qua file `.tmp`, có khóa luồng) |
 | `cache/llm/` | Cache lời gọi LLM: `<sha256>.json` |
+| `courses/<id>/` | Mỗi khóa khác: `curriculum/`, `workspace/`, `data/`, `cache/` cùng vai trò như trên (+ `package.json`, `node_modules/` nếu là khóa Node) |
 | `datasets/` | Dữ liệu tin tuyển dụng giả lập dùng trong bài |
 | `web/` | `index.html`, `app.js`, `style.css` |
 
-Đường dẫn đổi được bằng env: `ACADEMY_ROOT`, `ACADEMY_CURRICULUM`, `ACADEMY_WORKSPACE`, `ACADEMY_DATA`, `ACADEMY_CACHE` (`config.py`).
+### Nhiều khóa học (`config.py`)
+Khóa được dò lại ở mỗi request (vài lệnh `stat`, không cần khởi động lại khi thêm khóa) và truyền tường minh vào `curriculum`, `progress`, `runner`, `llm` dưới dạng `Course(id, root, curriculum, workspace, data, cache)`.
 
-### Nhiều khóa học
-Cùng một app phục vụ từng khóa một; khóa được chọn bằng 4 biến env ở trên, mỗi khóa một tiến trình, một cổng.
+| id | Thư mục | Ghi chú |
+|---|---|---|
+| `ai` | `academy/{curriculum,workspace,data,cache}` (vị trí cũ, giữ nguyên để không mất bài làm/tiến độ) | `ACADEMY_CURRICULUM`, `ACADEMY_WORKSPACE`, `ACADEMY_DATA`, `ACADEMY_CACHE` ghi đè riêng cho khóa này |
+| `<tên thư mục>` | `academy/courses/<id>/{curriculum,workspace,data,cache}` | là khóa khi có `curriculum/roadmap.json` |
 
-| Khóa | Lệnh | Cổng | Thư mục | `roadmap.language` |
-|---|---|---|---|---|
-| AI & Data (JobRadar) | `academy/run.sh` · `./start.sh` · `.\start.ps1` | 8100 | `academy/{curriculum,workspace,data,cache}` | không có = `python` |
-| Node.js & WebSocket | `academy/run.sh node` · `./start.sh node` · `.\start.ps1 node` | 8200 | `academy/courses/node-realtime/{curriculum,workspace,data,cache}` | `node` |
+- id hợp lệ: `^[a-z0-9][a-z0-9-]{0,63}$`; id sai định dạng hoặc không có `roadmap.json` → 404 `Không tìm thấy khóa học.` Thứ tự: `ai` trước, rồi theo tên thư mục. `ACADEMY_ROOT` đổi gốc (test dùng `tmp_path`), khóa được dò tương đối với gốc đó.
+- `courses/node-realtime/` có `package.json` (`"type": "module"`) và `node_modules/` (vd. `ws`) ở gốc khóa, nên cả `curriculum/<id>/tests/` lẫn `workspace/<id>/` đều là ESM và resolve được thư viện. Khóa Node có `dependencies` mà thiếu `node_modules/` → "Chạy test" trả 400 hướng dẫn `npm install`. `workspace/`, `data/`, `cache/`, `node_modules/` của mọi khóa bị `.gitignore`.
+- `language` (`curriculum.language(course)`) quyết định runner, prompt gia sư/chấm phỏng vấn, và chữ trên UI (lệnh chạy thử `node <entry>`, `// TODO`, nhãn "node --test"). `short_title` / `logo_mark` của roadmap đặt tên khóa ở logo, thẻ thư viện và `document.title` (`<short_title> · AI Academy`).
+- localStorage của các khóa chung một origin nên key theo khóa có tiền tố `c:<khóa>:` (`intro:<PID>`, `guide:<id>`, `steps:<id>`); khóa `ai` vẫn đọc key cũ không tiền tố để học viên không bị chuyển lại trang giới thiệu. `theme`, `sideHidden` dùng chung.
 
-- `courses/node-realtime/` có `package.json` (`"type": "module"`) và `node_modules/` (vd. `ws`) ở gốc khóa, nên cả `curriculum/<id>/tests/` lẫn `workspace/<id>/` đều là ESM và resolve được thư viện. `start.sh node`/`start.ps1 node` tự `npm install` nếu chưa có `node_modules/`. `workspace/`, `data/`, `cache/`, `node_modules/` của mọi khóa bị `.gitignore`.
-- `language` (`curriculum.language()`) quyết định runner, prompt gia sư/chấm phỏng vấn, và chữ trên UI (lệnh chạy thử `node <entry>`, `// TODO`, nhãn "node --test"). Khóa `node` còn đổi `document.title` và logo theo `title` / `short_title` / `logo_mark` của roadmap; khóa Python giữ nguyên "AI Academy".
-- localStorage tách theo origin (cổng), nên cờ `intro:<PID>`, `guide:<id>` của hai khóa không lẫn nhau.
+**Thêm một khóa:** tạo `academy/courses/<id>/curriculum/roadmap.json` (dạng ở mục 3) và các thư mục bài; khóa Node đặt `"language": "node"` và thêm `package.json` ở `academy/courses/<id>/`. Khóa hiện ngay ở `GET /api/courses` và trang `#/`.
 
 ### Luồng request
 1. Trình duyệt tải `/` → `render_index()` gắn `?v=<sha1[:10]>` nội dung file vào URL asset; mọi response mặc định `Cache-Control: no-cache`.
-2. SPA gọi `GET /api/roadmap` (cây project/bài, trạng thái, khái niệm đã học) và `GET /api/lessons/{id}` khi mở bài.
+2. Trang `#/` gọi `GET /api/courses`; vào khóa thì SPA gọi `GET /api/c/{course}/roadmap` (cây project/bài, trạng thái, khái niệm đã học) và `GET /api/c/{course}/lessons/{id}` khi mở bài.
 3. "Bắt đầu" → copy starter; "Chạy test" → `runner` chạy pytest trong workspace, lưu kết quả vào `progress.json`.
 4. Gia sư / chấm phỏng vấn → `llm.chat()` → cache đĩa → API NVIDIA.
 
 ### Route frontend (hash router, `app.js`)
 | Route | Nội dung |
 |---|---|
-| `#/` | Trang chủ: tiến độ, bản đồ khái niệm, timeline project, nút "Học tiếp" |
-| `#/project/<PID>` | Giới thiệu project: goal, deliverable, promise, can_do, showcase, cv_line, danh sách bài |
-| `#/lesson/<id>` | 3 tab: **Bối cảnh** (nếu có `meta.brief`), **Bài học** (lesson.md + code + chạy test + gia sư), **Phỏng vấn thử** |
+| `#/` | Thư viện khóa học: mỗi khóa một thẻ (logo, tên, sản phẩm + tagline, số project/bài, thanh tiến độ, nút "Tiếp tục"/"Bắt đầu") |
+| `#/c/<khóa>/` | Trang chủ khóa: tiến độ, bản đồ khái niệm, timeline project, nút "Học tiếp" |
+| `#/c/<khóa>/project/<PID>` | Giới thiệu project: goal, deliverable, promise, can_do, showcase, cv_line, danh sách bài |
+| `#/c/<khóa>/lesson/<id>` | 3 tab: **Bối cảnh** (nếu có `meta.brief`), **Bài học** (lesson.md + code + chạy test + gia sư), **Phỏng vấn thử** |
 
-Lần đầu mở bài đầu tiên của một project chưa học (chưa có cờ `intro:<PID>` trong localStorage) → tự chuyển sang trang giới thiệu project. Bài `planned` không có link. Tab mặc định: Bối cảnh khi chưa bắt đầu, Bài học khi đã bắt đầu.
+Hash cũ `#/lesson/<id>`, `#/project/<PID>` chuyển sang `#/c/ai/...`. Trong khóa, sidebar có link "← Tất cả khóa học" và tên khóa. Lần đầu mở bài đầu tiên của một project chưa học (chưa có cờ `intro:<PID>` của khóa trong localStorage) → tự chuyển sang trang giới thiệu project. Bài `planned` không có link. Tab mặc định: Bối cảnh khi chưa bắt đầu, Bài học khi đã bắt đầu.
 
 ### API (`app/main.py`)
 | Method | Path | Mục đích |
 |---|---|---|
-| GET | `/api/roadmap` | Roadmap + `status`, `product_nodes`, `duration_min` mỗi bài; `learned`/`lessons` mỗi concept; `title`, `language`, `summary`, `workspace_root`, `platform`, `has_key`. Thiếu `concepts`/`concept_groups`/`concept_edges`/`projects` → `[]` |
-| GET | `/api/lessons/{id}` | `meta`, `markdown`, `workspace_path`, `workspace_exists`, `status`, `progress` (checklist, last_test, passed). 404 nếu không có bài |
-| POST | `/api/lessons/{id}/start` | Copy starter → workspace, đặt `started`. 403 nếu locked/planned |
-| POST | `/api/lessons/{id}/test` | Chạy pytest hoặc `node --test` (theo `language`); `passed=true` khi `ok`. 400 nếu chưa có workspace/test hoặc thiếu `node`; 403 nếu locked |
-| POST | `/api/lessons/{id}/checklist` | Body `{index, done}`; 400 nếu index ngoài phạm vi |
-| POST | `/api/lessons/{id}/unlock` | Mở khóa thủ công, trả `{status}` |
-| POST | `/api/tutor` | Body `{lesson_id, messages}` → gia sư Socratic |
-| POST | `/api/interview/grade` | Body `{lesson_id, question, answer}` → `{score, strengths, gaps, better_answer}`; 400 nếu answer rỗng |
+| GET | `/api/courses` | `[{id, title, short_title, logo_mark, language, product_name, tagline, projects, lessons, passed, in_progress, planned}]` — `lessons` = số bài không `planned` |
+| GET | `/api/c/{course}/roadmap` | Roadmap + `status`, `product_nodes`, `duration_min` mỗi bài; `learned`/`lessons` mỗi concept; `course`, `title`, `short_title`, `logo_mark`, `language`, `summary`, `workspace_root`, `platform`, `has_key`. Thiếu `concepts`/`concept_groups`/`concept_edges`/`projects` → `[]` |
+| GET | `/api/c/{course}/lessons/{id}` | `meta`, `markdown`, `workspace_path`, `workspace_exists`, `status`, `progress` (checklist, last_test, passed). 404 nếu không có bài |
+| POST | `/api/c/{course}/lessons/{id}/start` | Copy starter → workspace của khóa, đặt `started`. 403 nếu locked/planned |
+| POST | `/api/c/{course}/lessons/{id}/test` | Chạy pytest hoặc `node --test` (theo `language`); `passed=true` khi `ok`. 400 nếu chưa có workspace/test, thiếu `node` hoặc thiếu `node_modules`; 403 nếu locked |
+| POST | `/api/c/{course}/lessons/{id}/checklist` | Body `{index, done}`; 400 nếu index ngoài phạm vi |
+| POST | `/api/c/{course}/lessons/{id}/unlock` | Mở khóa thủ công, trả `{status}` |
+| POST | `/api/c/{course}/tutor` | Body `{lesson_id, messages}` → gia sư Socratic |
+| POST | `/api/c/{course}/interview/grade` | Body `{lesson_id, question, answer}` → `{score, strengths, gaps, better_answer}`; 400 nếu answer rỗng |
 | GET | `/`, `/index.html` | Trang SPA; còn lại là `StaticFiles` của `web/` |
+
+Khóa không tồn tại → 404. Route cũ không có khóa (`/api/roadmap`, `/api/lessons/…`, `/api/tutor`, `/api/interview/grade`) là alias của khóa `ai` (middleware viết lại path).
 
 Lỗi LLM: thiếu key → 503 `{error, no_key: true}`; lỗi gọi model → 502.
 
@@ -69,7 +76,7 @@ Lỗi LLM: thiếu key → 503 `{error, no_key: true}`; lỗi gọi model → 50
 ```
 title
 language?: "python" | "node"                 # mặc định python
-short_title?, logo_mark?                      # chỉ khóa node: chữ ở logo/hero (mặc định title, "JS")
+short_title?, logo_mark?                      # tên ngắn ở logo/thẻ thư viện/tiêu đề tab (mặc định title), chữ logo (mặc định "AI" / "JS" theo language)
 product?: {name, tagline, problem, pains[], questions[], promise}   # khối giới thiệu sản phẩm ở trang chủ
 concept_groups: [{id, title}]                 # python, llm, data, rag, agent, ops
 concepts:       [{id, title, group}]          # API thêm learned, lessons
@@ -159,7 +166,7 @@ Qua bài = `ok` (returncode 0, không fail, ≥1 test pass). Khái niệm `learn
 | Dự phòng | `z-ai/glm-5.3-flash` | Khi model chính lỗi sau 4 lần thử |
 
 - Client OpenAI-compatible tới `https://integrate.api.nvidia.com/v1`, tắt thinking. Retry với backoff `2^n` giây cho 429, 5xx, lỗi mạng.
-- Cache: khóa `sha256(model + messages + params)` trong `cache/llm/`; chỉ chấm điểm bật cache.
+- Cache: khóa `sha256(model + messages + params)` trong `cache/llm/` của khóa học (`chat(cache_dir=...)`); chỉ chấm điểm bật cache.
 - **API key**: biến môi trường `NVIDIA_API_KEY` hoặc dòng `NVIDIA_API_KEY=nvapi-...` trong `.env` ở gốc repo (còn đọc `academy/.env` cho bản cũ). Giá trị mẫu chứa `...` bị coi là chưa có key.
 - **Không có key**: app vẫn chạy; roadmap trả `has_key: false`; `/api/tutor` và `/api/interview/grade` trả 503 kèm hướng dẫn tiếng Việt.
 
@@ -192,8 +199,9 @@ Qua bài = `ok` (returncode 0, không fail, ≥1 test pass). Khái niệm `learn
 cd academy && python3 -m pytest tests_app -q
 ```
 
-- `test_api.py`: API, trạng thái/mở khóa, thiếu key, brief/workflow (cả `meta.json` thật), asset hash.
+- `test_courses.py`: `/api/courses` liệt kê khóa Python + khóa Node, tiến độ/workspace/cache tách theo khóa (cùng id bài ở hai khóa), id khóa sai/lạ/traversal → 404, alias route cũ, thiếu `node_modules`, ghi đè thư mục khóa `ai` bằng env.
+- `test_api.py`: API (route `/api/c/ai/...`), trạng thái/mở khóa, thiếu key, brief/workflow (cả `meta.json` thật), asset hash.
 - `test_llm.py`: retry, fallback, cache, parse JSON, key. `test_runner.py`: pass/fail, junit, roadmap concept.
-- `test_node.py`: khóa Node tí hon trong `tmp_path` (package.json `"type": "module"`, 1 bài, starter sai → đúng), chạy `node --test` thật qua API: tên/thông báo junit, `describe` lồng, lỗi cú pháp, timeout, thiếu `node`, file gửi gia sư, `language` mặc định `python`. Bỏ qua nếu máy không có `node`.
-- `conftest.py` dựng curriculum tạm trong `tmp_path` qua `ACADEMY_ROOT`; không gọi mạng.
+- `test_node.py`: khóa Node tí hon trong `tmp_path/courses/node-x/` (package.json `"type": "module"`, 1 bài, starter sai → đúng), chạy `node --test` thật qua API: tên/thông báo junit, `describe` lồng, lỗi cú pháp, timeout, thiếu `node`, file gửi gia sư, `language` mặc định `python`. Bỏ qua nếu máy không có `node`.
+- `conftest.py` dựng khóa `ai` tạm trong `tmp_path` qua `ACADEMY_ROOT`; không gọi mạng.
 - Test của từng bài (`curriculum/L*/tests/`) chạy qua nút "Chạy test" trong app, không thuộc lệnh trên.

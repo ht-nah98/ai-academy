@@ -1,18 +1,18 @@
-"""Tiến độ lưu ở data/progress.json."""
+"""Tiến độ của mỗi khóa lưu ở <data của khóa>/progress.json."""
 import json
 import threading
 
-from . import config
+from .config import Course
 
 _lock = threading.Lock()
 
 
-def _path():
-    return config.data_dir() / "progress.json"
+def _path(course: Course):
+    return course.data / "progress.json"
 
 
-def load() -> dict:
-    p = _path()
+def load(course: Course) -> dict:
+    p = _path(course)
     if not p.exists():
         return {"lessons": {}}
     try:
@@ -23,28 +23,28 @@ def load() -> dict:
     return data
 
 
-def save(data: dict) -> None:
-    p = _path()
+def save(course: Course, data: dict) -> None:
+    p = _path(course)
     p.parent.mkdir(parents=True, exist_ok=True)
     tmp = p.with_suffix(".tmp")
     tmp.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
     tmp.replace(p)
 
 
-def update(lesson_id: str, **fields) -> dict:
+def update(course: Course, lesson_id: str, **fields) -> dict:
     with _lock:
-        data = load()
+        data = load(course)
         entry = data["lessons"].setdefault(lesson_id, {})
         entry.update(fields)
-        save(data)
+        save(course, data)
         return entry
 
 
-def set_checklist(lesson_id: str, index: int, done: bool) -> dict:
+def set_checklist(course: Course, lesson_id: str, index: int, done: bool) -> dict:
     with _lock:
-        data = load()
+        data = load(course)
         entry = data["lessons"].setdefault(lesson_id, {})
         cl = entry.setdefault("checklist", {})
         cl[str(index)] = bool(done)
-        save(data)
+        save(course, data)
         return entry

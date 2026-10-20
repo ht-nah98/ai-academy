@@ -54,8 +54,8 @@ def test_non_retryable_goes_straight_to_fallback():
 
 def test_cache_used_for_grading(env):
     c = FakeClient(['{"score": 15, "strengths": "ok", "gaps": [], "better_answer": "z"}'])
-    g1 = llm.grade("q", "a", client=c)
-    g2 = llm.grade("q", "a", client=FakeClient([]))  # nếu gọi mạng sẽ lỗi pop rỗng
+    g1 = llm.grade("q", "a", client=c, cache_dir=env / "cache" / "llm")
+    g2 = llm.grade("q", "a", client=FakeClient([]), cache_dir=env / "cache" / "llm")  # nếu gọi mạng sẽ lỗi pop rỗng
     assert g1 == g2 and g1["score"] == 10 and g1["strengths"] == ["ok"]
     assert list((env / "cache" / "llm").glob("*.json"))
 
