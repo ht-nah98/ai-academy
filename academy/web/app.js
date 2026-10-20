@@ -68,7 +68,9 @@ matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { if
 
 /* ---------- Markdown → UI (callout, mermaid, code + kết quả) ---------- */
 const CALLOUTS = [["💡", "tip"], ["⚠️", "warn"], ["⚠", "warn"], ["🧠", "remember"], ["🎯", "interview"], ["⚖️", "compare"], ["⚖", "compare"]];
-const LANG = { py: "python", python: "python", python3: "python", sh: "bash", bash: "bash", shell: "bash", console: "bash", zsh: "bash", json: "json" };
+const LANG = { py: "python", python: "python", python3: "python", sh: "bash", bash: "bash", shell: "bash", console: "bash", zsh: "bash", json: "json",
+  js: "javascript", javascript: "javascript", mjs: "javascript", cjs: "javascript", node: "javascript", html: "xml", xml: "xml" };
+const LANG_LABEL = { python: "Python", bash: "Terminal", json: "JSON", javascript: "JavaScript", xml: "HTML" };
 let mermaidReady = false;
 function initMermaid() {
   if (!window.mermaid) return;
@@ -164,7 +166,7 @@ function enhance(root) {
     box.className = "codebox";
     const head = document.createElement("div");
     head.className = "codehead";
-    head.innerHTML = `<span>${esc(lang ? { python: "Python", bash: "Terminal", json: "JSON" }[lang] : (raw || "Code"))}</span>`;
+    head.innerHTML = `<span>${esc(lang ? LANG_LABEL[lang] : (raw || "Code"))}</span>`;
     head.appendChild(copyBtn(() => code.textContent));
     pre.replaceWith(box); box.append(head, pre);
   });
@@ -231,7 +233,16 @@ function splitH3(body) {
 }
 
 /* ---------- Sidebar ---------- */
-async function loadRoadmap() { roadmap = await api("/roadmap"); renderSidebar(); }
+async function loadRoadmap() { roadmap = await api("/roadmap"); applyCourse(); renderSidebar(); }
+const isNode = () => roadmap && roadmap.language === "node";
+const productName = () => (roadmap.product && roadmap.product.name) || "";
+function applyCourse() { // tiêu đề tab + logo theo khóa học (khóa Python giữ nguyên "AI Academy")
+  if (!isNode()) return;
+  document.title = roadmap.title;
+  const mark = $(".logo-mark"), name = $(".logo > span:last-child");
+  if (mark) mark.textContent = roadmap.logo_mark || "JS";
+  if (name) name.textContent = roadmap.short_title || roadmap.title;
+}
 function renderSidebar() {
   const s = roadmap.summary;
   $("#overall-bar").style.width = (s.total ? (100 * s.passed) / s.total : 0) + "%";
@@ -306,8 +317,8 @@ function showHome() {
     <section class="hero">
       <div class="hero-main">
         <p class="eyebrow">${greet} 👋</p>
-        <h1>Học AI & Data<br>từng bước một.</h1>
-        <p class="hero-sub">${roadmap.product && roadmap.product.name ? `Bằng cách tự tay xây <b>${esc(roadmap.product.name)}</b>, trợ lý thị trường việc làm IT, qua ${roadmap.projects.length} project.` : esc(roadmap.title)}</p>
+        <h1>${isNode() ? `${esc(roadmap.short_title || roadmap.title)}<br>từng bước một.` : "Học AI & Data<br>từng bước một."}</h1>
+        <p class="hero-sub">${productName() ? `Bằng cách tự tay xây <b>${esc(productName())}</b>${isNode() ? "" : ", trợ lý thị trường việc làm IT,"} qua ${roadmap.projects.length} project.` : esc(roadmap.title)}</p>
         <div class="hero-stats">
           <div class="ring-wrap">${ring(pct)}<div class="ring-txt"><b>${pct}%</b><small>hoàn thành</small></div></div>
           <ul class="mini-stats">
@@ -332,7 +343,7 @@ function showHome() {
       <ol class="timeline">${projs}</ol>
     </section>
     ${roadmap.product_map && (roadmap.product_map.nodes || []).length ? `<section class="sec">
-      <div class="sec-head"><h2>Sản phẩm JobRadar bạn đang xây</h2>
+      <div class="sec-head"><h2>${productName() ? `Sản phẩm ${esc(productName())} bạn đang xây` : "Sản phẩm bạn đang xây"}</h2>
         <p class="sec-note"><i class="pk done">✓</i> đã xây <i class="pk hl"></i> bài tiếp theo xây</p></div>
       <div class="pmap-card home-map"><div class="pmap" id="home-map"></div></div>
     </section>` : ""}
@@ -648,7 +659,7 @@ function renderStatus() {
   const locked = lesson.status === "locked", started = lesson.workspace_exists;
   const lt = lesson.progress.last_test, passedLesson = lesson.progress.passed;
   const cmd = /\s/.test(lesson.workspace_path) ? `code "${lesson.workspace_path}"` : `code ${lesson.workspace_path}`;
-  const pyCmd = m.entry ? `${roadmap.platform === "windows" ? "python" : "python3"} ${esc(m.entry)}` : "";
+  const runCmd = !m.entry ? "" : isNode() ? `node ${esc(m.entry)}` : `${roadmap.platform === "windows" ? "python" : "python3"} ${esc(m.entry)}`;
   const entry = m.entry ? `<code>${esc(m.entry)}</code>` : "file code khung";
   let head, sub;
   if (locked) { head = "🔒 Bài đang khóa"; sub = "Hoàn thành bài trước để mở, hoặc mở khóa thủ công."; }
@@ -672,8 +683,8 @@ function renderStatus() {
     <details class="more howto"${started ? "" : " open"}><summary>Cách làm bài (4 bước)</summary>
       <ol class="howto-list">
         <li><b>Bắt đầu</b> — app tạo thư mục bài và code khung.</li>
-        <li>Mở thư mục bằng <b>VS Code</b>, mở ${entry}${pyCmd ? ` (chạy thử: <code>${pyCmd}</code>)` : ""}.</li>
-        <li>Viết code vào chỗ <code># TODO</code>, xem tab <b>Hướng dẫn</b> khi bí.</li>
+        <li>Mở thư mục bằng <b>VS Code</b>, mở ${entry}${runCmd ? ` (chạy thử: <code>${runCmd}</code>)` : ""}.</li>
+        <li>Viết code vào chỗ <code>${isNode() ? "// TODO" : "# TODO"}</code>, xem tab <b>Hướng dẫn</b> khi bí.</li>
         <li><b>Chạy test</b> — đạt hết là qua bài, mở bài tiếp.</li></ol></details>
   </div>`;
   const c = $(".cmd", host); if (c) c.appendChild(copyBtn(() => cmd));
@@ -696,7 +707,7 @@ function renderStatus() {
       const msg = $("#runmsg");
       if (r.timeout) msg.innerHTML = `<p class="err">${esc(r.output)}</p>`;
       else if (!r.ok && r.output) {
-        msg.innerHTML = `<details class="more out"><summary>Xem chi tiết pytest</summary><pre class="output">${esc(r.output)}</pre></details>`;
+        msg.innerHTML = `<details class="more out"><summary>Xem chi tiết ${isNode() ? "node --test" : "pytest"}</summary><pre class="output">${esc(r.output)}</pre></details>`;
       }
     } catch (e) { $("#runmsg").innerHTML = `<p class="err">${esc(e.message)}</p>`; rt.disabled = false; rt.textContent = "▶ Chạy test"; }
   };
@@ -1020,7 +1031,7 @@ function drawPmap(host, opts) {
   host.style.position = "relative"; host.style.height = H + "px";
   host.classList.toggle("tight", lr && nh === 80);
   host.setAttribute("role", "img");
-  host.setAttribute("aria-label", `Sơ đồ sản phẩm JobRadar: ${nodes.length} khối` + (hl.size ? `; bài này xây: ${nodes.filter((n) => hl.has(n.id)).map((n) => n.title).join(", ")}` : "") + (done.size ? `; đã xây: ${nodes.filter((n) => done.has(n.id)).map((n) => n.title).join(", ")}` : ""));
+  host.setAttribute("aria-label", `Sơ đồ sản phẩm ${productName()}: ${nodes.length} khối` + (hl.size ? `; bài này xây: ${nodes.filter((n) => hl.has(n.id)).map((n) => n.title).join(", ")}` : "") + (done.size ? `; đã xây: ${nodes.filter((n) => done.has(n.id)).map((n) => n.title).join(", ")}` : ""));
   host.innerHTML = `<svg class="pm-edges" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="position:absolute;left:0;top:0;overflow:visible" aria-hidden="true">
       <defs>${["", "hl", "done"].map((c) => `<marker id="${uid}-ah${c}" viewBox="0 -4 8 8" refX="5" refY="0" markerWidth="7" markerHeight="7" markerUnits="userSpaceOnUse" orient="auto"><path d="M0,-4L8,0L0,4" class="pm-ah ${c}" fill="#8A94A3"/></marker>`).join("")}</defs>
       ${edges.map((e) => { const c = eCls(e); return `<path class="pm-e ${c}" d="${path(e)}" fill="none" stroke="#8A94A3" stroke-width="1.5" marker-end="url(#${uid}-ah${c})"/>`; }).join("")}</svg>`

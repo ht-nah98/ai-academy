@@ -1,0 +1,128 @@
+{
+  "id": "N04-chat-realtime",
+  "title": "Chat realtime: broadcast, giao thức, presence",
+  "goal": "Viết server chat nhiều người: giao thức JSON có kiểm tra, broadcast, tên, vào/ra, danh sách online; qua hết 13 test và chat được giữa hai tab.",
+  "duration_min": 150,
+  "concepts": [
+    "broadcast",
+    "message-protocol",
+    "presence"
+  ],
+  "entry": "chat.js",
+  "checklist": [
+    "Vẽ lại được bảng giao thức: client gửi gì, server gửi gì, ai nhận",
+    "Giải thích được vì sao mọi tin vào phải qua một hàm kiểm tra không ném lỗi",
+    "Phân biệt gửi cho một người, cho mọi người, cho mọi người trừ một người",
+    "Biết vì sao chỉ gửi cho kết nối có readyState OPEN",
+    "Giải thích được vì sao dọn dẹp đặt ở sự kiện close (code 1000/1001/1006)",
+    "Dùng Map với khóa là object; biết .sort() sửa tại chỗ",
+    "Chat được giữa hai tab, thấy thông báo vào/ra và danh sách online đúng",
+    "Qua hết test của bài"
+  ],
+  "interview_questions": [
+    "Bạn thiết kế giao thức tin nhắn JSON cho chat WebSocket thế nào? Vì sao cần trường type?",
+    "Client gửi JSON hỏng hoặc dữ liệu sai kiểu thì server xử lý ra sao? Điều gì xảy ra nếu không xử lý?",
+    "Broadcast là gì? Làm sao gửi cho mọi người trừ người gửi?",
+    "Vì sao phải kiểm tra readyState trước khi send?",
+    "Làm sao biết một người đã rời phòng? Client mất mạng đột ngột thì server biết khi nào?",
+    "Bạn lưu trạng thái 'kết nối này là ai' ở đâu? Vì sao dùng Map thay vì object thường?",
+    "XSS trong ứng dụng chat là gì? Phòng tránh thế nào ở phía giao diện?",
+    "Chạy hai instance server chat sau load balancer thì người ở hai server có thấy tin của nhau không? Giải quyết thế nào?"
+  ],
+  "tutor_notes": "Học viên vừa làm echo server (N03). Nhấn mạnh: WebSocket chỉ chuyển byte, ý nghĩa nằm ở giao thức JSON tự định nghĩa. Lần đầu dùng Map/Set và spread. Liên hệ Python: Map ~ dict nhưng khóa là object; Set ~ set; [...x] ~ list(x). Lỗi hay gặp: (1) parseClientMessage ném lỗi với JSON hỏng, quên kiểm tra mảng/null, kiểm tra độ dài trước khi trim, giữ lại khóa thừa, so type không phân biệt hoa thường (JOIN phải là unknown_type); (2) broadcast stringify trong vòng lặp, quên except, gửi cho client không OPEN, không trả số lượng; (3) createChatServer gửi joined trước khi lưu tên (users thiếu người mới), gửi joined cho cả người vừa vào, broadcast chat qua wss.clients nên người chưa join cũng nhận, so trùng tên phân biệt hoa thường, quên xoá tên ở close (tên bị giữ mãi), báo left cho người chưa join, đóng kết nối khi tin hỏng, users không sort; (4) quên ws.on('error'). Khi chạy thật: hai tab cùng trình duyệt vẫn là hai kết nối riêng; EADDRINUSE → PORT=3003 npm start. Không viết hộ thân hàm.",
+  "tasks": [
+    {
+      "fn": "parseClientMessage",
+      "signature": "parseClientMessage(raw)",
+      "summary": "Kiểm tra tin join/chat, trả {ok, msg} hoặc {ok, error}",
+      "example": "'{hỏng' → { ok: false, error: 'invalid_json' }",
+      "test_prefix": "parseClientMessage"
+    },
+    {
+      "fn": "broadcast",
+      "signature": "broadcast(clients, payload, except = null)",
+      "summary": "Gửi JSON cho mọi client OPEN trừ except, trả số đã gửi",
+      "example": "3 client, 1 except, 1 CLOSED → 1",
+      "test_prefix": "broadcast"
+    },
+    {
+      "fn": "createChatServer",
+      "signature": "createChatServer() → http.Server",
+      "summary": "Trang / + /ws: join, chat, left, mã lỗi",
+      "example": "An join → Binh nhận {type: 'joined', name: 'An', ...}",
+      "test_prefix": "createChatServer"
+    }
+  ],
+  "brief": {
+    "context": "TeamPulse có echo server WebSocket (N03): mỗi kết nối chỉ nói chuyện với chính nó, không có tên, không biết ai đang online.",
+    "problem": "Đội cần một phòng chat chung: tin của một người hiện ngay trên màn hình mọi người, biết ai vào, ai ra, ai đang online. Server phục vụ mọi người trên một tiến trình: một tin JSON hỏng hay một client rớt mạng không được làm sập phòng hoặc để lại tên 'ma' trong danh sách online.",
+    "requirements": [
+      {
+        "task": "parseClientMessage",
+        "purpose": "Cửa kiểm tra duy nhất cho mọi tin client gửi lên."
+      },
+      {
+        "task": "broadcast",
+        "purpose": "Gửi một tin cho cả phòng, bỏ qua kết nối đã đóng."
+      },
+      {
+        "task": "createChatServer",
+        "purpose": "Phòng chat có tên, vào/ra, danh sách online, mã lỗi rõ ràng."
+      }
+    ],
+    "deliverable": "chat.js qua 13/13 test; hai tab trình duyệt chat được với nhau, đóng một tab thì tab kia thấy thông báo rời phòng.",
+    "constraints": [
+      "Tin sai trả {type: error}, không đóng kết nối.",
+      "Tên không trùng, so không phân biệt hoa thường.",
+      "Chỉ người đã join nhận chat, joined, left.",
+      "Dọn dẹp ở sự kiện close, kể cả mất kết nối đột ngột."
+    ],
+    "product_nodes": [
+      "ws-gateway",
+      "chat-protocol",
+      "presence",
+      "web-ui"
+    ],
+    "workflow": {
+      "flow": "chain",
+      "inputs": [
+        {
+          "label": "Frame từ nhiều client",
+          "detail": "JSON join/chat, có thể hỏng"
+        },
+        {
+          "label": "Sự kiện close",
+          "detail": "Đóng tab hoặc mất mạng"
+        }
+      ],
+      "steps": [
+        {
+          "task": "parseClientMessage",
+          "label": "Kiểm tra tin đầu vào"
+        },
+        {
+          "task": "broadcast",
+          "label": "Gửi cho mọi kết nối mở"
+        },
+        {
+          "task": "createChatServer",
+          "label": "Join, chat, rời phòng"
+        }
+      ],
+      "outputs": [
+        {
+          "label": "Tin chat tới cả phòng",
+          "detail": "from, text, ts"
+        },
+        {
+          "label": "Thông báo vào/ra",
+          "detail": "Kèm danh sách online A→Z"
+        },
+        {
+          "label": "Mã lỗi cho người gửi",
+          "detail": "invalid_json, name_taken, not_joined..."
+        }
+      ]
+    }
+  }
+}

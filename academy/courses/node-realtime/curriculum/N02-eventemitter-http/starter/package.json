@@ -1,0 +1,10 @@
+{
+  "name": "teampulse-n02",
+  "private": true,
+  "type": "module",
+  "description": "TeamPulse — bài N02: REST API tin nhắn",
+  "scripts": {
+    "start": "node api.js",
+    "test": "node --test \"../../curriculum/N02-eventemitter-http/tests/*.test.js\""
+  }
+}

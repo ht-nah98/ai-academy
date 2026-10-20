@@ -95,6 +95,17 @@ Mở trình duyệt tại **http://127.0.0.1:8100**. Dừng app: `Ctrl+C`.
 
 > Ghi chú: `setup` chạy lại nhiều lần vẫn an toàn (không ghi đè `.env`, không cài lại `.venv`).
 
+### Mở khóa Node.js & WebSocket
+
+App có khóa thứ hai, **Node.js & WebSocket**, chấm bài bằng `node --test`. Cần cài thêm **Node.js 22 trở lên** (https://nodejs.org; WSL: cài trong Ubuntu, vd. qua `nvm`) — kiểm tra bằng `node --version`.
+
+```bash
+./start.sh node        # WSL / Linux / macOS
+.\start.ps1 node       # Windows PowerShell
+```
+
+Mở **http://127.0.0.1:8200**. Lần đầu lệnh tự chạy `npm install` trong `academy/courses/node-realtime/`. Khóa Node chạy song song được với khóa AI (cổng 8100); bài làm và tiến độ của nó nằm riêng trong `academy/courses/node-realtime/workspace/` và `data/`.
+
 ### Điền API key
 
 File `.env` (ở thư mục gốc repo) có một dòng:
@@ -132,6 +143,7 @@ start.sh / start.ps1     chạy app một lệnh
 .env.example             mẫu file chứa API key
 academy/
   curriculum/            giáo trình: roadmap.json + mỗi bài một thư mục (lesson.md, meta.json, starter/, tests/)
+  courses/node-realtime/ khóa Node.js & WebSocket: curriculum/, package.json (+ node_modules, workspace, data)
   datasets/              bộ dữ liệu tin tuyển dụng giả lập dùng trong các bài
   app/, web/             ứng dụng (FastAPI + JavaScript thuần)
 docs/design.md           thiết kế hệ thống và quy ước viết bài, dành cho giáo viên/người phát triển
@@ -144,7 +156,8 @@ Học sinh chỉ cần quan tâm `academy/` và hai file `setup`/`start`. Thư m
 
 | Triệu chứng | Cách xử lý |
 |---|---|
-| Cổng 8100 đang bị dùng (`address already in use`) | WSL: `PORT=8200 ./start.sh` · Windows: `.\start.ps1 -Port 8200`; rồi mở `http://127.0.0.1:8200` |
+| Cổng 8100 đang bị dùng (`address already in use`) | WSL: `PORT=8300 ./start.sh` · Windows: `.\start.ps1 -Port 8300`; rồi mở `http://127.0.0.1:8300` (khóa Node: `PORT=8300 ./start.sh node` · `.\start.ps1 node -Port 8300`) |
+| Khóa Node báo "Không tìm thấy lệnh `node`" | Cài Node.js 22+, mở lại terminal, kiểm tra `node --version` rồi chạy lại `start` |
 | `python: command not found` / `python is not recognized` | Linux/WSL dùng `python3`; Windows thử `py -3` hoặc `python`. Trong `.venv` đã kích hoạt thì `python` luôn dùng được |
 | PowerShell: "running scripts is disabled" | `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`, đóng và mở lại PowerShell |
 | WSL: `ensurepip is not available` / lỗi tạo venv | `sudo apt install python3 python3-venv python3-pip` rồi `./setup.sh` |
@@ -158,5 +171,6 @@ Học sinh chỉ cần quan tâm `academy/` và hai file `setup`/`start`. Thư m
 
 ```bash
 cd academy && ../.venv/bin/python -m pytest tests_app -q     # Windows: ..\.venv\Scripts\python -m pytest tests_app -q
-./run.sh                                                    # chạy app chế độ dev (tự reload khi sửa code)
+./run.sh                                                    # chạy app chế độ dev (tự reload khi sửa code), cổng 8100
+./run.sh node                                               # như trên cho khóa Node.js & WebSocket, cổng 8200
 ```

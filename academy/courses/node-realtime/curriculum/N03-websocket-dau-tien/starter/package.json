@@ -1,0 +1,11 @@
+{
+  "name": "teampulse-n03",
+  "private": true,
+  "type": "module",
+  "description": "TeamPulse — bài N03: polling vs WebSocket, echo server",
+  "scripts": {
+    "start": "node echo.js",
+    "measure": "node measure.js",
+    "test": "node --test \"../../curriculum/N03-websocket-dau-tien/tests/*.test.js\""
+  }
+}

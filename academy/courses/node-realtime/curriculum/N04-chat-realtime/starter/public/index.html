@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TeamPulse Chat</title>
+  <style>
+    :root { --bg: #f5f6f8; --card: #fff; --line: #dde1e6; --text: #1d2228; --muted: #6b7480; --me: #0b5cad; --accent: #127a3a; }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); }
+    header { padding: 12px 16px; border-bottom: 1px solid var(--line); background: var(--card); display: flex; gap: 12px; align-items: center; }
+    header h1 { font-size: 18px; margin: 0; }
+    #status { font-size: 13px; color: var(--muted); }
+    main { display: grid; grid-template-columns: 1fr 200px; gap: 12px; padding: 12px 16px; max-width: 960px; margin: 0 auto; }
+    @media (max-width: 640px) { main { grid-template-columns: 1fr; } }
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; }
+    #log { height: 60vh; overflow-y: auto; padding: 10px; }
+    .msg { margin: 4px 0; line-height: 1.45; word-wrap: break-word; }
+    .msg .from { font-weight: 600; } .msg.me .from { color: var(--me); }
+    .msg .ts { color: var(--muted); font-size: 12px; margin-right: 6px; }
+    .notice { color: var(--muted); font-style: italic; font-size: 14px; margin: 4px 0; }
+    .err { color: #b42318; font-size: 14px; margin: 4px 0; }
+    aside { padding: 10px; } aside h2 { font-size: 14px; margin: 0 0 8px; }
+    #users { list-style: none; padding: 0; margin: 0; } #users li { padding: 3px 0; } #users li::before { content: "● "; color: var(--accent); }
+    form { display: flex; gap: 8px; padding: 10px; border-top: 1px solid var(--line); }
+    input { flex: 1; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-size: 15px; min-width: 0; }
+    button { padding: 8px 14px; border: 0; border-radius: 6px; background: var(--me); color: #fff; font-size: 15px; cursor: pointer; }
+    button:disabled, input:disabled { opacity: .5; }
+  </style>
+</head>
+<body>
+  <header><h1>TeamPulse</h1><span id="status">Đang kết nối…</span></header>
+  <main>
+    <section class="card">
+      <div id="log"></div>
+      <form id="join"><input id="name" placeholder="Tên của bạn (tối đa 20 ký tự)" maxlength="40" autocomplete="off"><button>Vào phòng</button></form>
+      <form id="say" hidden><input id="text" placeholder="Nhập tin rồi Enter" autocomplete="off"><button>Gửi</button></form>
+    </section>
+    <aside class="card"><h2>Đang online (<span id="count">0</span>)</h2><ul id="users"></ul></aside>
+  </main>
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const log = $('log');
+    let myName = null;
+
+    function add(cls, parts) {
+      const div = document.createElement('div');
+      div.className = cls;
+      for (const [c, t] of parts) {
+        const span = document.createElement('span');
+        if (c) span.className = c;
+        span.textContent = t;          // textContent, không innerHTML → không bị chèn HTML/JS
+        div.appendChild(span);
+      }
+      log.appendChild(div);
+      log.scrollTop = log.scrollHeight;
+    }
+    function showUsers(users) {
+      $('count').textContent = users.length;
+      $('users').replaceChildren(...users.map((u) => Object.assign(document.createElement('li'), { textContent: u })));
+    }
+    const ERRORS = {
+      invalid_json: 'Tin không phải JSON hợp lệ', unknown_type: 'Loại tin không hỗ trợ',
+      invalid_name: 'Tên phải từ 1 đến 20 ký tự', invalid_text: 'Tin phải từ 1 đến 500 ký tự',
+      name_taken: 'Tên này đã có người dùng', not_joined: 'Bạn chưa vào phòng', already_joined: 'Bạn đã vào phòng rồi',
+    };
+
+    const ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws');
+    ws.addEventListener('open', () => { $('status').textContent = 'Đã kết nối — chọn tên để vào phòng'; });
+    ws.addEventListener('close', (e) => {
+      $('status').textContent = `Mất kết nối (code ${e.code}). Tải lại trang để vào lại.`;
+      for (const el of document.querySelectorAll('input, button')) el.disabled = true;
+    });
+    ws.addEventListener('message', (e) => {
+      const m = JSON.parse(e.data);
+      if (m.type === 'welcome') {
+        myName = m.name;
+        $('status').textContent = `Bạn là ${m.name}`;
+        $('join').hidden = true; $('say').hidden = false; $('text').focus();
+        add('notice', [[null, `Bạn đã vào phòng. Đang online: ${m.users.join(', ')}`]]);
+        showUsers(m.users);
+      } else if (m.type === 'joined') {
+        add('notice', [[null, `${m.name} vừa vào phòng`]]); showUsers(m.users);
+      } else if (m.type === 'left') {
+        add('notice', [[null, `${m.name} đã rời phòng`]]); showUsers(m.users);
+      } else if (m.type === 'chat') {
+        const time = new Date(m.ts).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+        add(m.from === myName ? 'msg me' : 'msg', [['ts', time], ['from', m.from + ': '], [null, m.text]]);
+      } else if (m.type === 'error') {
+        add('err', [[null, '⚠ ' + (ERRORS[m.error] || m.error)]]);
+      }
+    });
+    $('join').addEventListener('submit', (e) => {
+      e.preventDefault();
+      ws.send(JSON.stringify({ type: 'join', name: $('name').value }));
+    });
+    $('say').addEventListener('submit', (e) => {
+      e.preventDefault();
+      if (!$('text').value.trim()) return;
+      ws.send(JSON.stringify({ type: 'chat', text: $('text').value }));
+      $('text').value = '';
+    });
+  </script>
+</body>
+</html>

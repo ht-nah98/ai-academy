@@ -22,6 +22,18 @@ FastAPI (`academy/app/`) phục vụ `/api/*` và SPA JS thuần (`academy/web/`
 
 Đường dẫn đổi được bằng env: `ACADEMY_ROOT`, `ACADEMY_CURRICULUM`, `ACADEMY_WORKSPACE`, `ACADEMY_DATA`, `ACADEMY_CACHE` (`config.py`).
 
+### Nhiều khóa học
+Cùng một app phục vụ từng khóa một; khóa được chọn bằng 4 biến env ở trên, mỗi khóa một tiến trình, một cổng.
+
+| Khóa | Lệnh | Cổng | Thư mục | `roadmap.language` |
+|---|---|---|---|---|
+| AI & Data (JobRadar) | `academy/run.sh` · `./start.sh` · `.\start.ps1` | 8100 | `academy/{curriculum,workspace,data,cache}` | không có = `python` |
+| Node.js & WebSocket | `academy/run.sh node` · `./start.sh node` · `.\start.ps1 node` | 8200 | `academy/courses/node-realtime/{curriculum,workspace,data,cache}` | `node` |
+
+- `courses/node-realtime/` có `package.json` (`"type": "module"`) và `node_modules/` (vd. `ws`) ở gốc khóa, nên cả `curriculum/<id>/tests/` lẫn `workspace/<id>/` đều là ESM và resolve được thư viện. `start.sh node`/`start.ps1 node` tự `npm install` nếu chưa có `node_modules/`. `workspace/`, `data/`, `cache/`, `node_modules/` của mọi khóa bị `.gitignore`.
+- `language` (`curriculum.language()`) quyết định runner, prompt gia sư/chấm phỏng vấn, và chữ trên UI (lệnh chạy thử `node <entry>`, `// TODO`, nhãn "node --test"). Khóa `node` còn đổi `document.title` và logo theo `title` / `short_title` / `logo_mark` của roadmap; khóa Python giữ nguyên "AI Academy".
+- localStorage tách theo origin (cổng), nên cờ `intro:<PID>`, `guide:<id>` của hai khóa không lẫn nhau.
+
 ### Luồng request
 1. Trình duyệt tải `/` → `render_index()` gắn `?v=<sha1[:10]>` nội dung file vào URL asset; mọi response mặc định `Cache-Control: no-cache`.
 2. SPA gọi `GET /api/roadmap` (cây project/bài, trạng thái, khái niệm đã học) và `GET /api/lessons/{id}` khi mở bài.
@@ -40,10 +52,10 @@ Lần đầu mở bài đầu tiên của một project chưa học (chưa có c
 ### API (`app/main.py`)
 | Method | Path | Mục đích |
 |---|---|---|
-| GET | `/api/roadmap` | Roadmap + `status`, `product_nodes`, `duration_min` mỗi bài; `learned`/`lessons` mỗi concept; `summary`, `workspace_root`, `platform`, `has_key` |
+| GET | `/api/roadmap` | Roadmap + `status`, `product_nodes`, `duration_min` mỗi bài; `learned`/`lessons` mỗi concept; `title`, `language`, `summary`, `workspace_root`, `platform`, `has_key`. Thiếu `concepts`/`concept_groups`/`concept_edges`/`projects` → `[]` |
 | GET | `/api/lessons/{id}` | `meta`, `markdown`, `workspace_path`, `workspace_exists`, `status`, `progress` (checklist, last_test, passed). 404 nếu không có bài |
 | POST | `/api/lessons/{id}/start` | Copy starter → workspace, đặt `started`. 403 nếu locked/planned |
-| POST | `/api/lessons/{id}/test` | Chạy pytest; `passed=true` khi `ok`. 400 nếu chưa có workspace/test; 403 nếu locked |
+| POST | `/api/lessons/{id}/test` | Chạy pytest hoặc `node --test` (theo `language`); `passed=true` khi `ok`. 400 nếu chưa có workspace/test hoặc thiếu `node`; 403 nếu locked |
 | POST | `/api/lessons/{id}/checklist` | Body `{index, done}`; 400 nếu index ngoài phạm vi |
 | POST | `/api/lessons/{id}/unlock` | Mở khóa thủ công, trả `{status}` |
 | POST | `/api/tutor` | Body `{lesson_id, messages}` → gia sư Socratic |
@@ -56,6 +68,9 @@ Lỗi LLM: thiếu key → 503 `{error, no_key: true}`; lỗi gọi model → 50
 ### `curriculum/roadmap.json`
 ```
 title
+language?: "python" | "node"                 # mặc định python
+short_title?, logo_mark?                      # chỉ khóa node: chữ ở logo/hero (mặc định title, "JS")
+product?: {name, tagline, problem, pains[], questions[], promise}   # khối giới thiệu sản phẩm ở trang chủ
 concept_groups: [{id, title}]                 # python, llm, data, rag, agent, ops
 concepts:       [{id, title, group}]          # API thêm learned, lessons
 concept_edges:  [[from_id, to_id], ...]
@@ -118,15 +133,29 @@ Duyệt phẳng các bài theo thứ tự lộ trình:
 Qua bài = `ok` (returncode 0, không fail, ≥1 test pass). Khái niệm `learned` = hợp `meta.concepts` của các bài đã `passed`.
 
 ### Chấm test (`runner.py`)
+**Python** (mặc định)
 - `python -m pytest curriculum/<id>/tests` với `cwd = workspace/<id>`, `PYTHONPATH` có workspace; timeout 60 giây (`timeout: true`).
 - Trả `{passed, failed, total, ok, timeout, tests[{name, outcome, message}], output}`; `tests` đọc từ junitxml, bỏ test bị skip; `output` cắt tối đa 6000 ký tự, message tối đa 300.
 - Test không được gọi mạng: dùng client giả, đồng hồ giả.
 
+**Node** (`language: "node"`)
+- `node --test --test-force-exit --test-reporter=junit --test-reporter-destination=<tmp>/report.xml --test-reporter=spec --test-reporter-destination=stdout curriculum/<id>/tests/*.test.js`, `cwd = workspace/<id>`, env `NODE_ENV=test`, `FORCE_COLOR=0`, `NO_COLOR=1`; timeout 60 giây, chạy trong process group riêng và giết cả cây khi quá giờ. Không có `node` → 400 với hướng dẫn cài Node.js ≥ 22.
+- Cùng dạng kết quả như Python. `passed/failed` đếm từ junit (không đọc text); `output` là bản spec.
+- Ánh xạ junit của Node 22: `name` = tên `test()`; test trong `describe('X')` thành `X › tên test` (nên `tasks[].test_prefix` khớp được theo tên describe); test `skip`/`todo` bị bỏ. `message` = dòng đầu của thông báo assert (vd. `assert.equal(a, b, 'add(1, 2) phải trả 3')` → `add(1, 2) phải trả 3`); thông báo tự sinh kết thúc bằng `:` được nối dòng sau (`Expected values to be strictly equal: 0 !== 3`).
+- File test không nạp được (lỗi cú pháp, thiếu export trong code học viên): node báo 1 testcase mang tên đường dẫn file → `{name: "<file>.test.js", outcome: "error", message: "SyntaxError: ..."}` (dòng lỗi đầu tiên trong output).
+
+**Quy ước test khóa Node**
+- File `curriculum/<id>/tests/*.test.js`, ESM (`import`), chỉ dùng `node:test` + `node:assert/strict` (+ thư viện trong `node_modules` của khóa, vd. `ws`).
+- Nạp code học viên theo `process.cwd()`: `const mod = await import(pathToFileURL(join(process.cwd(), '<entry>')).href);` (`pathToFileURL` từ `node:url`, `join` từ `node:path`).
+- Mỗi assert có thông báo tiếng Việt ngắn ở tham số cuối; tên test bắt đầu bằng `tasks[].test_prefix` (hoặc nằm trong `describe('<test_prefix>')`).
+- Server HTTP/WebSocket trong test: `listen(0, '127.0.0.1')` (cổng ngẫu nhiên, chỉ loopback), đọc cổng từ `server.address().port`, đóng mọi socket/server trong `after()`/`t.after()`. Không gọi mạng ngoài.
+- Starter: giữ `export function ...` + JSDoc nêu đủ yêu cầu test kiểm tra, thân `throw new Error('TODO')` hoặc giá trị rỗng có `// TODO`.
+
 ### Gia sư AI & chấm phỏng vấn (`llm.py`)
 | Việc | Model | Ghi chú |
 |---|---|---|
-| Gia sư (`/api/tutor`) | `nvidia/nemotron-3-super-120b-a12b` | Socratic, ~120 chữ, không viết code hàm bài tập; ngữ cảnh = meta + lesson.md + file workspace (cắt 6000 ký tự), 20 tin nhắn cuối |
-| Chấm phỏng vấn | `nvidia/nemotron-3-ultra-550b-a55b`, `temperature=0.2` | JSON `{score 0–10, strengths, gaps, better_answer}`, cache đĩa |
+| Gia sư (`/api/tutor`) | `nvidia/nemotron-3-super-120b-a12b` | Socratic, ~120 chữ, không viết code hàm bài tập; ngữ cảnh = meta + lesson.md + file workspace (`.py .js .mjs .cjs .html .css .json .md .txt .sql .yaml`, bỏ `node_modules/`, `package-lock.json`; cắt 6000 ký tự), 20 tin nhắn cuối. Prompt hệ thống theo `language` (`TUTOR_SYSTEM` / `TUTOR_SYSTEM_NODE`) |
+| Chấm phỏng vấn | `nvidia/nemotron-3-ultra-550b-a55b`, `temperature=0.2` | JSON `{score 0–10, strengths, gaps, better_answer}`, cache đĩa; vai người phỏng vấn theo `language` (`GRADER_SYSTEM` / `GRADER_SYSTEM_NODE`) |
 | Dự phòng | `z-ai/glm-5.3-flash` | Khi model chính lỗi sau 4 lần thử |
 
 - Client OpenAI-compatible tới `https://integrate.api.nvidia.com/v1`, tắt thinking. Retry với backoff `2^n` giây cho 429, 5xx, lỗi mạng.
@@ -165,5 +194,6 @@ cd academy && python3 -m pytest tests_app -q
 
 - `test_api.py`: API, trạng thái/mở khóa, thiếu key, brief/workflow (cả `meta.json` thật), asset hash.
 - `test_llm.py`: retry, fallback, cache, parse JSON, key. `test_runner.py`: pass/fail, junit, roadmap concept.
+- `test_node.py`: khóa Node tí hon trong `tmp_path` (package.json `"type": "module"`, 1 bài, starter sai → đúng), chạy `node --test` thật qua API: tên/thông báo junit, `describe` lồng, lỗi cú pháp, timeout, thiếu `node`, file gửi gia sư, `language` mặc định `python`. Bỏ qua nếu máy không có `node`.
 - `conftest.py` dựng curriculum tạm trong `tmp_path` qua `ACADEMY_ROOT`; không gọi mạng.
 - Test của từng bài (`curriculum/L*/tests/`) chạy qua nút "Chạy test" trong app, không thuộc lệnh trên.

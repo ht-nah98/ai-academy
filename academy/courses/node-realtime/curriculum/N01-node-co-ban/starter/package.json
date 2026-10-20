@@ -1,0 +1,9 @@
+{
+  "name": "teampulse-n01",
+  "private": true,
+  "type": "module",
+  "description": "TeamPulse — bài N01: đọc log chat",
+  "scripts": {
+    "test": "node --test \"../../curriculum/N01-node-co-ban/tests/*.test.js\""
+  }
+}

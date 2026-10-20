@@ -1,0 +1,575 @@
+{
+  "title": "TeamPulse — Node.js & WebSocket qua sản phẩm thật",
+  "short_title": "Node.js & WebSocket",
+  "language": "node",
+  "product": {
+    "name": "TeamPulse",
+    "tagline": "Dịch vụ chat nhóm và thông báo realtime cho đội nội bộ: tin nhắn, ai đang online, thông báo \"đơn hàng mới\" hay \"build xong\" hiện ngay trên màn hình mọi người, không cần bấm F5.",
+    "problem": "Web truyền thống chạy theo kiểu hỏi–đáp: trình duyệt hỏi, server mới được trả lời. Server có tin mới cũng không tự gửi được. Cách chữa cháy phổ biến là polling: cứ 1 giây hỏi lại một lần. Đo thật trên máy (1 client, 10 tin trong 20 giây): polling 1 giây gửi 21 request, 52% trả về rỗng, tin đến trễ trung bình 0,42 giây; giãn ra 3 giây thì trễ trung bình 1,34 giây. WebSocket giữ 1 kết nối, server đẩy tin ngay: trễ dưới 1 ms, tổng 837 byte so với 8.641 byte của polling.",
+    "pains": [
+      {
+        "title": "HTTP không đẩy được tin",
+        "detail": "Server chỉ trả lời khi được hỏi. Tin nhắn mới nằm chờ cho tới request kế tiếp."
+      },
+      {
+        "title": "Polling tốn và vẫn chậm",
+        "detail": "Polling 1 giây: 21 request trong 20 giây, 11 request rỗng. 100 người online = 6.000 request/phút chỉ để hỏi \"có gì mới không\"."
+      },
+      {
+        "title": "Realtime có nhiều chỗ dễ sai",
+        "detail": "JSON hỏng, client rớt mạng, trùng tên, gửi cho người đã thoát — không xử lý thì server sập hoặc rò bộ nhớ."
+      }
+    ],
+    "questions": [
+      {
+        "q": "Node chờ đọc file/mạng thì có đứng hình không?",
+        "a": "Không: 3 lần chờ 1 giây chạy song song xong sau 1,0 giây thay vì 3,0",
+        "project": "P0"
+      },
+      {
+        "q": "Làm API JSON trả đúng mã lỗi thế nào?",
+        "a": "POST /messages → 201; JSON hỏng → 400; sai route → 404; sai method → 405",
+        "project": "P0"
+      },
+      {
+        "q": "Polling tốn bao nhiêu so với WebSocket?",
+        "a": "20 giây: polling 21 request, 8.641 byte, trễ 0,42 s; WebSocket 837 byte, trễ dưới 1 ms",
+        "project": "P1"
+      },
+      {
+        "q": "WebSocket bắt tay với HTTP ra sao?",
+        "a": "GET + Upgrade: websocket → 101 Switching Protocols, Sec-WebSocket-Accept tính bằng SHA-1",
+        "project": "P1"
+      },
+      {
+        "q": "Làm sao gửi tin cho mọi người trong phòng?",
+        "a": "Broadcast tới mọi client OPEN, có thông báo vào/ra và danh sách online",
+        "project": "P1"
+      },
+      {
+        "q": "Mất mạng thì sao? Chạy nhiều server thì sao?",
+        "a": "Heartbeat, tự kết nối lại, xác thực token, Redis pub/sub",
+        "project": "P2"
+      }
+    ],
+    "promise": {
+      "headline": "Một server chat realtime bằng Node.js chạy thật trên trình duyệt, và bạn giải thích được từng byte đi qua kết nối WebSocket.",
+      "outcomes": [
+        {
+          "title": "Một project chạy được",
+          "detail": "TeamPulse: REST API tin nhắn + WebSocket gateway + giao diện chat web, có test tự động bằng node --test."
+        },
+        {
+          "title": "Nền Node.js vững",
+          "detail": "ESM, npm, Promise/async-await, event loop, fs/promises, EventEmitter, module http không dùng framework."
+        },
+        {
+          "title": "Hiểu WebSocket tận gốc",
+          "detail": "Polling vs push đo bằng số, handshake 101 tự tính, sự kiện open/message/close/error, frame text/binary, readyState, broadcast."
+        },
+        {
+          "title": "Sẵn sàng đi làm và phỏng vấn",
+          "detail": "32 câu hỏi phỏng vấn Node intern đã luyện; đọc được code WebSocket của công ty và debug bằng DevTools."
+        }
+      ],
+      "note": "P0–P1 đã có bài; P2 (heartbeat, Socket.IO, auth, Redis, test) đang soạn."
+    }
+  },
+  "concept_groups": [
+    {
+      "id": "node",
+      "title": "Nền tảng Node.js"
+    },
+    {
+      "id": "http",
+      "title": "HTTP & API"
+    },
+    {
+      "id": "realtime",
+      "title": "Realtime & WebSocket"
+    },
+    {
+      "id": "ops",
+      "title": "Vận hành & mở rộng"
+    }
+  ],
+  "concepts": [
+    {
+      "id": "node-runtime",
+      "title": "Node runtime, chạy file",
+      "group": "node"
+    },
+    {
+      "id": "esm-modules",
+      "title": "ESM import/export",
+      "group": "node"
+    },
+    {
+      "id": "npm-package-json",
+      "title": "npm & package.json",
+      "group": "node"
+    },
+    {
+      "id": "js-array-methods",
+      "title": "Vòng lặp & map/filter/reduce",
+      "group": "node"
+    },
+    {
+      "id": "promise-async",
+      "title": "Promise & async/await",
+      "group": "node"
+    },
+    {
+      "id": "event-loop",
+      "title": "Event loop, I/O không chặn",
+      "group": "node"
+    },
+    {
+      "id": "fs-promises",
+      "title": "Đọc/ghi file với fs/promises",
+      "group": "node"
+    },
+    {
+      "id": "event-emitter",
+      "title": "EventEmitter",
+      "group": "http"
+    },
+    {
+      "id": "http-server",
+      "title": "http.createServer, req/res",
+      "group": "http"
+    },
+    {
+      "id": "http-routing-status",
+      "title": "Route & mã trạng thái HTTP",
+      "group": "http"
+    },
+    {
+      "id": "json-api",
+      "title": "JSON API, đọc body",
+      "group": "http"
+    },
+    {
+      "id": "http-polling",
+      "title": "HTTP polling",
+      "group": "realtime"
+    },
+    {
+      "id": "websocket-handshake",
+      "title": "Handshake Upgrade/101",
+      "group": "realtime"
+    },
+    {
+      "id": "ws-events",
+      "title": "Sự kiện open/message/close/error",
+      "group": "realtime"
+    },
+    {
+      "id": "ws-frames",
+      "title": "Frame text/binary, DevTools WS",
+      "group": "realtime"
+    },
+    {
+      "id": "ready-state",
+      "title": "readyState của kết nối",
+      "group": "realtime"
+    },
+    {
+      "id": "broadcast",
+      "title": "Broadcast tới nhiều client",
+      "group": "realtime"
+    },
+    {
+      "id": "message-protocol",
+      "title": "Giao thức tin nhắn JSON {type}",
+      "group": "realtime"
+    },
+    {
+      "id": "presence",
+      "title": "Vào/ra & danh sách online",
+      "group": "realtime"
+    },
+    {
+      "id": "heartbeat-ping-pong",
+      "title": "Heartbeat ping/pong",
+      "group": "ops"
+    },
+    {
+      "id": "reconnect-backoff",
+      "title": "Tự kết nối lại có backoff",
+      "group": "ops"
+    },
+    {
+      "id": "socketio-rooms-ack",
+      "title": "Socket.IO: room, ack",
+      "group": "ops"
+    },
+    {
+      "id": "ws-auth-token",
+      "title": "Xác thực token khi handshake",
+      "group": "ops"
+    },
+    {
+      "id": "redis-pubsub-scaling",
+      "title": "Mở rộng bằng Redis pub/sub",
+      "group": "ops"
+    },
+    {
+      "id": "ws-testing-debugging",
+      "title": "Test & debug realtime",
+      "group": "ops"
+    }
+  ],
+  "concept_edges": [
+    [
+      "node-runtime",
+      "esm-modules"
+    ],
+    [
+      "node-runtime",
+      "npm-package-json"
+    ],
+    [
+      "esm-modules",
+      "npm-package-json"
+    ],
+    [
+      "node-runtime",
+      "js-array-methods"
+    ],
+    [
+      "node-runtime",
+      "promise-async"
+    ],
+    [
+      "promise-async",
+      "event-loop"
+    ],
+    [
+      "promise-async",
+      "fs-promises"
+    ],
+    [
+      "event-loop",
+      "event-emitter"
+    ],
+    [
+      "event-emitter",
+      "http-server"
+    ],
+    [
+      "http-server",
+      "http-routing-status"
+    ],
+    [
+      "http-server",
+      "json-api"
+    ],
+    [
+      "json-api",
+      "http-polling"
+    ],
+    [
+      "http-polling",
+      "websocket-handshake"
+    ],
+    [
+      "http-server",
+      "websocket-handshake"
+    ],
+    [
+      "websocket-handshake",
+      "ws-events"
+    ],
+    [
+      "event-emitter",
+      "ws-events"
+    ],
+    [
+      "ws-events",
+      "ws-frames"
+    ],
+    [
+      "ws-events",
+      "ready-state"
+    ],
+    [
+      "ready-state",
+      "broadcast"
+    ],
+    [
+      "json-api",
+      "message-protocol"
+    ],
+    [
+      "broadcast",
+      "presence"
+    ],
+    [
+      "message-protocol",
+      "presence"
+    ],
+    [
+      "ws-events",
+      "heartbeat-ping-pong"
+    ],
+    [
+      "heartbeat-ping-pong",
+      "reconnect-backoff"
+    ],
+    [
+      "broadcast",
+      "socketio-rooms-ack"
+    ],
+    [
+      "websocket-handshake",
+      "ws-auth-token"
+    ],
+    [
+      "broadcast",
+      "redis-pubsub-scaling"
+    ],
+    [
+      "ws-events",
+      "ws-testing-debugging"
+    ]
+  ],
+  "product_map": {
+    "nodes": [
+      {
+        "id": "runtime",
+        "title": "Node runtime & file log"
+      },
+      {
+        "id": "event-bus",
+        "title": "Bus sự kiện (EventEmitter)"
+      },
+      {
+        "id": "rest-api",
+        "title": "REST API tin nhắn"
+      },
+      {
+        "id": "polling",
+        "title": "Polling (cách cũ, để so sánh)"
+      },
+      {
+        "id": "ws-gateway",
+        "title": "WebSocket gateway"
+      },
+      {
+        "id": "chat-protocol",
+        "title": "Giao thức tin nhắn JSON"
+      },
+      {
+        "id": "presence",
+        "title": "Ai đang online"
+      },
+      {
+        "id": "web-ui",
+        "title": "Giao diện chat web"
+      },
+      {
+        "id": "heartbeat",
+        "title": "Heartbeat & kết nối lại"
+      },
+      {
+        "id": "auth",
+        "title": "Xác thực khi handshake"
+      },
+      {
+        "id": "scaling",
+        "title": "Nhiều server, Redis pub/sub"
+      }
+    ],
+    "edges": [
+      [
+        "runtime",
+        "event-bus"
+      ],
+      [
+        "event-bus",
+        "rest-api"
+      ],
+      [
+        "rest-api",
+        "polling"
+      ],
+      [
+        "rest-api",
+        "ws-gateway"
+      ],
+      [
+        "event-bus",
+        "ws-gateway"
+      ],
+      [
+        "ws-gateway",
+        "chat-protocol"
+      ],
+      [
+        "chat-protocol",
+        "presence"
+      ],
+      [
+        "presence",
+        "web-ui"
+      ],
+      [
+        "chat-protocol",
+        "web-ui"
+      ],
+      [
+        "ws-gateway",
+        "heartbeat"
+      ],
+      [
+        "auth",
+        "ws-gateway"
+      ],
+      [
+        "ws-gateway",
+        "scaling"
+      ]
+    ]
+  },
+  "projects": [
+    {
+      "id": "P0",
+      "title": "Node nền tảng",
+      "track": "Node",
+      "brief": {
+        "goal": "Chạy JavaScript ngoài trình duyệt và hiểu vì sao Node phục vụ được nhiều kết nối cùng lúc.",
+        "deliverable": "Module đọc log chat từ file và REST API tin nhắn viết bằng module http thuần, có test node --test.",
+        "promise": "Sau 2 bài, bạn có một API tin nhắn chạy thật: POST để gửi, GET để đọc, trả đúng mã 201/400/404/405, và giải thích được event loop khi bị hỏi.",
+        "can_do": [
+          "Chạy file .js bằng node, tổ chức code bằng import/export, quản lý thư viện bằng npm",
+          "Viết async/await, chạy song song bằng Promise.all, đặt timeout cho việc chờ",
+          "Đọc/ghi file bằng fs/promises và xử lý file không tồn tại",
+          "Viết HTTP server không framework: route, status code, đọc body JSON, phát sự kiện bằng EventEmitter"
+        ],
+        "showcase": {
+          "caption": "Hai chương trình bạn viết, chạy thật",
+          "markdown": "```output\n$ npm start                       # N01 — chatlog.js\nĐọc 12 dòng, hợp lệ 9 tin\nTheo người gửi: { an: 4, binh: 2, chi: 2, dung: 1 }\n3 lần delay(300) song song: 300 ms\nwithTimeout(delay(1000), 200) → lỗi \"timeout\" sau 201 ms\n\n$ curl -X POST http://127.0.0.1:3000/messages -d '{\"user\":\"an\",\"text\":\"Deploy lúc 10h\"}'\n{\"id\":1,\"user\":\"an\",\"text\":\"Deploy lúc 10h\",\"ts\":\"2026-10-20T06:17:32.494Z\"}\n$ curl -X POST http://127.0.0.1:3000/messages -d '{\"user\":\"an\",\"text\":'\n{\"error\":\"Body không phải JSON hợp lệ\"}\n$ curl -i -X DELETE http://127.0.0.1:3000/messages\nHTTP/1.1 405 Method Not Allowed\nAllow: GET, POST\n{\"error\":\"Method DELETE không được hỗ trợ\"}\n```"
+        },
+        "cv_line": "Xây REST API tin nhắn bằng Node.js (module http, không framework): routing, mã trạng thái, đọc body JSON có giới hạn, EventEmitter; test bằng node:test."
+      },
+      "lessons": [
+        {
+          "id": "N01-node-co-ban",
+          "title": "Node cơ bản: module, npm, async, event loop",
+          "goal": "Viết module đọc log chat từ file bằng async/await, có timeout; qua hết test.",
+          "status": "ready"
+        },
+        {
+          "id": "N02-eventemitter-http",
+          "title": "EventEmitter & HTTP server: mô hình hỏi–đáp",
+          "goal": "Viết REST API tin nhắn bằng module http, đúng route và mã trạng thái; qua hết test.",
+          "status": "ready"
+        }
+      ]
+    },
+    {
+      "id": "P1",
+      "title": "Realtime với WebSocket",
+      "track": "Realtime",
+      "brief": {
+        "goal": "Cho server chủ động đẩy tin tới trình duyệt ngay khi có, thay vì để trình duyệt hỏi liên tục.",
+        "deliverable": "Server chat realtime: echo server, phòng chat nhiều người có tên, vào/ra, danh sách online, giao diện web.",
+        "promise": "Sau 2 bài, bạn mở 2 tab trình duyệt, gõ ở tab này và tin hiện ngay ở tab kia; bạn tự tính được Sec-WebSocket-Accept bằng tay và chỉ ra từng frame trong DevTools.",
+        "can_do": [
+          "Đo được polling tốn bao nhiêu request và trễ bao lâu so với WebSocket",
+          "Giải thích handshake: Upgrade, 101 Switching Protocols, Sec-WebSocket-Key/Accept",
+          "Xử lý sự kiện open/message/close/error, frame text và binary, readyState",
+          "Thiết kế giao thức tin nhắn JSON có kiểm tra dữ liệu, broadcast, presence; chịu được JSON hỏng và client rớt mạng"
+        ],
+        "showcase": {
+          "caption": "Handshake tự tính, rồi chat giữa hai client (chạy thật)",
+          "markdown": "```output\n$ npm run measure                 # N03 — 20 giây, 10 tin\nPolling 1000 ms : 21 request, 11 rỗng (52%), nhận 10/10, trễ TB 416 ms, tối đa 769 ms, 8641 byte\nWebSocket      : 1 kết nối, nhận 10/10, trễ TB 0 ms, tối đa 1 ms, 837 byte (gồm cả handshake)\n\nHTTP/1.1 101 Switching Protocols\nUpgrade: websocket\nConnection: Upgrade\nSec-WebSocket-Accept: s3pPLMBiTxaQ9kYGzzhZRbK+xOo=\ncomputeAccept(key) = s3pPLMBiTxaQ9kYGzzhZRbK+xOo=\n\n# N04 — chat.js, hai client\nAn   → {\"type\":\"join\",\"name\":\"An\"}\nAn   ← {\"type\":\"welcome\",\"name\":\"An\",\"users\":[\"An\"]}\nBinh → {\"type\":\"join\",\"name\":\"an\"}\nBinh ← {\"type\":\"error\",\"error\":\"name_taken\"}\nBinh → {\"type\":\"join\",\"name\":\"Binh\"}\nAn   ← {\"type\":\"joined\",\"name\":\"Binh\",\"users\":[\"An\",\"Binh\"]}\nAn   → {\"type\":\"chat\",\"text\":\"Deploy lúc 10h nhé\"}\nBinh ← {\"type\":\"chat\",\"from\":\"An\",\"text\":\"Deploy lúc 10h nhé\",\"ts\":\"2026-10-20T06:27:33.785Z\"}\nBinh → {\"type\":\"chat\",\"text\": hỏng\nBinh ← {\"type\":\"error\",\"error\":\"invalid_json\"}\nBinh ✕ (đóng tab)\nAn   ← {\"type\":\"left\",\"name\":\"Binh\",\"users\":[\"An\"]}\n```"
+        },
+        "cv_line": "Xây server chat realtime bằng Node.js + ws: handshake WebSocket, giao thức JSON có kiểm tra, broadcast, presence; đo polling 21 request/20 s so với 1 kết nối WebSocket."
+      },
+      "lessons": [
+        {
+          "id": "N03-websocket-dau-tien",
+          "title": "WebSocket đầu tiên: từ polling tới handshake",
+          "goal": "Đo polling, tự tính handshake, viết echo server WebSocket; qua hết test.",
+          "status": "ready"
+        },
+        {
+          "id": "N04-chat-realtime",
+          "title": "Chat realtime: broadcast, giao thức, presence",
+          "goal": "Viết server chat nhiều người có tên, vào/ra, danh sách online; qua hết test.",
+          "status": "ready"
+        }
+      ]
+    },
+    {
+      "id": "P2",
+      "title": "Realtime cho production",
+      "track": "Vận hành",
+      "brief": {
+        "goal": "Giữ kết nối sống qua mạng chập chờn, xác thực người dùng và chạy được trên nhiều server.",
+        "deliverable": "TeamPulse có heartbeat, tự kết nối lại, xác thực token, room, và nhiều instance đồng bộ qua Redis.",
+        "promise": "Sau phần này, bạn đọc và sửa được code realtime ở công ty: biết vì sao kết nối chết im lặng, khi nào dùng Socket.IO, và làm sao 2 server cùng phát một tin.",
+        "can_do": [
+          "Phát hiện kết nối chết bằng ping/pong và tự kết nối lại có backoff",
+          "So sánh ws thuần với Socket.IO (room, ack, fallback)",
+          "Xác thực token ngay ở bước handshake",
+          "Mở rộng ra nhiều server bằng Redis pub/sub; test và debug realtime"
+        ],
+        "showcase": {
+          "caption": "Đang soạn",
+          "markdown": "```output\n(đang soạn — batch 2)\n```"
+        }
+      },
+      "lessons": [
+        {
+          "id": "N05-heartbeat-reconnect",
+          "title": "Heartbeat ping/pong & tự kết nối lại",
+          "goal": "Phát hiện kết nối chết trong 30 giây và tự kết nối lại có backoff.",
+          "status": "planned",
+          "concepts": [
+            "heartbeat-ping-pong",
+            "reconnect-backoff"
+          ]
+        },
+        {
+          "id": "N06-socketio-rooms-ack",
+          "title": "Socket.IO: room, ack, so với ws thuần",
+          "goal": "Viết lại phòng chat bằng Socket.IO và so sánh với ws.",
+          "status": "planned",
+          "concepts": [
+            "socketio-rooms-ack"
+          ]
+        },
+        {
+          "id": "N07-xac-thuc-handshake",
+          "title": "Xác thực token khi handshake",
+          "goal": "Từ chối kết nối không có token hợp lệ trước khi nâng cấp.",
+          "status": "planned",
+          "concepts": [
+            "ws-auth-token"
+          ]
+        },
+        {
+          "id": "N08-scale-redis-pubsub",
+          "title": "Nhiều server với Redis pub/sub",
+          "goal": "Hai instance cùng phát tin cho mọi client qua Redis.",
+          "status": "planned",
+          "concepts": [
+            "redis-pubsub-scaling"
+          ]
+        },
+        {
+          "id": "N09-test-debug-realtime",
+          "title": "Test & debug ứng dụng realtime",
+          "goal": "Viết test tích hợp WebSocket và debug bằng DevTools, log.",
+          "status": "planned",
+          "concepts": [
+            "ws-testing-debugging"
+          ]
+        }
+      ]
+    }
+  ]
+}

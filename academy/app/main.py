@@ -107,7 +107,10 @@ def get_roadmap():
     for c in rm.get("concepts", []):
         c["learned"] = c["id"] in learned
         c["lessons"] = taught.get(c["id"], [])
-    rm.setdefault("concept_edges", [])
+    for k in ("concept_edges", "concept_groups", "concepts", "projects"):
+        rm.setdefault(k, [])
+    rm["title"] = rm.get("title") or "AI Academy"
+    rm["language"] = curriculum.language(rm)
     ready = [l for l in lessons if statuses[l["id"]] != "planned"]
     rm["summary"] = {"total": len(ready), "passed": sum(1 for l in ready if statuses[l["id"]] == "passed"),
                      "planned": len(lessons) - len(ready)}
@@ -142,7 +145,7 @@ def start_lesson(lesson_id: str):
     created = False
     if not ws.exists():
         if starter.is_dir():
-            shutil.copytree(starter, ws, ignore=shutil.ignore_patterns("__pycache__", "*.pyc", ".omc", ".pytest_cache"))
+            shutil.copytree(starter, ws, ignore=shutil.ignore_patterns("__pycache__", "*.pyc", ".omc", ".pytest_cache", "node_modules"))
         else:
             ws.mkdir(parents=True)
         created = True
@@ -181,14 +184,22 @@ def unlock_lesson(lesson_id: str):
     return {"status": all_statuses().get(lesson_id)}
 
 
+_CODE_SUFFIXES = {".py", ".md", ".txt", ".json", ".sql", ".yaml", ".yml", ".js", ".mjs", ".cjs", ".html", ".css"}
+_SKIP_DIRS = {"__pycache__", "node_modules", ".git", ".pytest_cache"}
+
+
 def _workspace_files(lesson_id: str, limit: int = 6000) -> dict[str, str]:
     ws, files, used = _workspace(lesson_id), {}, 0
     if not ws.is_dir():
         return files
-    for p in sorted(ws.rglob("*")):
+    paths = []
+    for d, dirs, names in os.walk(ws):
+        dirs[:] = [x for x in dirs if x not in _SKIP_DIRS]  # không đi vào node_modules, __pycache__...
+        paths += [Path(d) / n for n in names]
+    for p in sorted(paths):
         if used >= limit:
             break
-        if not p.is_file() or "__pycache__" in p.parts or p.suffix not in {".py", ".md", ".txt", ".json", ".sql", ".yaml", ".yml"}:
+        if p.suffix not in _CODE_SUFFIXES or p.name == "package-lock.json":
             continue
         try:
             txt = p.read_text(encoding="utf-8")[: limit - used]
@@ -209,7 +220,8 @@ def _llm_error(e: Exception) -> JSONResponse:
 def tutor(body: TutorIn):
     meta = _require_lesson(body.lesson_id)
     msgs = llm.build_tutor_messages(meta, curriculum.load_markdown(body.lesson_id),
-                                    _workspace_files(body.lesson_id), body.messages)
+                                    _workspace_files(body.lesson_id), body.messages,
+                                    language=curriculum.language())
     try:
         return {"reply": llm.chat(msgs, llm.TUTOR_MODEL, temperature=0.6)}
     except llm.LLMError as e:
@@ -222,7 +234,7 @@ def grade(body: GradeIn):
     if not body.answer.strip():
         raise HTTPException(400, "Hãy nhập câu trả lời trước khi chấm.")
     try:
-        return llm.grade(body.question, body.answer)
+        return llm.grade(body.question, body.answer, language=curriculum.language())
     except llm.LLMError as e:
         return _llm_error(e)
 

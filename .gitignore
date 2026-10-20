@@ -11,3 +11,7 @@ academy/cache/
 
 .venv/
 venv/
+academy/courses/*/workspace/
+academy/courses/*/data/
+academy/courses/*/cache/
+academy/courses/*/node_modules/

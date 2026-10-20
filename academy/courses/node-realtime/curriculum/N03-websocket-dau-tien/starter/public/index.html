@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TeamPulse — Echo WebSocket</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 640px; margin: 24px auto; padding: 0 16px; background: #f7f7f8; color: #1d1d1f; }
+    h1 { font-size: 20px; }
+    #state { display: inline-block; padding: 2px 10px; border-radius: 10px; background: #ddd; font-weight: 600; }
+    #state.OPEN { background: #c8f2d0; } #state.CLOSED { background: #f6c9c9; } #state.CONNECTING, #state.CLOSING { background: #fbe7b0; }
+    #log { background: #fff; border: 1px solid #ddd; border-radius: 8px; height: 280px; overflow-y: auto; padding: 8px; font: 13px/1.5 ui-monospace, monospace; }
+    .out { color: #0b5cad; } .in { color: #1a7f37; } .sys { color: #777; }
+    form { display: flex; gap: 8px; margin: 12px 0; flex-wrap: wrap; }
+    input { flex: 1; min-width: 160px; padding: 8px; }
+    button { padding: 8px 12px; }
+  </style>
+</head>
+<body>
+  <h1>Echo WebSocket</h1>
+  <p>readyState: <span id="state">CONNECTING</span> <small>(mở DevTools → Network → WS → Messages để xem từng frame)</small></p>
+  <div id="log"></div>
+  <form id="f">
+    <input id="text" placeholder="Gõ tin rồi Enter" autocomplete="off">
+    <button>Gửi text</button>
+    <button type="button" id="bin">Gửi binary [1,2,3,255]</button>
+    <button type="button" id="close">Đóng kết nối</button>
+  </form>
+  <script>
+    const NAMES = ['CONNECTING', 'OPEN', 'CLOSING', 'CLOSED'];
+    const logEl = document.getElementById('log');
+    const stateEl = document.getElementById('state');
+    function log(cls, text) {
+      const div = document.createElement('div');
+      div.className = cls;
+      div.textContent = new Date().toLocaleTimeString() + '  ' + text;
+      logEl.appendChild(div);
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+    function showState() {
+      stateEl.textContent = NAMES[ws.readyState];
+      stateEl.className = NAMES[ws.readyState];
+    }
+    // ws:// cho http, wss:// cho https; cùng host với trang
+    const ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws');
+    ws.binaryType = 'arraybuffer';
+    showState();
+    ws.addEventListener('open', () => { showState(); log('sys', 'open — đã bắt tay xong (101)'); });
+    ws.addEventListener('message', (e) => {
+      if (typeof e.data === 'string') log('in', '← text: ' + e.data);
+      else log('in', '← binary: [' + new Uint8Array(e.data).join(',') + ']');
+    });
+    ws.addEventListener('close', (e) => { showState(); log('sys', 'close — code ' + e.code); });
+    ws.addEventListener('error', () => log('sys', 'error'));
+    document.getElementById('f').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const input = document.getElementById('text');
+      if (!input.value) return;
+      ws.send(input.value);
+      log('out', '→ text: ' + input.value);
+      input.value = '';
+    });
+    document.getElementById('bin').addEventListener('click', () => {
+      ws.send(new Uint8Array([1, 2, 3, 255]));
+      log('out', '→ binary: [1,2,3,255]');
+    });
+    document.getElementById('close').addEventListener('click', () => { ws.close(1000, 'bye'); showState(); });
+  </script>
+</body>
+</html>

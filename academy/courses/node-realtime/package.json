@@ -1,0 +1,12 @@
+{
+  "name": "node-realtime-course",
+  "private": true,
+  "type": "module",
+  "description": "Khóa Node.js & WebSocket — nội dung bài và thư viện dùng chung cho workspace học viên",
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "ws": "8.22.0"
+  }
+}

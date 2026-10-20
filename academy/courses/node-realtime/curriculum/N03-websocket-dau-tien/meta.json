@@ -1,0 +1,158 @@
+{
+  "id": "N03-websocket-dau-tien",
+  "title": "WebSocket đầu tiên: từ polling tới handshake",
+  "goal": "Đo polling, tự tính handshake WebSocket, viết echo server bằng ws và xem frame trong DevTools; qua hết 16 test.",
+  "duration_min": 150,
+  "concepts": [
+    "http-polling",
+    "websocket-handshake",
+    "ws-events",
+    "ws-frames",
+    "ready-state"
+  ],
+  "entry": "echo.js",
+  "checklist": [
+    "Nêu được bằng số: polling 1 giây tốn bao nhiêu request, trễ bao lâu so với WebSocket",
+    "Kể đủ 4 header của request handshake và mã 101",
+    "Tự tính được Sec-WebSocket-Accept và giải thích nó chứng minh điều gì (không phải bảo mật)",
+    "Phân biệt 4 sự kiện open/message/close/error và 4 giá trị readyState",
+    "Phân biệt frame text và binary; biết data trong ws là Buffer",
+    "Mở DevTools → Network → WS, chỉ ra frame gửi/nhận và header 101",
+    "Giải thích vì sao polling dùng setTimeout sau mỗi lượt thay vì setInterval",
+    "Qua hết test của bài"
+  ],
+  "interview_questions": [
+    "Polling, long polling, WebSocket khác nhau thế nào? Khi nào polling vẫn chấp nhận được?",
+    "Mô tả handshake WebSocket: client gửi những header nào, server trả gì?",
+    "Sec-WebSocket-Accept được tính thế nào và để làm gì? Nó có phải cơ chế bảo mật không?",
+    "WebSocket chạy trên giao thức nào bên dưới? ws:// và wss:// khác gì?",
+    "Kể 4 sự kiện của một kết nối WebSocket và các giá trị readyState.",
+    "Frame text và frame binary khác nhau thế nào? Overhead mỗi frame khoảng bao nhiêu byte so với một HTTP request?",
+    "Làm sao debug WebSocket trên trình duyệt?",
+    "Vì sao gửi tin khi readyState chưa OPEN lại lỗi? Xử lý thế nào?"
+  ],
+  "tutor_notes": "Học viên nói 'phần websocket em không hiểu' — đây là bài then chốt. Đi từ cái đã biết: N02 server biết có tin nhưng không gửi được → polling (đo bằng npm run measure) → WebSocket là 'giữ cuộc gọi' thay vì 'gửi thư hỏi liên tục'. Nhấn mạnh WebSocket bắt đầu bằng HTTP rồi đổi giao thức; Accept chỉ chứng minh server hiểu WebSocket. Lỗi hay gặp: (1) startPolling khai báo async (trả Promise thay vì object), dùng setInterval (request chồng nhau), gán stats = {...} mới, không try/catch nên lỗi mạng làm dừng, quên clearTimeout trong stop, cập nhật lastId sai; (2) computeAccept nối có khoảng trắng hoặc digest('hex'); (3) handshakeResponse gọi .toLowerCase() trên header undefined, so connection === 'upgrade' thay vì tìm token, kiểm tra version trước nên trả 426 cho request thiếu key; không kiểm tra key 16 byte; (4) readyStateName dùng ws.OPEN của thư viện là được nhưng phải trả chuỗi; (5) createEchoServer quên path '/ws', quên readFile theo import.meta.url (đọc theo cwd), gửi data Buffer cho tin text (thành binary) thay vì chuỗi 'echo: ' + data.toString(), quên ws.on('error'). Khi chạy thật: ERR_MODULE_NOT_FOUND 'ws' → workspace phải nằm dưới courses/node-realtime và đã npm install ở đó; EADDRINUSE → PORT=3002 npm start. Không viết hộ thân hàm.",
+  "tasks": [
+    {
+      "fn": "startPolling",
+      "signature": "startPolling({ url, intervalMs, onMessage }) → { stop, stats }",
+      "summary": "Hỏi ?since=<id> liên tục, đếm request rỗng và lỗi",
+      "example": "20 giây, 1000 ms → 21 request, 11 rỗng",
+      "test_prefix": "startPolling"
+    },
+    {
+      "fn": "computeAccept",
+      "signature": "computeAccept(key)",
+      "summary": "base64(SHA-1(key + WS_GUID))",
+      "example": "'dGhlIHNhbXBsZSBub25jZQ==' → 's3pPLMBiTxaQ9kYGzzhZRbK+xOo='",
+      "test_prefix": "computeAccept"
+    },
+    {
+      "fn": "handshakeResponse",
+      "signature": "handshakeResponse(headers)",
+      "summary": "Hợp lệ → 101 + Accept; sai version → 426; còn lại 400",
+      "example": "{upgrade: 'websocket', ...} → {status: 101, ...}",
+      "test_prefix": "handshakeResponse"
+    },
+    {
+      "fn": "readyStateName",
+      "signature": "readyStateName(ws)",
+      "summary": "0–3 → CONNECTING/OPEN/CLOSING/CLOSED",
+      "example": "readyStateName({readyState: 1}) → 'OPEN'",
+      "test_prefix": "readyStateName"
+    },
+    {
+      "fn": "createEchoServer",
+      "signature": "createEchoServer() → http.Server",
+      "summary": "Trang / + WebSocket /ws: welcome, echo text, trả binary",
+      "example": "gửi 'xin chào' → nhận 'echo: xin chào'",
+      "test_prefix": "createEchoServer"
+    }
+  ],
+  "brief": {
+    "context": "TeamPulse có REST API tin nhắn (N02). Giao diện web muốn hiện tin mới phải tự gọi GET /messages lặp lại.",
+    "problem": "HTTP chỉ cho server trả lời, không cho chủ động gửi. Đo trên máy (20 giây, 10 tin): polling 1 giây gửi 21 request, 52% rỗng, tin trễ trung bình 0,42 giây; giãn ra 3 giây thì trễ 1,34 giây. Cần chứng minh bằng số rồi chuyển sang WebSocket, và hiểu handshake đủ để debug khi kết nối thất bại.",
+    "requirements": [
+      {
+        "task": "startPolling",
+        "purpose": "Client polling làm mốc đo chi phí của cách cũ."
+      },
+      {
+        "task": "computeAccept",
+        "purpose": "Tự tính bước xác nhận handshake, hiểu thư viện làm gì."
+      },
+      {
+        "task": "handshakeResponse",
+        "purpose": "Phân biệt request nâng cấp hợp lệ, sai version, sai header."
+      },
+      {
+        "task": "readyStateName",
+        "purpose": "Log và giao diện hiển thị trạng thái kết nối dễ đọc."
+      },
+      {
+        "task": "createEchoServer",
+        "purpose": "Kết nối WebSocket đầu tiên của TeamPulse, cùng cổng với trang web."
+      }
+    ],
+    "deliverable": "echo.js qua 16/16 test; npm run measure in số liệu polling vs WebSocket; trình duyệt gửi text/binary và nhận echo.",
+    "constraints": [
+      "Polling không được có 2 request chồng nhau.",
+      "Lỗi mạng khi polling không làm dừng vòng hỏi.",
+      "Text trả lời là text, binary trả lời là binary.",
+      "WebSocket chỉ nhận ở đường dẫn /ws."
+    ],
+    "product_nodes": [
+      "polling",
+      "ws-gateway"
+    ],
+    "workflow": {
+      "flow": "parallel",
+      "inputs": [
+        {
+          "label": "API GET /messages",
+          "detail": "Mô hình hỏi–đáp của N02"
+        },
+        {
+          "label": "Request Upgrade: websocket",
+          "detail": "Key, version 13"
+        }
+      ],
+      "steps": [
+        {
+          "task": "startPolling",
+          "label": "Đo chi phí polling"
+        },
+        {
+          "task": "computeAccept",
+          "label": "Tính Sec-WebSocket-Accept"
+        },
+        {
+          "task": "handshakeResponse",
+          "label": "Quyết định 101/426/400"
+        },
+        {
+          "task": "readyStateName",
+          "label": "Đặt tên trạng thái kết nối"
+        },
+        {
+          "task": "createEchoServer",
+          "label": "Echo server với ws"
+        }
+      ],
+      "outputs": [
+        {
+          "label": "Số liệu polling vs push",
+          "detail": "21 request so với 1 kết nối"
+        },
+        {
+          "label": "Kết nối WebSocket mở",
+          "detail": "101 Switching Protocols"
+        },
+        {
+          "label": "Echo text và binary",
+          "detail": "Xem frame trong DevTools"
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,157 @@
+{
+  "id": "N02-eventemitter-http",
+  "title": "EventEmitter & HTTP server: mô hình hỏi–đáp",
+  "goal": "Viết REST API tin nhắn bằng module http thuần, đúng route và mã trạng thái, phát sự kiện khi có tin; qua hết 15 test.",
+  "duration_min": 150,
+  "concepts": [
+    "event-emitter",
+    "http-server",
+    "http-routing-status",
+    "json-api"
+  ],
+  "entry": "api.js",
+  "checklist": [
+    "Giải thích được on/once/emit và vì sao emit chạy listener đồng bộ",
+    "Biết vì sao luôn phải lắng nghe sự kiện 'error'",
+    "Đọc được req.method, req.url, req.headers và tách query bằng new URL",
+    "Chọn đúng mã 200/201/400/404/405/413/500 cho từng tình huống",
+    "Giải thích được vì sao phải gom đủ Buffer rồi mới giải mã UTF-8",
+    "Gọi được API bằng curl và đọc được response có header (-i)",
+    "Giải thích được vì sao HTTP hỏi–đáp không tự đẩy tin mới cho client",
+    "Qua hết test của bài"
+  ],
+  "interview_questions": [
+    "EventEmitter là gì? Kể vài đối tượng trong Node kế thừa nó.",
+    "Chuyện gì xảy ra khi emit('error') mà không có listener nào?",
+    "Mô tả vòng đời một HTTP request trong http.createServer: req, res, writeHead, end.",
+    "Phân biệt 200 và 201, 400 và 500, 404 và 405. Khi nào trả 413?",
+    "Body của request đến dưới dạng stream nghĩa là gì? Vì sao cần giới hạn kích thước body?",
+    "Vì sao không nên giải mã từng chunk Buffer thành chuỗi rồi nối lại?",
+    "Express/Fastify làm giúp bạn những gì so với module http thuần?",
+    "Vì sao HTTP request/response không đủ cho ứng dụng chat realtime?"
+  ],
+  "tutor_notes": "Học viên vừa học N01 (ESM, async/await, event loop). Lần đầu viết class kế thừa và server HTTP. Liên hệ Python: http.server/Flask route ~ nhánh if theo method+path; EventEmitter ~ danh sách callback. Lỗi hay gặp: (1) post tăng nextId trước khi kiểm tra dữ liệu, kiểm tra text chưa trim theo MAX_TEXT, emit trước khi push hoặc quên emit; ném Error thường thay vì httpError(400) nên thiếu status; (2) history trả thẳng this.messages; (3) sendJson thiếu charset=utf-8 hoặc quên res.end; (4) readJsonBody toString từng chunk, quên kiểm tra mảng/null/số, kiểm tra limit sau khi gom xong (vẫn qua test nhưng nên dừng sớm), dùng req.on('data') mà quên trả Promise; (5) createApp so req.url thay vì pathname, quên return sau sendJson (ERR_HTTP_HEADERS_SENT), quên header Allow cho 405, try/catch không bọc await nên lỗi thành unhandled rejection, tự gọi listen() trong createApp. Khi chạy thật: EADDRINUSE → cổng 3000 bận, chạy PORT=3001 npm start. Không viết hộ thân hàm.",
+  "tasks": [
+    {
+      "fn": "ChatRoom.post",
+      "signature": "room.post(user, text)",
+      "summary": "Kiểm tra, tạo tin {id, user, text, ts}, emit 'message'",
+      "example": "post('an', 'Chào') → {id: 1, user: 'an', ...}",
+      "test_prefix": "ChatRoom.post"
+    },
+    {
+      "fn": "ChatRoom.history",
+      "signature": "room.history(sinceId = 0)",
+      "summary": "Mảng mới gồm tin có id > sinceId",
+      "example": "history(1) → tin id 2, 3",
+      "test_prefix": "ChatRoom.history"
+    },
+    {
+      "fn": "sendJson",
+      "signature": "sendJson(res, status, data)",
+      "summary": "Trả JSON với status và Content-Type đúng",
+      "example": "sendJson(res, 201, msg)",
+      "test_prefix": "sendJson"
+    },
+    {
+      "fn": "readJsonBody",
+      "signature": "async readJsonBody(req, limit = 10000)",
+      "summary": "Gom body stream, quá lớn → 413, hỏng → 400",
+      "example": "'{\"user\": ' → lỗi status 400",
+      "test_prefix": "readJsonBody"
+    },
+    {
+      "fn": "createApp",
+      "signature": "createApp(room) → http.Server",
+      "summary": "Route /health, /messages; 404, 405, 500",
+      "example": "DELETE /messages → 405, Allow: GET, POST",
+      "test_prefix": "createApp"
+    }
+  ],
+  "brief": {
+    "context": "TeamPulse đọc được log chat (N01). Chưa có API: ứng dụng web và bot nội bộ không có cách gửi hay đọc tin.",
+    "problem": "Cần một API JSON chuẩn để mọi client dùng chung: gửi tin, đọc tin mới kể từ id đã có. Client gửi sai (JSON hỏng, body quá lớn, sai method) phải nhận mã lỗi rõ ràng, không làm sập server. Các phần khác của hệ thống (log, sau này là WebSocket) cần được báo ngay khi có tin mới.",
+    "requirements": [
+      {
+        "task": "ChatRoom.post",
+        "purpose": "Một chỗ duy nhất kiểm tra và tạo tin, phát sự kiện cho các phần khác."
+      },
+      {
+        "task": "ChatRoom.history",
+        "purpose": "Client chỉ tải tin mới kể từ id đã có."
+      },
+      {
+        "task": "sendJson",
+        "purpose": "Mọi response cùng định dạng JSON, đúng tiếng Việt."
+      },
+      {
+        "task": "readJsonBody",
+        "purpose": "Đọc body an toàn, chống body khổng lồ và JSON hỏng."
+      },
+      {
+        "task": "createApp",
+        "purpose": "API công khai của TeamPulse với mã trạng thái đúng chuẩn."
+      }
+    ],
+    "deliverable": "api.js qua 15/15 test; npm start rồi curl: POST /messages → 201, JSON hỏng → 400, DELETE → 405.",
+    "constraints": [
+      "Chỉ dùng module có sẵn của Node, không Express.",
+      "Mọi response lỗi là JSON {error}.",
+      "Body tối đa 10.000 byte; text tối đa 500 ký tự.",
+      "createApp không tự listen; test chọn cổng."
+    ],
+    "product_nodes": [
+      "event-bus",
+      "rest-api"
+    ],
+    "workflow": {
+      "flow": "chain",
+      "inputs": [
+        {
+          "label": "HTTP request",
+          "detail": "method, đường dẫn, body JSON"
+        },
+        {
+          "label": "ChatRoom trong bộ nhớ",
+          "detail": "Danh sách tin, id tăng dần"
+        }
+      ],
+      "steps": [
+        {
+          "task": "readJsonBody",
+          "label": "Gom và parse body"
+        },
+        {
+          "task": "ChatRoom.post",
+          "label": "Kiểm tra, lưu, phát sự kiện"
+        },
+        {
+          "task": "ChatRoom.history",
+          "label": "Lọc tin mới theo id"
+        },
+        {
+          "task": "sendJson",
+          "label": "Trả JSON đúng header"
+        },
+        {
+          "task": "createApp",
+          "label": "Route và mã trạng thái"
+        }
+      ],
+      "outputs": [
+        {
+          "label": "201 tin vừa tạo",
+          "detail": "Kèm sự kiện message"
+        },
+        {
+          "label": "200 danh sách tin",
+          "detail": "Chỉ tin có id > since"
+        },
+        {
+          "label": "400/404/405/413/500",
+          "detail": "JSON {error}, server không sập"
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "name": "teampulse-n04",
+  "private": true,
+  "type": "module",
+  "description": "TeamPulse — bài N04: chat realtime nhiều người",
+  "scripts": {
+    "start": "node chat.js",
+    "test": "node --test \"../../curriculum/N04-chat-realtime/tests/*.test.js\""
+  }
+}

@@ -1,0 +1,5 @@
+node_modules/
+workspace/
+data/
+cache/
+.verify/

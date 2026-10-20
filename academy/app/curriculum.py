@@ -5,6 +5,7 @@ from pathlib import Path
 
 from . import config
 
+LANGUAGES = ("python", "node")
 ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]*$")
 
 
@@ -17,6 +18,12 @@ def load_roadmap() -> dict:
     if not p.exists():
         return {"title": "AI Academy", "concept_groups": [], "concepts": [], "projects": []}
     return json.loads(p.read_text(encoding="utf-8"))
+
+
+def language(roadmap: dict | None = None) -> str:
+    """Ngôn ngữ chấm bài của khóa: "python" (mặc định) hoặc "node"."""
+    lang = (roadmap if roadmap is not None else load_roadmap()).get("language") or "python"
+    return lang if lang in LANGUAGES else "python"
 
 
 def all_lessons(roadmap: dict | None = None) -> list[dict]:

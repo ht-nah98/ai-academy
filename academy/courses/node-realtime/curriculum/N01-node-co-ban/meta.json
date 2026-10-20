@@ -1,0 +1,174 @@
+{
+  "id": "N01-node-co-ban",
+  "title": "Node cơ bản: module, npm, async, event loop",
+  "goal": "Viết module đọc log chat từ file bằng async/await, có timeout; qua hết 15 test và chạy được npm start.",
+  "duration_min": 130,
+  "concepts": [
+    "node-runtime",
+    "esm-modules",
+    "npm-package-json",
+    "js-array-methods",
+    "promise-async",
+    "event-loop",
+    "fs-promises"
+  ],
+  "entry": "chatlog.js",
+  "checklist": [
+    "Chạy được file bằng node và bằng npm start",
+    "Giải thích được import/export và vì sao cần \"type\": \"module\"",
+    "Biết package.json, package-lock.json, node_modules: cái nào commit, cái nào không",
+    "Đoán đúng thứ tự in của console.log, Promise.then và setTimeout(0)",
+    "Giải thích được vì sao Promise.all ba lần chờ 1 giây chỉ mất 1 giây",
+    "Biết vì sao không dùng readFileSync hay vòng lặp nặng trong server",
+    "Viết được cùng một phép đếm bằng vòng for...of và bằng reduce",
+    "Qua hết test của bài"
+  ],
+  "interview_questions": [
+    "Node.js là gì? Khác gì JavaScript chạy trong trình duyệt?",
+    "Node chạy JavaScript trên một luồng. Vậy làm sao nó phục vụ được nhiều request cùng lúc?",
+    "Giải thích event loop. Đoạn code có console.log, setTimeout(0) và Promise.then in theo thứ tự nào, vì sao?",
+    "Promise là gì? async/await khác gì .then()? Lỗi trong hàm async được bắt thế nào?",
+    "Promise.all và Promise.race khác nhau thế nào? Khi nào dùng mỗi cái?",
+    "ESM (import/export) khác CommonJS (require) thế nào?",
+    "package.json và package-lock.json khác nhau thế nào? Có nên commit node_modules không?",
+    "Vì sao không nên dùng readFileSync hoặc vòng lặp CPU nặng trong một HTTP/WebSocket handler?"
+  ],
+  "tutor_notes": "Học viên biết HTML/CSS, một ít JS trên trình duyệt, đã học xong khóa Python — so sánh với Python khi giúp ích (await ~ chờ nhưng không chặn cả chương trình; reduce ~ vòng for cộng dồn; arrow function ~ lambda). Đây là lần đầu gặp Node, ESM, Promise. Lỗi hay gặp: (1) package.json sai cú pháp JSON (thiếu dấu phẩy) hoặc scripts.start không phải 'node chatlog.js'; (2) parseLine quên typeof null === 'object' nên JSON 'null' làm ném TypeError, quên trim user, trả cả khóa thừa thay vì chỉ {user,text,ts}; (3) loadMessages quên await, dùng readFileSync, không bỏ '\\r' cuối dòng, bắt mọi lỗi thay vì chỉ ENOENT; (4) delay dùng vòng lặp bận chờ (test song song sẽ fail), hoặc quên return Promise; (5) withTimeout tạo lỗi với message khác 'timeout', bọc lại lỗi gốc thay vì reject đúng lỗi đó, quên clearTimeout. Giải thích event loop bằng ví dụ quán cà phê một người pha chế: nhận order rồi để máy chạy, không đứng nhìn máy. Không viết hộ thân hàm.",
+  "tasks": [
+    {
+      "fn": "parseLine",
+      "signature": "parseLine(line)",
+      "summary": "Một dòng JSON → {user, text, ts} hoặc null",
+      "example": "parseLine('{hỏng') → null",
+      "test_prefix": "parseLine"
+    },
+    {
+      "fn": "countByUser",
+      "signature": "countByUser(messages)",
+      "summary": "Đếm số tin theo người gửi",
+      "example": "→ { an: 4, binh: 2, chi: 2, dung: 1 }",
+      "test_prefix": "countByUser"
+    },
+    {
+      "fn": "loadMessages",
+      "signature": "async loadMessages(path)",
+      "summary": "Đọc file JSON Lines bất đồng bộ, bỏ dòng hỏng",
+      "example": "messages.jsonl: 12 dòng → 9 tin",
+      "test_prefix": "loadMessages"
+    },
+    {
+      "fn": "delay",
+      "signature": "delay(ms)",
+      "summary": "Promise resolve sau ms mili giây",
+      "example": "await delay(300)",
+      "test_prefix": "delay"
+    },
+    {
+      "fn": "withTimeout",
+      "signature": "withTimeout(promise, ms)",
+      "summary": "Chờ không quá ms, quá hạn → Error('timeout')",
+      "example": "withTimeout(delay(1000), 200) → lỗi \"timeout\"",
+      "test_prefix": "withTimeout"
+    },
+    {
+      "fn": "package.json",
+      "signature": "\"scripts\": { \"start\": ... }",
+      "summary": "Thêm lệnh npm start chạy chatlog.js",
+      "example": "npm start → node chatlog.js",
+      "test_prefix": "package.json"
+    }
+  ],
+  "brief": {
+    "context": "TeamPulse lưu lịch sử chat nhóm vào file messages.jsonl, mỗi dòng một JSON. Chưa có code đọc file này.",
+    "problem": "File log thật có dòng trống, JSON hỏng, tin thiếu người gửi: đọc ngây thơ thì chương trình sập ở dòng lỗi đầu tiên. Server realtime chỉ có một luồng JavaScript: đọc file kiểu chặn hoặc chờ không có giới hạn làm đứng mọi kết nối khác.",
+    "requirements": [
+      {
+        "task": "parseLine",
+        "purpose": "Đọc an toàn từng dòng log, dòng hỏng bị bỏ thay vì làm sập chương trình."
+      },
+      {
+        "task": "countByUser",
+        "purpose": "Thống kê ai hoạt động nhiều trong nhóm."
+      },
+      {
+        "task": "loadMessages",
+        "purpose": "Nạp lịch sử chat bằng I/O bất đồng bộ, không chặn event loop."
+      },
+      {
+        "task": "delay",
+        "purpose": "Khuôn bọc API callback thành Promise, dùng lại khi chờ sự kiện mạng."
+      },
+      {
+        "task": "withTimeout",
+        "purpose": "Mọi việc chờ đều có giới hạn, không treo vô hạn."
+      },
+      {
+        "task": "package.json",
+        "purpose": "Chạy project bằng lệnh chuẩn npm start như mọi repo Node."
+      }
+    ],
+    "deliverable": "chatlog.js qua 15/15 test; npm start in 9 tin hợp lệ trên 12 dòng, đếm theo người gửi, timeout sau 200 ms.",
+    "constraints": [
+      "Đọc file bằng fs/promises, không dùng readFileSync.",
+      "JSON hỏng không được ném lỗi ra ngoài.",
+      "File không tồn tại trả [], lỗi khác ném tiếp.",
+      "Lỗi quá hạn có message đúng là \"timeout\"."
+    ],
+    "product_nodes": [
+      "runtime"
+    ],
+    "workflow": {
+      "flow": "chain",
+      "inputs": [
+        {
+          "label": "messages.jsonl",
+          "detail": "12 dòng, có dòng hỏng"
+        },
+        {
+          "label": "package.json",
+          "detail": "Chưa có scripts.start"
+        }
+      ],
+      "steps": [
+        {
+          "task": "package.json",
+          "label": "Thêm lệnh npm start"
+        },
+        {
+          "task": "parseLine",
+          "label": "Đọc an toàn một dòng"
+        },
+        {
+          "task": "loadMessages",
+          "label": "Nạp file bất đồng bộ"
+        },
+        {
+          "task": "countByUser",
+          "label": "Đếm tin theo người gửi"
+        },
+        {
+          "task": "delay",
+          "label": "Bọc setTimeout thành Promise"
+        },
+        {
+          "task": "withTimeout",
+          "label": "Giới hạn thời gian chờ"
+        }
+      ],
+      "outputs": [
+        {
+          "label": "9 tin hợp lệ",
+          "detail": "Dòng hỏng bị bỏ qua"
+        },
+        {
+          "label": "Thống kê theo người",
+          "detail": "an 4, binh 2, chi 2"
+        },
+        {
+          "label": "Lỗi timeout",
+          "detail": "Sau đúng 200 ms"
+        }
+      ]
+    }
+  }
+}

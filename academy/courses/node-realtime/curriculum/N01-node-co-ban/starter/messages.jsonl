@@ -1,0 +1,12 @@
+{"user": "an", "text": "Chào cả nhóm, hôm nay deploy bản 1.4", "ts": "2026-10-23T08:58:02Z"}
+{"user": "binh", "text": "Ok, mình review PR #212 trước 10h", "ts": "2026-10-23T09:01:15Z"}
+{"user": "chi", "text": "Build CI đang đỏ ở test payment", "ts": "2026-10-23T09:03:40Z"}
+
+{"user": "an", "text": "Chi gửi log lỗi lên kênh nhé", "ts": "2026-10-23T09:04:11Z"}
+{"user": "chi", "text": "Đã gửi. Lỗi timeout khi gọi cổng thanh toán", "ts": "2026-10-23T09:06:52Z"}
+{"user": "", "text": "tin không có người gửi", "ts": "2026-10-23T09:07:00Z"}
+{"user": "binh", "text": "Mình tăng timeout lên 5s rồi chạy lại", "ts": "2026-10-23T09:10:30Z"
+{"user": "binh", "text": "CI xanh rồi", "ts": "2026-10-23T09:18:05Z"}
+{"user": "an", "text": "Tuyệt, 10h deploy", "ts": "2026-10-23T09:19:44Z"}
+{"user": "dung", "text": "Mình theo dõi dashboard sau deploy", "ts": "2026-10-23T09:21:09Z"}
+{"user": "an", "text": "Deploy xong, mọi người kiểm tra giúp", "ts": "2026-10-23T10:02:37Z"}

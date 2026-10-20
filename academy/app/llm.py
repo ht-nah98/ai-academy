@@ -155,11 +155,23 @@ Chỉ trả về MỘT đối tượng JSON hợp lệ, không thêm chữ nào 
 Chấm công bằng, không nịnh."""
 
 
+TUTOR_SYSTEM_NODE = """Bạn là gia sư lập trình theo phương pháp Socratic cho một học viên đang học Node.js và WebSocket (JavaScript, ES modules, test bằng node:test).
+Nguyên tắc:
+- Trả lời bằng tiếng Việt, thân thiện, NGẮN (tối đa ~120 chữ), kết thúc bằng MỘT câu hỏi dẫn dắt để học viên tự nghĩ bước tiếp theo.
+- Giải thích "tại sao" đằng sau vấn đề (event loop, async/await, sự kiện của socket...); gợi ý từng bước nhỏ, mỗi lần một bước.
+- TUYỆT ĐỐI KHÔNG viết code cho các hàm bài tập (kể cả một phần thân hàm, kể cả khi học viên xin thẳng lời giải). Không viết `function <tên hàm bài tập>` hay `export const <tên hàm bài tập> =`.
+- Được phép: nêu tên API có sẵn cần dùng (vd. JSON.parse, Map, socket.on('message')), hoặc ví dụ 1–3 dòng trên dữ liệu KHÁC hẳn bài (vd. trái cây, điểm số).
+- Nếu học viên gửi lỗi, giúp họ tự đọc stack trace / thông báo của node --test trước khi chỉ ra nguyên nhân."""
+
+GRADER_SYSTEM_NODE = GRADER_SYSTEM.replace("thực tập sinh AI/Data Engineer", "lập trình viên Node.js (backend / realtime)", 1)
+
+
 def truncate(s: str, n: int) -> str:
     return s if len(s) <= n else s[:n] + "\n...(đã cắt bớt)"
 
 
-def build_tutor_messages(meta: dict, lesson_md: str, files: dict[str, str], messages: list[dict]) -> list[dict]:
+def build_tutor_messages(meta: dict, lesson_md: str, files: dict[str, str], messages: list[dict],
+                         language: str = "python") -> list[dict]:
     code = "\n\n".join(f"### {name}\n{content}" for name, content in files.items()) or "(chưa có code)"
     fns = ", ".join(t["fn"] for t in meta.get("tasks", []) if t.get("fn"))
     ctx = (f"## Bài học: {meta.get('title', '')}\nMục tiêu: {meta.get('goal', '')}\n"
@@ -170,11 +182,12 @@ def build_tutor_messages(meta: dict, lesson_md: str, files: dict[str, str], mess
            "Chỉ gợi ý ngắn + 1 câu hỏi dẫn dắt.")
     clean = [{"role": m["role"], "content": m["content"]} for m in messages[-20:]
              if m.get("role") in ("user", "assistant")]
-    return [{"role": "system", "content": TUTOR_SYSTEM + "\n\n" + ctx}] + clean
+    system = TUTOR_SYSTEM_NODE if language == "node" else TUTOR_SYSTEM
+    return [{"role": "system", "content": system + "\n\n" + ctx}] + clean
 
 
-def grade(question: str, answer: str, client=None, sleep=time.sleep) -> dict:
-    msgs = [{"role": "system", "content": GRADER_SYSTEM},
+def grade(question: str, answer: str, client=None, sleep=time.sleep, language: str = "python") -> dict:
+    msgs = [{"role": "system", "content": GRADER_SYSTEM_NODE if language == "node" else GRADER_SYSTEM},
             {"role": "user", "content": f"Câu hỏi: {question}\n\nCâu trả lời của học sinh:\n{answer}"}]
     text = chat(msgs, GRADER_MODEL, temperature=0.2, use_cache=True, max_tokens=1200, client=client, sleep=sleep)
     try:
