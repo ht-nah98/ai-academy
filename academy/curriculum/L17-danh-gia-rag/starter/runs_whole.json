@@ -1,0 +1,310 @@
+{
+ "Q01": {
+  "retrieved": [
+   "JR-10108",
+   "JR-10007",
+   "JR-10015",
+   "JR-10125",
+   "JR-10039"
+  ],
+  "answer": "Saigon Fintech đang tuyển Fresher Data Engineer [JR-10108].",
+  "citations": [
+   "JR-10108"
+  ],
+  "invalid_citations": [],
+  "refused": false
+ },
+ "Q02": {
+  "retrieved": [
+   "JR-10182",
+   "JR-10049",
+   "JR-10098",
+   "JR-10254",
+   "JR-10234"
+  ],
+  "answer": "Có, PayNow tuyển Senior Mobile Developer (Flutter) làm việc remote 100% [JR-10182].",
+  "citations": [
+   "JR-10182"
+  ],
+  "invalid_citations": [],
+  "refused": false
+ },
+ "Q03": {
+  "retrieved": [
+   "JR-10135",
+   "JR-10163",
+   "JR-10046",
+   "JR-10056",
+   "JR-10082"
+  ],
+  "answer": "Bạn có thể tham khảo các vị trí MLOps Engineer tại Đà Nẵng: TravelGo tuyển MLOps Engineer yêu cầu thành thạo Kubernetes và MLflow, ít nhất 3 năm kinh nghiệm [JR-10135]; Orchid Studio tuyển Junior MLOps Engineer yêu cầu thành thạo Kubernetes và Airflow, biết Terraform là lợi thế, ít nhất 1 năm kinh nghiệm [JR-10163]. Cả hai đều liên quan đến vận hành và triển khai mô hình ML.",
+  "citations": [
+   "JR-10135",
+   "JR-10163"
+  ],
+  "invalid_citations": [],
+  "refused": false
+ },
+ "Q04": {
+  "retrieved": [
+   "JR-10249",
+   "JR-10217",
+   "JR-10212",
+   "JR-10064",
+   "JR-10229"
+  ],
+  "answer": "Có 1 việc: Junior Data Analyst — GreenGrid Energy (Hải Phòng) [JR-10249]. Yêu cầu thành thạo SQL và Tableau, biết JavaScript là lợi thế. Ít nhất 2 năm kinh nghiệm. Lương 15-26 triệu/tháng. Làm việc remote 100%, họp online hằng tuần.",
+  "citations": [
+   "JR-10249"
+  ],
+  "invalid_citations": [],
+  "refused": false
+ },
+ "Q05": {
+  "retrieved": [
+   "JR-10222",
+   "JR-10122",
+   "JR-10164",
+   "JR-10193",
+   "JR-10020"
+  ],
+  "answer": "Có 5 tin tuyển dụng phù hợp với sinh viên muốn thực tập làm hoàn toàn online (remote 100%): Fresher BI Developer tại EduViet [JR-10222], Backend Developer (Python) Intern tại Sao Mai Tech [JR-10122], Machine Learning Engineer Intern tại VietData [JR-10164], Fullstack Developer Intern tại Bamboo Cloud [JR-10020], và Junior Fullstack Developer tại Cửu Long Software [JR-10193] (tuy nhiên, tin này yêu cầu 2 năm kinh nghiệm, không phù hợp sinh viên thực tập). Các tin còn lại đều không yêu cầu kinh nghiệm, phù hợp sinh viên năm cuối, và làm việc remote 100%, họp online hằng tuần.",
+  "citations": [
+   "JR-10222",
+   "JR-10122",
+   "JR-10164",
+   "JR-10020",
+   "JR-10193"
+  ],
+  "invalid_citations": [],
+  "refused": false
+ },
+ "Q06": {
+  "retrieved": [
+   "JR-10035",
+   "JR-10151",
+   "JR-10105",
+   "JR-10259",
+   "JR-10210"
+  ],
+  "answer": "Kite Robotics (Hồ Chí Minh) và SmartFarm VN (Hà Nội) đang tuyển AI Engineer Intern. [JR-10035] [JR-10210]",
+  "citations": [
+   "JR-10035",
+   "JR-10210"
+  ],
+  "invalid_citations": [],
+  "refused": false
+ },
+ "Q07": {
+  "retrieved": [
+   "JR-10127",
+   "JR-10021",
+   "JR-10092",
+   "JR-10196",
+   "JR-10181"
+  ],
+  "answer": "Sen Vàng Insurance đang tuyển Junior AI Engineer [JR-10127], Fresher AI Engineer [JR-10021] và Junior Machine Learning Engineer [JR-10196].",
+  "citations": [
+   "JR-10127",
+   "JR-10021",
+   "JR-10196"
+  ],
+  "invalid_citations": [],
+  "refused": false
+ },
+ "Q08": {
+  "retrieved": [
+   "JR-10169",
+   "JR-10048",
+   "JR-10092",
+   "JR-10105",
+   "JR-10151"
+  ],
+  "answer": "Có, MediCare Tech (công ty công nghệ y tế) đang tuyển AI Engineer [JR-10169] và Junior AI Engineer [JR-10048].",
+  "citations": [
+   "JR-10169",
+   "JR-10048"
+  ],
+  "invalid_citations": [],
+  "refused": false
+ },
+ "Q09": {
+  "retrieved": [
+   "JR-10137",
+   "JR-10066",
+   "JR-10200",
+   "JR-10078",
+   "JR-10117"
+  ],
+  "answer": "GreenGrid Energy cần DevOps Engineer [JR-10137] và Junior DevOps Engineer [JR-10066].",
+  "citations": [
+   "JR-10137",
+   "JR-10066"
+  ],
+  "invalid_citations": [],
+  "refused": false
+ },
+ "Q10": {
+  "retrieved": [
+   "JR-10116",
+   "JR-10179",
+   "JR-10114",
+   "JR-10083",
+   "JR-10029"
+  ],
+  "answer": "Có, SmartFarm VN (startup nông nghiệp thông minh) đang tuyển Junior Golang Developer [JR-10116] và Fresher Golang Developer [JR-10114] tại Hồ Chí Minh và Hà Nội. Yêu cầu thành thạo Go, Docker, biết gRPC, Redis là lợi thế. Phúc lợi bao gồm bảo hiểm sức khỏe, thưởng theo dự án, ngân sách học tập. Mức lương từ 13.75-20 triệu/tháng. [JR-10116][JR-10114]",
+  "citations": [
+   "JR-10116",
+   "JR-10114"
+  ],
+  "invalid_citations": [],
+  "refused": false
+ },
+ "Q11": {
+  "retrieved": [
+   "JR-10062",
+   "JR-10128",
+   "JR-10098",
+   "JR-10220",
+   "JR-10234"
+  ],
+  "answer": "EduViet tuyển Junior Mobile Developer (Flutter) [JR-10062].",
+  "citations": [
+   "JR-10062"
+  ],
+  "invalid_citations": [],
+  "refused": false
+ },
+ "Q12": {
+  "retrieved": [
+   "JR-10075",
+   "JR-10201",
+   "JR-10170",
+   "JR-10215",
+   "JR-10008"
+  ],
+  "answer": "Trúc Xanh Bank cần người viết test tự động [JR-10075].",
+  "citations": [
+   "JR-10075"
+  ],
+  "invalid_citations": [],
+  "refused": false
+ },
+ "Q13": {
+  "retrieved": [
+   "JR-10200",
+   "JR-10133",
+   "JR-10132",
+   "JR-10253",
+   "JR-10235"
+  ],
+  "answer": "LogiFast tuyển DevOps Engineer (kỹ sư hạ tầng cloud) [JR-10200]. LogiFast cũng tuyển Senior DevOps Engineer [JR-10132]. LogiFast là công ty logistics.",
+  "citations": [
+   "JR-10200",
+   "JR-10132"
+  ],
+  "invalid_citations": [],
+  "refused": false
+ },
+ "Q14": {
+  "retrieved": [
+   "JR-10240",
+   "JR-10032",
+   "JR-10202",
+   "JR-10256",
+   "JR-10208"
+  ],
+  "answer": "Junior Backend Developer (Java) — Phượng Hoàng Games (Đà Nẵng) yêu cầu thành thạo Java và Kafka, biết Docker, Spring Boot, Next.js là lợi thế. Ứng viên cần ít nhất 1 năm kinh nghiệm. Phúc lợi: thưởng theo dự án, laptop riêng. [JR-10240]",
+  "citations": [
+   "JR-10240"
+  ],
+  "invalid_citations": [],
+  "refused": false
+ },
+ "Q15": {
+  "retrieved": [
+   "JR-10233",
+   "JR-10260",
+   "JR-10010",
+   "JR-10083",
+   "JR-10228"
+  ],
+  "answer": "Senior Frontend Developer — Sao Mai Tech (Hồ Chí Minh) [JR-10233]  \nSenior Frontend Developer — PayNow (Hà Nội) [JR-10260]  \nFrontend Developer — Sky Mobile (Đà Nẵng) [JR-10010]  \nFrontend Developer Intern — SmartFarm VN (Hà Nội) [JR-10083]  \nJunior Frontend Developer — Phượng Hoàng Games (Hồ Chí Minh) [JR-10228]",
+  "citations": [
+   "JR-10233",
+   "JR-10260",
+   "JR-10010",
+   "JR-10083",
+   "JR-10228"
+  ],
+  "invalid_citations": [],
+  "refused": false
+ },
+ "Q16": {
+  "retrieved": [
+   "JR-10157",
+   "JR-10188",
+   "JR-10262",
+   "JR-10134",
+   "JR-10138"
+  ],
+  "answer": "TravelGo tuyển Fresher BI Developer ở Cần Thơ, yêu cầu thành thạo Data Warehouse và SSIS, biết Excel, Power BI là lợi thế, chấp nhận ứng viên mới tốt nghiệp, cung cấp ngân sách học tập 10 triệu/năm và bảo hiểm sức khỏe cao cấp [JR-10157].",
+  "citations": [
+   "JR-10157"
+  ],
+  "invalid_citations": [],
+  "refused": false
+ },
+ "Q17": {
+  "retrieved": [
+   "JR-10114",
+   "JR-10168",
+   "JR-10011",
+   "JR-10088",
+   "JR-10131"
+  ],
+  "answer": "Không tìm thấy thông tin trong các tin tuyển dụng hiện có.",
+  "citations": [],
+  "invalid_citations": [],
+  "refused": true
+ },
+ "Q18": {
+  "retrieved": [
+   "JR-10113",
+   "JR-10177",
+   "JR-10189",
+   "JR-10046",
+   "JR-10077"
+  ],
+  "answer": "Không tìm thấy thông tin trong các tin tuyển dụng hiện có.",
+  "citations": [],
+  "invalid_citations": [],
+  "refused": true
+ },
+ "Q19": {
+  "retrieved": [
+   "JR-10113",
+   "JR-10223",
+   "JR-10173",
+   "JR-10115",
+   "JR-10117"
+  ],
+  "answer": "Không tìm thấy thông tin trong các tin tuyển dụng hiện có.",
+  "citations": [],
+  "invalid_citations": [],
+  "refused": true
+ },
+ "Q20": {
+  "retrieved": [
+   "JR-10234",
+   "JR-10232",
+   "JR-10220",
+   "JR-10128",
+   "JR-10065"
+  ],
+  "answer": "Không tìm thấy thông tin trong các tin tuyển dụng hiện có.",
+  "citations": [],
+  "invalid_citations": [],
+  "refused": true
+ }
+}

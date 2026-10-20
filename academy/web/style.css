@@ -137,6 +137,7 @@ code,pre{font-family:var(--mono)}
 .callout.c-tip{background:color-mix(in srgb,#F5C518 14%,var(--surface));box-shadow:inset 4px 0 0 #E2B100}
 .callout.c-warn{background:var(--bad-soft);box-shadow:inset 4px 0 0 var(--bad)}
 .callout.c-remember{background:color-mix(in srgb,#8B5CF6 12%,var(--surface));box-shadow:inset 4px 0 0 #8B5CF6}
+.callout.c-compare{background:color-mix(in srgb,#10B981 12%,var(--surface));box-shadow:inset 4px 0 0 #10B981}
 .callout.c-interview{background:var(--brand-soft);box-shadow:inset 4px 0 0 var(--brand)}
 /* Code tối */
 .codebox{margin:1em 0;border-radius:12px;overflow:hidden;background:var(--code-bg);border:1px solid var(--code-line);max-width:68ch}

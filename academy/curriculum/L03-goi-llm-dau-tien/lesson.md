@@ -124,7 +124,7 @@ while True:
     if w == "<hết>":
         break
     text.append(w)
-    print(" ".join(text))
+    print(" ".join(text))   # nối các từ trong list, cách nhau một dấu cách
 ```
 ```output
 Data Engineer
@@ -156,16 +156,21 @@ True False
 
 ### Bước 4 — Gọi bằng keyword và đọc response → `ask`
 
-Fake client trong test chỉ nhận **keyword arguments** (`model=..., messages=...`). Hàm `**kwargs` gom chúng thành dict:
+Fake client trong test chỉ nhận **keyword arguments** (`model=..., messages=...`). Tham số `**kwargs` gom mọi `tên=giá_trị` thành một dict, duyệt được như dict thường:
 
 ```python
 def create(**kwargs):
-    print(sorted(kwargs))
+    print(type(kwargs).__name__)
+    for name in kwargs:
+        print(name, "=", kwargs[name])
 
 create(model="m", messages=[], max_tokens=5)
 ```
 ```output
-['max_tokens', 'messages', 'model']
+dict
+model = m
+messages = []
+max_tokens = 5
 ```
 
 Response là **đối tượng**, đọc bằng dấu chấm, không phải `["..."]`:

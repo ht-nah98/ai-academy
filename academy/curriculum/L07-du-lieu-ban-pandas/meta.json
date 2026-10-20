@@ -2,7 +2,7 @@
   "id": "L07-du-lieu-ban-pandas",
   "title": "Dữ liệu bẩn & pandas",
   "goal": "Làm sạch bộ tin tuyển dụng thô bằng pandas: chuẩn hóa thành phố, lương, kỹ năng, loại bản trùng — 5 hàm trong cleaning.py qua hết 18 test (302 dòng thô → 268 tin sạch).",
-  "duration_min": 210,
+  "duration_min": 220,
   "concepts": [
     "pandas",
     "data-cleaning"

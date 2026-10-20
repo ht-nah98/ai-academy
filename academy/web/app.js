@@ -67,7 +67,7 @@ $("#theme-toggle").onclick = () => {
 matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { if (!document.documentElement.dataset.theme) onThemeChange(); });
 
 /* ---------- Markdown → UI (callout, mermaid, code + kết quả) ---------- */
-const CALLOUTS = [["💡", "tip"], ["⚠️", "warn"], ["⚠", "warn"], ["🧠", "remember"], ["🎯", "interview"]];
+const CALLOUTS = [["💡", "tip"], ["⚠️", "warn"], ["⚠", "warn"], ["🧠", "remember"], ["🎯", "interview"], ["⚖️", "compare"], ["⚖", "compare"]];
 const LANG = { py: "python", python: "python", python3: "python", sh: "bash", bash: "bash", shell: "bash", console: "bash", zsh: "bash", json: "json" };
 let mermaidReady = false;
 function initMermaid() {

@@ -122,6 +122,7 @@ def make_client():
 
 
 if __name__ == "__main__":
+    # Nối các từ gõ sau tên file thành câu hỏi; không gõ gì thì `or` lấy câu mặc định.
     question = " ".join(sys.argv[1:]) or "Đặt một tên ngắn (tối đa 4 từ) cho app tìm việc IT. Chỉ trả về cái tên."
     client = make_client()
     for t in (0.0, 1.2):

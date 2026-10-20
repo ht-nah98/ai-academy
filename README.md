@@ -2,7 +2,7 @@
 
 Phần mềm học tập chạy **trên máy của bạn**, dành cho người đã biết web cơ bản nhưng chưa biết Python/AI, muốn chuẩn bị phỏng vấn **AI Engineer / Data Engineer Intern** trong 3–4 tuần.
 
-- 13 bài học (P0–P3: Python, chatbot, data pipeline, LLM trích xuất có cấu trúc) xuyên suốt một sản phẩm: **JobRadar — trợ lý thị trường việc làm IT**.
+- 17 bài học (P0–P4: Python, chatbot, data pipeline, LLM trích xuất có cấu trúc, tìm kiếm ngữ nghĩa & RAG) xuyên suốt một sản phẩm: **JobRadar — trợ lý thị trường việc làm IT**.
   JobRadar gom tin tuyển dụng từ nhiều trang (mỗi trang viết một kiểu, lương ghi "Thỏa thuận" hay "$1,950 - $2,900", kỹ năng nằm lẫn trong mô tả), làm sạch, dùng LLM đọc hiểu, rồi trả lời câu hỏi của người tìm việc bằng số liệu thật, kèm nguồn.
 - Mỗi bài: đề bài, code khung (`# TODO`), **test tự chấm**, câu hỏi phỏng vấn.
 - Web app local: lộ trình, đọc bài, bấm **Chạy test**, bản đồ kiến thức, gia sư AI.
@@ -14,7 +14,8 @@ Phần mềm học tập chạy **trên máy của bạn**, dành cho người �
 | P1 · Chatbot đầu tiên | Chatbot web nhớ ngữ cảnh, chữ hiện dần, tự thử lại khi bị rate limit |
 | P2 · Data pipeline | Pipeline 302 tin thô → CSDL SQLite sạch, kèm báo cáo SQL về thị trường |
 | P3 · LLM trích xuất | Bộ trích xuất JSON bằng LLM chạy cả bộ dữ liệu có cache, đo được precision/recall |
-| P4–P6 · Sắp có | RAG có trích nguồn, agent text-to-SQL, Docker + giám sát + phần trình bày project |
+| P4 · Tìm kiếm ngữ nghĩa & RAG | Tìm tin theo nghĩa và hỏi đáp RAG trả lời kèm id tin nguồn, đo được recall@k, MRR |
+| P5–P6 · Sắp có | Agent text-to-SQL, Docker + giám sát + phần trình bày project |
 
 Trước mỗi project, app có một trang giới thiệu: thành phẩm thật bạn sẽ chạy được, kỹ năng có được và dòng ghi vào CV.
 

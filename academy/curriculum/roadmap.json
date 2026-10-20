@@ -41,7 +41,7 @@
       },
       {
         "q": "Tìm việc giống \"làm pipeline dữ liệu cho ngân hàng\"",
-        "a": "Tìm theo nghĩa, trả lời kèm id tin nguồn",
+        "a": "5/5 tin ngân hàng, fintech; RAG trả lời kèm id nguồn [JR-10108]",
         "project": "P4"
       },
       {
@@ -63,14 +63,14 @@
         },
         {
           "title": "Kỹ năng AI Engineer",
-          "detail": "Gọi LLM qua API, prompt, structured output, batch có cache và rate limit, tính chi phí, đo chất lượng bằng precision/recall; sau đó là RAG và agent."
+          "detail": "Gọi LLM qua API, prompt, structured output, batch có cache và rate limit, tính chi phí, đo chất lượng bằng precision/recall; embedding, RAG có trích nguồn đo bằng recall@k, MRR; sau đó là agent."
         },
         {
           "title": "Sẵn sàng phỏng vấn",
-          "detail": "96 câu hỏi phỏng vấn đã luyện với AI chấm điểm. Kể project bằng số liệu thật: 302 tin, F1 kỹ năng 0.99, chạy cả bộ hết 0.09 USD."
+          "detail": "128 câu hỏi phỏng vấn đã luyện với AI chấm điểm. Kể project bằng số liệu thật: 302 tin, F1 kỹ năng 0.99, chạy cả bộ hết 0.09 USD."
         }
       ],
-      "note": "P0–P3 đã có bài; P4–P6 đang soạn."
+      "note": "P0–P4 đã có bài; P5–P6 đang soạn."
     }
   },
   "concept_groups": [
@@ -118,6 +118,11 @@
     {
       "id": "loops-comprehension",
       "title": "Vòng lặp & comprehension",
+      "group": "python"
+    },
+    {
+      "id": "big-o",
+      "title": "Độ phức tạp Big-O",
       "group": "python"
     },
     {
@@ -840,6 +845,10 @@
     [
       "structured-output",
       "caching"
+    ],
+    [
+      "loops-comprehension",
+      "big-o"
     ]
   ],
   "product_map": {
@@ -1137,54 +1146,43 @@
         {
           "id": "L14-embedding-cosine",
           "title": "Embedding & cosine",
-          "goal": "Tìm 5 tin tuyển dụng gần nghĩa nhất với một câu truy vấn bằng embedding và cosine similarity.",
-          "status": "planned",
-          "concepts": [
-            "embeddings",
-            "cosine-similarity",
-            "semantic-search"
-          ]
+          "goal": "Tìm 5 tin gần nghĩa nhất với một câu hỏi bằng embedding và cosine; so với tìm theo từ khóa.",
+          "status": "ready"
         },
         {
           "id": "L15-chunking-vector-index",
           "title": "Chunking & vector index",
-          "goal": "Chia mô tả dài thành chunk, xây vector index lưu đĩa và truy vấn dưới 100 ms.",
-          "status": "planned",
-          "concepts": [
-            "chunking",
-            "vector-index"
-          ]
+          "goal": "Chia mô tả thành chunk, cache embedding trong SQLite, dựng vector index lưu đĩa, mỗi lần tìm ~0,02 ms.",
+          "status": "ready"
         },
         {
           "id": "L16-rag-trich-nguon",
           "title": "RAG có trích nguồn",
-          "goal": "Trả lời câu hỏi chỉ dựa trên chunk truy hồi được, mỗi ý kèm id nguồn.",
-          "status": "planned",
-          "concepts": [
-            "rag",
-            "citation"
-          ]
+          "goal": "Trả lời chỉ từ các tin truy hồi được, mỗi ý kèm id nguồn, từ chối khi không có thông tin.",
+          "status": "ready"
         },
         {
           "id": "L17-danh-gia-rag",
           "title": "Đánh giá RAG",
-          "goal": "Đo recall@k của retrieval và tỉ lệ câu trả lời có căn cứ trên bộ 20 câu hỏi.",
-          "status": "planned",
-          "concepts": [
-            "rag-eval"
-          ]
+          "goal": "Đo recall@k, MRR và chất lượng trích dẫn trên 20 câu hỏi gán nhãn; chọn cấu hình chunk.",
+          "status": "ready"
         }
       ],
       "brief": {
         "goal": "Trả lời câu hỏi về tin tuyển dụng kèm nguồn để người dùng tự kiểm chứng.",
         "deliverable": "Tìm kiếm ngữ nghĩa và RAG trả lời kèm id tin nguồn, có số đo chất lượng truy hồi.",
-        "promise": "Bạn sẽ xây chức năng hỏi đáp về tin tuyển dụng: model trả lời kèm id tin nguồn để người dùng tự kiểm chứng, và có số đo chất lượng tìm kiếm.",
+        "promise": "Sau 4 bài, bạn có chức năng hỏi đáp về tin tuyển dụng: tìm theo nghĩa thay vì theo từ khóa, trả lời kèm id tin nguồn để người dùng tự kiểm chứng, từ chối khi dữ liệu không có câu trả lời, và có số đo chất lượng để chứng minh.",
         "can_do": [
           "Biến văn bản thành vector (embedding) và tìm theo nghĩa thay vì theo từ khóa",
-          "Chia nhỏ tài liệu và dựng chỉ mục vector",
-          "Xây RAG trả lời có trích nguồn",
-          "Đo chất lượng truy hồi bằng recall@k"
-        ]
+          "Chia nhỏ tài liệu, cache embedding và dựng chỉ mục vector lưu đĩa",
+          "Xây RAG trả lời có trích nguồn, kiểm tra id được trích bằng code",
+          "Đo truy hồi bằng recall@k, MRR và câu trả lời bằng citation precision/recall"
+        ],
+        "showcase": {
+          "caption": "Kết quả thật của tìm kiếm ngữ nghĩa và RAG",
+          "markdown": "```output\n$ python semantic.py \"làm pipeline dữ liệu cho ngân hàng\"\nTheo nghĩa › 0.333 JR-10104 Junior AI Engineer — Trúc Xanh Bank\n             0.313 JR-10108 Fresher Data Engineer — Saigon Fintech\n             0.304 JR-10015 Junior Data Engineer — PayNow      (5/5 tin ngân hàng, fintech)\nTừ khóa    › JR-10085 Golang Developer Intern — Hanoi Analytics (khớp \"ngân\" của \"ngân sách\")\n```\n\n```output\nHỏi › Ngân hàng hoặc công ty tài chính nào đang tuyển kỹ sư dữ liệu?\nRAG › Saigon Fintech đang tuyển Fresher Data Engineer [JR-10108].\nHỏi › Có công ty nào tuyển lập trình viên Rust không?\nRAG › Không tìm thấy thông tin trong các tin tuyển dụng hiện có.\n```\n\n```output\n$ python eval_rag.py   # 20 câu hỏi gán nhãn: 16 có đáp án, 4 không\n        recall@5   MRR     từ chối đúng   citation precision\nwhole   0.833      0.969   4/4            0.781\nc10     0.813      0.865   4/4            0.793\n```"
+        },
+        "cv_line": "Xây tìm kiếm ngữ nghĩa và RAG có trích nguồn trên 264 tin tuyển dụng (embedding NVIDIA, cache SQLite, vector index numpy); đánh giá trên 20 câu hỏi gán nhãn: recall@5 0.83, MRR 0.97, từ chối đúng 4/4 câu không có đáp án."
       }
     },
     {

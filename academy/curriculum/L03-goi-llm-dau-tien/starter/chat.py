@@ -97,6 +97,7 @@ def make_client():
 
 
 if __name__ == "__main__":
+    # Nối các từ gõ sau tên file thành câu hỏi; không gõ gì thì `or` lấy câu mặc định.
     question = " ".join(sys.argv[1:]) or "Data Engineer intern cần biết những kỹ năng gì?"
     result = ask(question, make_client())
     print(result["answer"])

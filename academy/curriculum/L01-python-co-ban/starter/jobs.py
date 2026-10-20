@@ -45,7 +45,7 @@ def filter_by_skill(jobs, skill):
 
     Ví dụ: filter_by_skill(JOBS, "llm") -> 2 tin (VNG, Zalo)
     """
-    # TODO: dùng list comprehension: [job for job in jobs if ...]
+    # TODO: tạo list rỗng, duyệt từng job, job đúng điều kiện thì append (hoặc dùng list comprehension)
     raise NotImplementedError("TODO: viết filter_by_skill")
 
 
@@ -84,6 +84,7 @@ def top_skills(jobs, n=3):
     Gợi ý: sorted(items, key=lambda kv: (-kv[1], kv[0]))
     """
     # TODO: đếm bằng dict giống count_by_city, rồi sắp xếp và cắt [:n]
+    #       (lambda kv: ... = một hàm def không tên, xem lesson Bước 6)
     raise NotImplementedError("TODO: viết top_skills")
 
 

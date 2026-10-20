@@ -1,0 +1,307 @@
+{
+ "Q01": {
+  "retrieved": [
+   "JR-10108",
+   "JR-10104",
+   "JR-10007",
+   "JR-10198",
+   "JR-10041"
+  ],
+  "answer": "Saigon Fintech (Hà Nội) tuyển Fresher Data Engineer [JR-10108]. Trúc Xanh Bank (Hà Nội) tuyển Junior AI Engineer [JR-10104].",
+  "citations": [
+   "JR-10108",
+   "JR-10104"
+  ],
+  "invalid_citations": [],
+  "refused": false
+ },
+ "Q02": {
+  "retrieved": [
+   "JR-10234",
+   "JR-10182",
+   "JR-10220",
+   "JR-10065",
+   "JR-10049"
+  ],
+  "answer": "Có tin lập trình app Flutter cho làm từ xa: Senior Mobile Developer (Flutter) tại PayNow (Cần Thơ) remote 100%, họp online hằng tuần [JR-10182].",
+  "citations": [
+   "JR-10182"
+  ],
+  "invalid_citations": [],
+  "refused": false
+ },
+ "Q03": {
+  "retrieved": [
+   "JR-10135",
+   "JR-10119",
+   "JR-10082",
+   "JR-10093",
+   "JR-10163"
+  ],
+  "answer": "Bạn có thể ứng tuyển vị trí MLOps Engineer tại TravelGo (Đà Nẵng) yêu cầu thành thạo Kubernetes và MLflow [JR-10135] hoặc Junior MLOps Engineer tại Orchid Studio (Đà Nẵng) yêu cầu thành thạo Kubernetes và Airflow [JR-10163]. Cả hai đều liên quan đến vận hành và triển khai mô hình ML.",
+  "citations": [
+   "JR-10135",
+   "JR-10163"
+  ],
+  "invalid_citations": [],
+  "refused": false
+ },
+ "Q04": {
+  "retrieved": [
+   "JR-10249",
+   "JR-10064",
+   "JR-10118",
+   "JR-10229",
+   "JR-10070"
+  ],
+  "answer": "Có Junior Data Analyst tại GreenGrid Energy [JR-10249], Fresher Machine Learning Engineer tại BlueWhale Analytics [JR-10118], và Junior Frontend Developer tại Hanoi Analytics [JR-10070].",
+  "citations": [
+   "JR-10249",
+   "JR-10118",
+   "JR-10070"
+  ],
+  "invalid_citations": [],
+  "refused": false
+ },
+ "Q05": {
+  "retrieved": [
+   "JR-10222",
+   "JR-10122",
+   "JR-10095",
+   "JR-10093",
+   "JR-10164"
+  ],
+  "answer": "Có các tin tuyển dụng thực tập làm hoàn toàn online (remote 100%) như sau:\n\n- Backend Developer (Python) Intern — Sao Mai Tech (Hồ Chí Minh) [JR-10122]  \n- Golang Developer Intern — Hải Âu Solutions (Hà Nội) [JR-10095]  \n- Machine Learning Engineer Intern — VietData (Hà Nội) [JR-10164]  \n\nTất cả đều làm việc remote 100%, họp online hằng tuần.",
+  "citations": [
+   "JR-10122",
+   "JR-10095",
+   "JR-10164"
+  ],
+  "invalid_citations": [],
+  "refused": false
+ },
+ "Q06": {
+  "retrieved": [
+   "JR-10022",
+   "JR-10105",
+   "JR-10035",
+   "JR-10259",
+   "JR-10161"
+  ],
+  "answer": "Kite Robotics (Hồ Chí Minh) nhận thực tập sinh AI Engineer [JR-10035].",
+  "citations": [
+   "JR-10035"
+  ],
+  "invalid_citations": [],
+  "refused": false
+ },
+ "Q07": {
+  "retrieved": [
+   "JR-10127",
+   "JR-10021",
+   "JR-10196",
+   "JR-10169",
+   "JR-10096"
+  ],
+  "answer": "Sen Vàng Insurance đang tuyển Junior AI Engineer, Fresher AI Engineer và Junior Machine Learning Engineer [JR-10127][JR-10021][JR-10196].",
+  "citations": [
+   "JR-10127",
+   "JR-10021",
+   "JR-10196"
+  ],
+  "invalid_citations": [],
+  "refused": false
+ },
+ "Q08": {
+  "retrieved": [
+   "JR-10169",
+   "JR-10048",
+   "JR-10092",
+   "JR-10218",
+   "JR-10105"
+  ],
+  "answer": "Có, MediCare Tech (công ty công nghệ y tế) đang tuyển AI Engineer [JR-10169], Junior AI Engineer [JR-10048] và Senior Machine Learning Engineer [JR-10092].",
+  "citations": [
+   "JR-10169",
+   "JR-10048",
+   "JR-10092"
+  ],
+  "invalid_citations": [],
+  "refused": false
+ },
+ "Q09": {
+  "retrieved": [
+   "JR-10137",
+   "JR-10066",
+   "JR-10078",
+   "JR-10141",
+   "JR-10117"
+  ],
+  "answer": "GreenGrid Energy đang tìm DevOps Engineer cho đội sản phẩm [JR-10137].",
+  "citations": [
+   "JR-10137"
+  ],
+  "invalid_citations": [],
+  "refused": false
+ },
+ "Q10": {
+  "retrieved": [
+   "JR-10116",
+   "JR-10179",
+   "JR-10251",
+   "JR-10102",
+   "JR-10029"
+  ],
+  "answer": "Có, SmartFarm VN (startup nông nghiệp thông minh) đang tuyển Junior Golang Developer [JR-10116] và Backend Developer (Java) Intern [JR-10179]. Tuy nhiên, vị trí Go cụ thể là Junior Golang Developer [JR-10116].",
+  "citations": [
+   "JR-10116",
+   "JR-10179"
+  ],
+  "invalid_citations": [],
+  "refused": false
+ },
+ "Q11": {
+  "retrieved": [
+   "JR-10062",
+   "JR-10254",
+   "JR-10128",
+   "JR-10220",
+   "JR-10234"
+  ],
+  "answer": "EduViet tuyển Junior Mobile Developer (Flutter) [JR-10062].",
+  "citations": [
+   "JR-10062"
+  ],
+  "invalid_citations": [],
+  "refused": false
+ },
+ "Q12": {
+  "retrieved": [
+   "JR-10075",
+   "JR-10113",
+   "JR-10215",
+   "JR-10201",
+   "JR-10008"
+  ],
+  "answer": "Trúc Xanh Bank cần người viết test tự động [JR-10075].",
+  "citations": [
+   "JR-10075"
+  ],
+  "invalid_citations": [],
+  "refused": false
+ },
+ "Q13": {
+  "retrieved": [
+   "JR-10133",
+   "JR-10200",
+   "JR-10241",
+   "JR-10139",
+   "JR-10235"
+  ],
+  "answer": "LogiFast tuyển DevOps Engineer [JR-10200].",
+  "citations": [
+   "JR-10200"
+  ],
+  "invalid_citations": [],
+  "refused": false
+ },
+ "Q14": {
+  "retrieved": [
+   "JR-10240",
+   "JR-10208",
+   "JR-10256",
+   "JR-10225",
+   "JR-10202"
+  ],
+  "answer": "Junior Backend Developer (Java) — Phượng Hoàng Games (Đà Nẵng) cầu thành thạo Java và Kafka, biết Docker, Spring Boot [JR-10240]",
+  "citations": [
+   "JR-10240"
+  ],
+  "invalid_citations": [],
+  "refused": false
+ },
+ "Q15": {
+  "retrieved": [
+   "JR-10233",
+   "JR-10260",
+   "JR-10010",
+   "JR-10083",
+   "JR-10228"
+  ],
+  "answer": "Senior Frontend Developer — Sao Mai Tech (Hồ Chí Minh) [JR-10233], Senior Frontend Developer — PayNow (Hà Nội) [JR-10260], Frontend Developer — Sky Mobile (Đà Nẵng) [JR-10010]",
+  "citations": [
+   "JR-10233",
+   "JR-10260",
+   "JR-10010"
+  ],
+  "invalid_citations": [],
+  "refused": false
+ },
+ "Q16": {
+  "retrieved": [
+   "JR-10157",
+   "JR-10188",
+   "JR-10262",
+   "JR-10110",
+   "JR-10087"
+  ],
+  "answer": "Fresher BI Developer — TravelGo (Cần Thơ) [JR-10157]",
+  "citations": [
+   "JR-10157"
+  ],
+  "invalid_citations": [],
+  "refused": false
+ },
+ "Q17": {
+  "retrieved": [
+   "JR-10168",
+   "JR-10098",
+   "JR-10114",
+   "JR-10185",
+   "JR-10254"
+  ],
+  "answer": "Không tìm thấy thông tin trong các tin tuyển dụng hiện có.",
+  "citations": [],
+  "invalid_citations": [],
+  "refused": true
+ },
+ "Q18": {
+  "retrieved": [
+   "JR-10113",
+   "JR-10177",
+   "JR-10197",
+   "JR-10187",
+   "JR-10226"
+  ],
+  "answer": "Không tìm thấy thông tin trong các tin tuyển dụng hiện có.",
+  "citations": [],
+  "invalid_citations": [],
+  "refused": true
+ },
+ "Q19": {
+  "retrieved": [
+   "JR-10168",
+   "JR-10141",
+   "JR-10223",
+   "JR-10173",
+   "JR-10110"
+  ],
+  "answer": "Không tìm thấy thông tin trong các tin tuyển dụng hiện có.",
+  "citations": [],
+  "invalid_citations": [],
+  "refused": true
+ },
+ "Q20": {
+  "retrieved": [
+   "JR-10234",
+   "JR-10065",
+   "JR-10220",
+   "JR-10232",
+   "JR-10246"
+  ],
+  "answer": "Không tìm thấy thông tin trong các tin tuyển dụng hiện có.",
+  "citations": [],
+  "invalid_citations": [],
+  "refused": true
+ }
+}

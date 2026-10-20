@@ -107,12 +107,16 @@ def filter_by_keyword(model_ids, keyword):
 
 if __name__ == "__main__":
     here = Path(__file__).resolve().parent
-    env_path = here / ".env" if (here / ".env").exists() else here.parents[2] / ".env"  # gốc repo
+    env_path = here / ".env"
+    if not env_path.exists():
+        env_path = here.parents[2] / ".env"  # gốc repo
     key = get_api_key(str(env_path))
     print(f"Key từ {env_path}: {key[:8]}... ({len(key)} ký tự)")
     ids = fetch_model_ids()
     print(f"Có {len(ids)} model trên build.nvidia.com")
     groups = group_by_publisher(ids)
+    # Xếp nhà phát hành theo số model giảm dần, lấy 5 nhà đầu.
+    # lambda kv: -len(kv[1]) = một hàm def không tên (xem L01 Bước 6).
     top = sorted(groups.items(), key=lambda kv: -len(kv[1]))[:5]
     for publisher, models in top:
         print(f"  {publisher:<15} {len(models)} model")

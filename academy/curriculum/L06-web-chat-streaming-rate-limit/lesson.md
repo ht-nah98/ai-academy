@@ -92,6 +92,28 @@ flowchart TD
 
 Vì sao cần jitter? 5 client cùng bị 429 lúc 10:00:00. Không jitter, cả 5 cùng chờ 4 giây rồi **cùng** đập vào server lúc 10:00:04 — lại 429. Có jitter, chúng tản ra:
 
+**Cách 1 — vòng lặp for**
+
+```python
+import random
+random.seed(7)
+delay = 4
+same = []
+for _ in range(5):
+    same.append(delay)
+spread = []
+for _ in range(5):
+    spread.append(round(delay * random.random(), 1))   # random() cho số trong [0, 1)
+print("không jitter:", same)
+print("full jitter: ", spread)
+```
+```output
+không jitter: [4, 4, 4, 4, 4]
+full jitter:  [1.3, 0.6, 2.6, 0.3, 2.1]
+```
+
+**Cách 2 — `[x] * n` và list comprehension**
+
 ```python
 import random
 random.seed(7)
@@ -103,6 +125,10 @@ print("full jitter: ", [round(delay * random.random(), 1) for _ in range(5)])
 không jitter: [4, 4, 4, 4, 4]
 full jitter:  [1.3, 0.6, 2.6, 0.3, 2.1]
 ```
+
+`[delay] * 5` lặp list một phần tử 5 lần; `_` là tên biến cho giá trị không dùng tới.
+
+> ⚖️ **So sánh:** cùng O(n), chỉ gọn hơn.
 
 > 🎯 **Phỏng vấn hay hỏi:** "Vì sao backoff phải có jitter?" — để tránh **thundering herd**: nhiều client thử lại đồng loạt tạo ra đợt quá tải mới.
 
@@ -178,7 +204,9 @@ HTTPError 503 False
 
 ### Bước 4 — Hàm nhận hàm → `with_retry`
 
-`with_retry` nhận một **hàm** để gọi lại nhiều lần; `lambda: ...` tạo hàm ngay tại chỗ. `raise` trơn trong `except` ném tiếp lỗi đang bắt:
+`with_retry` nhận một **hàm** (chưa gọi) để tự gọi lại nhiều lần. `raise` trơn trong `except` ném tiếp lỗi đang bắt.
+
+**Cách 1 — đặt tên hàm bằng `def`**
 
 ```python
 def safe_div(a, b):
@@ -189,8 +217,30 @@ def safe_div(a, b):
         raise
 
 def run(fn):
-    return fn()
+    return fn()            # gọi hàm được truyền vào
 
+def div_6_3():
+    return safe_div(6, 3)
+
+def div_1_0():
+    return safe_div(1, 0)
+
+print(run(div_6_3))        # truyền div_6_3, KHÔNG phải div_6_3()
+try:
+    run(div_1_0)
+except ZeroDivisionError as e:
+    print("bắt được:", e)
+```
+```output
+2.0
+chia cho 0 → báo tiếp lên trên
+bắt được: division by zero
+```
+
+**Cách 2 — `lambda` (hàm không tên)**
+
+```python
+# safe_div và run như Cách 1
 print(run(lambda: safe_div(6, 3)))
 try:
     run(lambda: safe_div(1, 0))
@@ -202,6 +252,10 @@ except ZeroDivisionError as e:
 chia cho 0 → báo tiếp lên trên
 bắt được: division by zero
 ```
+
+`lambda: safe_div(6, 3)` chính là `def div_6_3(): return safe_div(6, 3)`, chỉ không có tên và viết trong một dòng.
+
+> ⚖️ **So sánh:** chạy như nhau, cùng tốc độ. `lambda` gọn hơn khi hàm chỉ dùng một lần ngay tại chỗ (như trong `with_retry(...)`); hàm dài hoặc dùng lại nhiều nơi → viết `def`.
 
 Vòng `for attempt in range(max_tries)` + `try/except`; trong `except`: lỗi không đáng retry **hoặc** lần cuối → `raise`; còn lại → `sleep(...)` rồi vòng lặp tự thử lại.
 
@@ -218,9 +272,9 @@ def shout(words):
             yield w.upper()
 
 g = shout(["data", "", "ai"])
-print(next(g))
-print(list(g))
-print("-".join(shout(["x", "y"])))
+print(next(g))                      # lấy phần tử kế tiếp
+print(list(g))                      # lấy hết phần còn lại vào list
+print("-".join(shout(["x", "y"])))  # nối các phần tử, cách nhau dấu "-"
 ```
 ```output
 DATA

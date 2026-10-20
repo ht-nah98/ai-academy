@@ -192,23 +192,75 @@ Gọi API chỉ để đếm token thì chậm và tốn tiền; ta ước lư�
 ```python
 import math
 print(7 / 3, math.ceil(7 / 3), math.ceil(0 / 3))
+```
+```output
+2.3333333333333335 3 0
+```
+
+Cộng độ dài nhiều chuỗi:
+
+**Cách 1 — vòng lặp for, cộng dồn**
+
+```python
+words = ["cafe", "bánh mì", "trà"]
+total = 0
+for w in words:
+    total = total + len(w)
+print(total)
+```
+```output
+14
+```
+
+**Cách 2 — `sum()` + generator expression**
+
+```python
 words = ["cafe", "bánh mì", "trà"]
 print(sum(len(w) for w in words))
 ```
 ```output
-2.3333333333333335 3 0
 14
 ```
+
+> ⚖️ **So sánh:** cùng O(n), chỉ gọn hơn. Generator đưa từng số cho `sum` mà không dựng list trung gian, nên tiết kiệm bộ nhớ khi có hàng triệu phần tử.
 
 Mỗi message cộng thêm `MESSAGE_OVERHEAD = 4` token "khung" (role, dấu phân cách) — con số ước lượng/message. Khác với khuôn ~16 token/lần gọi ở L03 ("hi" → `prompt_tokens=17`).
 
 ### Bước 4 — Đi ngược danh sách → `trim_history`
 
-Hai công cụ: `reversed()` duyệt từ cuối lên, `insert(0, x)` chèn vào đầu để giữ thứ tự gốc:
+Hai công cụ: duyệt từ cuối lên, và `insert(0, x)` chèn vào đầu để giữ thứ tự gốc.
+
+**Cách 1 — vòng while với chỉ số giảm dần**
+
+```python
+nums = [10, 20, 30, 40]
+backward = []
+i = len(nums) - 1          # chỉ số phần tử cuối
+while i >= 0:
+    backward.append(nums[i])
+    i = i - 1
+print(backward)
+```
+```output
+[40, 30, 20, 10]
+```
+
+**Cách 2 — `reversed()`**
 
 ```python
 nums = [10, 20, 30, 40]
 print(list(reversed(nums)))
+```
+```output
+[40, 30, 20, 10]
+```
+
+> ⚖️ **So sánh:** cùng O(n), chỉ gọn hơn và không phải tự quản lý chỉ số `i`. `reversed()` không sao chép list.
+
+Kết hợp với `break` và `insert(0, x)`:
+
+```python
+nums = [10, 20, 30, 40]
 kept = []
 for x in reversed(nums):
     if x < 25:
@@ -217,7 +269,6 @@ for x in reversed(nums):
 print(kept)
 ```
 ```output
-[40, 30, 20, 10]
 [30, 40]
 ```
 

@@ -221,13 +221,38 @@ body = b'{"items": [{"name": "Zen"}, {"name": "Atomic"}], "ok": true}'
 data = json.loads(body)
 print(type(data).__name__, data["ok"])
 print(isinstance(data.get("items"), list))
-print(sorted(item["name"] for item in data["items"]))
 ```
 ```output
 dict True
 True
+```
+
+Lấy tên sách và xếp A→Z:
+
+**Cách 1 — vòng lặp for, rồi `sorted()`**
+
+```python
+names = []
+for item in data["items"]:
+    names.append(item["name"])
+print(sorted(names))
+```
+```output
 ['Atomic', 'Zen']
 ```
+
+**Cách 2 — generator expression**
+
+```python
+print(sorted(item["name"] for item in data["items"]))
+```
+```output
+['Atomic', 'Zen']
+```
+
+`item["name"] for item in ...` đặt trong `sorted(...)` giống list comprehension (L01) nhưng không có `[ ]`: nó đưa từng tên cho `sorted` mà không dựng list `names` riêng.
+
+> ⚖️ **So sánh:** cùng O(n log n) (phần tốn nhất là sắp xếp), chỉ gọn hơn. `sorted` vẫn tạo list kết quả nên không tiết kiệm bộ nhớ đáng kể.
 
 API trả về `{"data": [{"id": ...}, ...]}`. Kiểm tra `isinstance` trước; sai hình dạng → `raise ValueError`.
 

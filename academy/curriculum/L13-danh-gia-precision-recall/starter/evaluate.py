@@ -85,7 +85,10 @@ def error_report(gold, pred, top=5):
 
 def load_gold(path=HERE / "gold_30.json"):
     """gold_30.json là list tin → dict job_id → nhãn."""
-    return {g["job_id"]: g for g in json.loads(Path(path).read_text(encoding="utf-8"))}
+    by_id = {}
+    for item in json.loads(Path(path).read_text(encoding="utf-8")):
+        by_id[item["job_id"]] = item
+    return by_id
 
 
 def load_pred(path):
@@ -111,7 +114,13 @@ if __name__ == "__main__":
             lv = field_accuracy(gold, pred, "level")["confusions"]
             print(f"[{ver}] level sai (gold, pred): {dict(lv)}")
             print(f"[{ver}] lỗi kỹ năng: {error_report(gold, pred)}")
-    cols = list(rows[0])
-    print("\n" + " | ".join(f"{c:>10}" for c in cols))
+    cols = list(rows[0])                  # tên cột = các key của dòng đầu
+    header = []
+    for c in cols:
+        header.append(f"{c:>10}")         # :>10 — căn phải, rộng 10 ký tự
+    print("\n" + " | ".join(header))
     for r in rows:
-        print(" | ".join(f"{r[c]:>10}" for c in cols))
+        cells = []
+        for c in cols:
+            cells.append(f"{r[c]:>10}")
+        print(" | ".join(cells))

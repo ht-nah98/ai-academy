@@ -1,0 +1,140 @@
+{
+  "id": "L14-embedding-cosine",
+  "title": "Embedding & cosine",
+  "goal": "Tìm tin tuyển dụng theo nghĩa: embedding qua API, cosine similarity viết tay rồi bằng numpy, top-k, so với tìm theo từ khóa — 4 hàm trong semantic.py qua hết 11 test; câu \"làm pipeline dữ liệu cho ngân hàng\" trả về 5/5 tin ngân hàng/fintech.",
+  "duration_min": 180,
+  "concepts": [
+    "embeddings",
+    "cosine-similarity",
+    "semantic-search"
+  ],
+  "entry": "semantic.py",
+  "checklist": [
+    "Chạy được `python semantic.py \"làm pipeline dữ liệu cho ngân hàng\"` và đọc được vì sao tìm theo từ khóa trả tin Golang",
+    "Tính tay được cosine của 2 vector 2 chiều và giải thích vì sao cosine không phụ thuộc độ dài vector",
+    "Giải thích được vì sao vòng for và numpy cùng O(n·d) nhưng numpy nhanh hơn hàng chục lần",
+    "So sánh được argsort O(n log n), heapq O(n log k), argpartition O(n) cho bài toán top-k",
+    "Giải thích được input_type query/passage và hậu quả khi bỏ quên",
+    "Nêu được điểm yếu của embedding so với từ khóa và hybrid search là gì",
+    "Qua hết test của bài"
+  ],
+  "interview_questions": [
+    "Embedding là gì? Vì sao hai câu khác chữ vẫn có embedding gần nhau?",
+    "Cosine similarity khác Euclidean distance và dot product thế nào? Khi nào chúng cho cùng thứ hạng?",
+    "Tìm theo nghĩa và tìm theo từ khóa: mỗi cách mạnh ở đâu, yếu ở đâu?",
+    "Lấy top-k trong 1 triệu điểm: bạn dùng cách nào và độ phức tạp bao nhiêu?",
+    "Vì sao có model embedding phân biệt query và passage?",
+    "Đổi sang model embedding khác thì phải làm gì với dữ liệu đã có?",
+    "Điểm cosine 0.33 nghĩa là gì? Có dùng làm ngưỡng 'liên quan / không liên quan' được không?",
+    "Bạn sẽ tối ưu chi phí và độ trễ của bước tạo embedding thế nào?"
+  ],
+  "tutor_notes": "Model thật: nvidia/nemotron-3-embed-1b (2048 chiều, vector đã chuẩn hóa, cần extra_body input_type query/passage; nv-embedqa-mistral-7b-v2 trả 404, các model embedding cũ trả 410 khi soạn bài). Số thật: 264 tin = 24.318 token, 5 lô, ~9 giây; câu ngân hàng → top 5 đều là công ty ngân hàng/fintech, từ khóa trả JR-10085 (Golang Intern) vì khớp 'làm, cho, dữ, liệu, ngân' (ngân sách). Lỗi hay gặp: (1) cosine_similarity quên trường hợp vector 0 (chia cho 0) hoặc không kiểm khác độ dài; (2) top_k trả dot product thay vì cosine (test có vector chưa chuẩn hóa), sắp tăng dần, quên tie-break chỉ số nhỏ trước, trả numpy int/float thay vì int/float Python, k > n bị lỗi; (3) keyword_search đếm từ lặp nhiều lần (dùng list thay set), không lower(), giữ tài liệu điểm 0; (4) embed_texts quên sắp theo .index (test trả ngược), gọi 1 lần cho mỗi văn bản thay vì theo lô, kiểm input_type sau khi đã gọi API, gọi API khi texts rỗng. Gợi ý: hỏi 'vì sao [1,1] và [5,5] có cosine 1?', 'nếu vector đã độ dài 1 thì cosine còn cần phép chia không?'. Không đưa nguyên hàm; được đưa cú pháp riêng lẻ (np.asarray, a @ b, np.linalg.norm(axis=1), np.argsort(-x, kind='stable'), sorted(key=lambda p: (-p[1], p[0])), set &).",
+  "tasks": [
+    {
+      "fn": "cosine_similarity",
+      "signature": "cosine_similarity(a, b)",
+      "summary": "Cosine của 2 vector, xử lý vector 0",
+      "example": "[1, 1] và [5, 5] → 1.0",
+      "test_prefix": "test_cosine_similarity"
+    },
+    {
+      "fn": "top_k",
+      "signature": "top_k(query_vec, doc_vecs, k=5)",
+      "summary": "k tài liệu có cosine cao nhất",
+      "example": "→ [(0, 1.0), (1, 0.8), (4, 0.6)]",
+      "test_prefix": "test_top_k"
+    },
+    {
+      "fn": "keyword_search",
+      "signature": "keyword_search(query, docs, k=5)",
+      "summary": "Mốc so sánh: đếm từ khác nhau trùng với query",
+      "example": "\"táo cam\" → [(1, 2), (0, 1), (3, 1)]",
+      "test_prefix": "test_keyword_search"
+    },
+    {
+      "fn": "embed_texts",
+      "signature": "embed_texts(client, texts, input_type, model, batch_size=64)",
+      "summary": "Gọi API embedding theo lô, giữ thứ tự",
+      "example": "7 văn bản, batch_size=3 → 3 lần gọi",
+      "test_prefix": "test_embed_texts"
+    }
+  ],
+  "brief": {
+    "context": "264 tin sạch nằm trong jobradar.db (L10). Người dùng muốn gõ nhu cầu bằng lời thường, ví dụ \"làm pipeline dữ liệu cho ngân hàng\", thay vì chọn bộ lọc.",
+    "problem": "Tìm theo từ khóa trả về tin Golang của một công ty phân tích dữ liệu, vì khớp các âm tiết \"làm\", \"cho\", \"dữ liệu\" và \"ngân\" (của \"ngân sách học tập\"). Không tin nào chứa chữ \"pipeline\" hay \"ngân hàng\", dù có Data Engineer ở công ty ngân hàng và fintech.",
+    "requirements": [
+      {
+        "task": "cosine_similarity",
+        "purpose": "Đo mức gần nghĩa giữa hai vector."
+      },
+      {
+        "task": "top_k",
+        "purpose": "Xếp hạng toàn bộ tin theo một câu hỏi, đủ nhanh cho mỗi truy vấn."
+      },
+      {
+        "task": "keyword_search",
+        "purpose": "Mốc so sánh để chứng minh tìm theo nghĩa tốt hơn trên câu hỏi thật."
+      },
+      {
+        "task": "embed_texts",
+        "purpose": "Biến văn bản thành vector bằng API, theo lô, đúng loại query/passage."
+      }
+    ],
+    "deliverable": "semantic.py qua 11/11 test. `python semantic.py \"làm pipeline dữ liệu cho ngân hàng\"` in top 5 theo nghĩa và top 5 theo từ khóa để so sánh.",
+    "constraints": [
+      "Model embedding: nvidia/nemotron-3-embed-1b (2048 chiều).",
+      "Câu hỏi dùng input_type \"query\", tin tuyển dụng dùng \"passage\".",
+      "Embedding tài liệu lưu ra đĩa; chạy lại không gọi lại API.",
+      "Test dùng client giả: không gọi mạng."
+    ],
+    "product_nodes": [
+      "search-rag",
+      "llm-gateway"
+    ],
+    "workflow": {
+      "flow": "chain",
+      "inputs": [
+        {
+          "label": "264 tin sạch",
+          "detail": "jobradar.db của L10"
+        },
+        {
+          "label": "Câu hỏi bằng lời thường",
+          "detail": "Ví dụ: pipeline dữ liệu cho ngân hàng"
+        }
+      ],
+      "steps": [
+        {
+          "task": "embed_texts",
+          "label": "Tạo vector theo lô"
+        },
+        {
+          "task": "cosine_similarity",
+          "label": "Đo độ gần nghĩa"
+        },
+        {
+          "task": "top_k",
+          "label": "Lấy 5 tin gần nhất"
+        },
+        {
+          "task": "keyword_search",
+          "label": "So với tìm từ khóa"
+        }
+      ],
+      "outputs": [
+        {
+          "label": "5/5 tin ngân hàng, fintech",
+          "detail": "Tìm theo nghĩa, 2 Data Engineer"
+        },
+        {
+          "label": "0/5 tin liên quan",
+          "detail": "Tìm theo từ khóa"
+        },
+        {
+          "label": "264 vector 2048 chiều",
+          "detail": "24.318 token, 5 lần gọi API"
+        }
+      ]
+    }
+  }
+}

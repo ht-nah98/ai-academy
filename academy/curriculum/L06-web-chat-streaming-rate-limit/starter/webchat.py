@@ -105,9 +105,11 @@ def create_app(client, model=DEFAULT_MODEL, system=DEFAULT_SYSTEM, sleep=time.sl
         text = req.message.strip()
         if not text:
             raise HTTPException(status_code=400, detail="Tin nhắn rỗng")
-        return ([{"role": "system", "content": system}]
-                + [m.model_dump() for m in req.history]
-                + [{"role": "user", "content": text}])
+        messages = [{"role": "system", "content": system}]
+        for m in req.history:
+            messages.append(m.model_dump())  # Message (Pydantic) -> dict {"role", "content"}
+        messages.append({"role": "user", "content": text})
+        return messages
 
     @app.get("/")
     def index():
@@ -133,6 +135,7 @@ def create_app(client, model=DEFAULT_MODEL, system=DEFAULT_SYSTEM, sleep=time.sl
         """ĐÃ VIẾT SẴN: như /chat nhưng stream=True, trả từng mẩu chữ (text/plain)."""
         messages = build_messages(req)
         try:
+            # lambda: ... = một hàm def không tên; with_retry gọi nó lại mỗi lần thử.
             stream = with_retry(lambda: client.chat.completions.create(
                 model=model, messages=messages, max_tokens=512, stream=True, extra_body=EXTRA_BODY),
                 sleep=sleep, rand=rand)

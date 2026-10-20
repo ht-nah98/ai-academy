@@ -1,0 +1,139 @@
+{
+  "id": "L15-chunking-vector-index",
+  "title": "Chunking & vector index",
+  "goal": "Chia mô tả thành chunk có overlap và header, cache embedding trong SQLite theo nội dung, dựng vector index lưu đĩa — 4 phần trong index.py qua hết 12 test; chạy lại 0 lần gọi API, mỗi lần search trên index ~0,02 ms.",
+  "duration_min": 210,
+  "concepts": [
+    "chunking",
+    "vector-index"
+  ],
+  "entry": "index.py",
+  "checklist": [
+    "Copy semantic.py (L14) vào thư mục bài, chạy `python index.py` hai lần, lần 2 thấy 'calls': 0",
+    "Tính tay được các đoạn của chunk_text cho 10 từ, size=4, overlap=1",
+    "Giải thích được vì sao gắn header vào mọi chunk",
+    "Giải thích được vì sao khóa cache embedding gồm model + input_type + text, và vì sao đổi size vẫn dùng lại được một phần cache",
+    "Giải thích được vì sao search trả mỗi tin tối đa một lần",
+    "Nói được khi nào brute force là đủ và khi nào cần ANN (HNSW, IVF)",
+    "Qua hết test của bài"
+  ],
+  "interview_questions": [
+    "Vì sao cần chunking? Chọn chunk size và overlap thế nào?",
+    "Chunk ở giữa tài liệu bị mất ngữ cảnh. Bạn xử lý thế nào?",
+    "Dữ liệu thay đổi hằng ngày. Cập nhật vector index thế nào mà không embedding lại tất cả?",
+    "Brute force search và ANN (HNSW, IVF) khác nhau thế nào? Khi nào cần ANN?",
+    "Bạn chọn vector database nào cho 500 chunk? Cho 50 triệu chunk?",
+    "Lưu embedding ở đâu và dưới dạng gì? Một vector 2048 chiều float32 tốn bao nhiêu bộ nhớ?",
+    "Vì sao chuẩn hóa vector khi dựng index thay vì lúc tìm?",
+    "Đổi model embedding thì index cũ còn dùng được không?"
+  ],
+  "tutor_notes": "Bài nối L14: chạy thật cần copy semantic.py của học sinh (embed_texts, load_jobs, make_client); test KHÔNG cần (embedder giả). Số thật: mô tả tin trung bình 47 từ (5–64); size=40/overlap=10 → 475 chunk, 8 lô, ~17 giây; lần 2 cached=475, calls=0; size=20/overlap=5 → 871 chunk, 120 lấy từ cache; search ~0,02 ms trên 475 chunk, chỉ phép tìm (thỉnh thoảng đo ~2 ms do numpy đa luồng; độ trễ chính là embedding câu hỏi ~380 ms). Lỗi hay gặp: (1) chunk_text dùng range(0, len, step) sinh đoạn cuối thừa; không kiểm overlap >= size (vòng lặp vô hạn khi step = 0); (2) make_chunks quên header hoặc đánh chunk_id sai (đánh toàn cục thay vì trong từng tin); (3) embed_cached gửi trùng văn bản lặp; đếm cached theo văn bản khác nhau thay vì theo phần tử; ghi cache một lần cuối thay vì sau mỗi lô; quên commit; lưu float64; không xử lý texts rỗng (np.stack lỗi); (4) VectorIndex chuẩn hóa chia cho 0 với dòng toàn 0; search sửa record gốc; không bỏ trùng job_id; save quên mkdir parents=True; load trả dict thay vì VectorIndex. Gợi ý: hỏi 'nếu batch thứ 5 lỗi mạng, 4 lô trước còn trong cache không?', 'ba chunk của cùng một tin chiếm top 3 thì người dùng thấy gì?'. Không đưa nguyên hàm; được đưa cú pháp riêng lẻ (sqlite3 execute/fetchone/commit, np.frombuffer, arr.tobytes(), np.linalg.norm(axis=1, keepdims=True), np.save/np.load, @classmethod).",
+  "tasks": [
+    {
+      "fn": "chunk_text",
+      "signature": "chunk_text(text, size=40, overlap=10)",
+      "summary": "Cửa sổ size từ, trượt size − overlap",
+      "example": "10 từ, size=4, overlap=1 → 3 đoạn",
+      "test_prefix": "test_chunk_text"
+    },
+    {
+      "fn": "make_chunks",
+      "signature": "make_chunks(jobs, size=40, overlap=10)",
+      "summary": "Mỗi tin → chunk có id và header",
+      "example": "\"JR-10015#1\": header + đoạn thứ 2",
+      "test_prefix": "test_make_chunks"
+    },
+    {
+      "fn": "embed_cached",
+      "signature": "embed_cached(texts, embed_fn, cache_path, model, input_type, batch_size)",
+      "summary": "Embedding có cache SQLite, gọi theo lô",
+      "example": "lần 2 → cached=475, calls=0",
+      "test_prefix": "test_embed_cached"
+    },
+    {
+      "fn": "VectorIndex",
+      "signature": "VectorIndex(vectors, records, model).search(q, k) / save / load",
+      "summary": "Chuẩn hóa, top-k mỗi tin một lần, lưu đĩa",
+      "example": "475 chunk, ~0,02 ms mỗi lần search",
+      "test_prefix": "test_vector_index"
+    }
+  ],
+  "brief": {
+    "context": "semantic.py (L14) tìm theo nghĩa được, nhưng mỗi lần chạy phải embedding lại toàn bộ tin, và mỗi tin chỉ có một vector cho cả mô tả.",
+    "problem": "Tài liệu dài hơn (CV, mô tả chi tiết) sẽ vượt giới hạn 4096 token của model và cho vector \"trung bình\" mờ nghĩa. Thử tham số chunk khác nhau đang tốn tiền embedding lại cả những đoạn không đổi. Chưa có chỉ mục lưu đĩa để bước RAG (L16) dùng chung.",
+    "requirements": [
+      {
+        "task": "chunk_text",
+        "purpose": "Chia văn bản thành đoạn vừa cỡ, có overlap để không cắt đôi một ý."
+      },
+      {
+        "task": "make_chunks",
+        "purpose": "Gắn id và header cho từng chunk để biết chunk thuộc tin nào."
+      },
+      {
+        "task": "embed_cached",
+        "purpose": "Chỉ trả tiền embedding cho đoạn chưa từng thấy."
+      },
+      {
+        "task": "VectorIndex",
+        "purpose": "Tìm nhanh trên mọi chunk, mỗi tin một lần, lưu và đọc từ đĩa."
+      }
+    ],
+    "deliverable": "index.py qua 12/12 test. `python index.py` dựng index_c40/ (475 chunk); chạy lần 2: 'calls': 0.",
+    "constraints": [
+      "Brute force bằng numpy, không thêm thư viện vector database.",
+      "Cache embedding trong một file SQLite, khóa theo model + input_type + text.",
+      "Ghi cache sau mỗi lô: chết giữa chừng không mất phần đã xong.",
+      "Test dùng embedder giả: không gọi mạng."
+    ],
+    "product_nodes": [
+      "search-rag",
+      "database"
+    ],
+    "workflow": {
+      "flow": "chain",
+      "inputs": [
+        {
+          "label": "264 tin sạch",
+          "detail": "Mô tả trung bình 47 từ"
+        },
+        {
+          "label": "semantic.py",
+          "detail": "embed_texts của L14"
+        }
+      ],
+      "steps": [
+        {
+          "task": "chunk_text",
+          "label": "Cắt cửa sổ có overlap"
+        },
+        {
+          "task": "make_chunks",
+          "label": "Gắn id và header"
+        },
+        {
+          "task": "embed_cached",
+          "label": "Embedding, cache SQLite"
+        },
+        {
+          "task": "VectorIndex",
+          "label": "Dựng, lưu, tìm"
+        }
+      ],
+      "outputs": [
+        {
+          "label": "475 chunk trong index_c40/",
+          "detail": "4 MB vector float32"
+        },
+        {
+          "label": "Lần 2: 0 lần gọi",
+          "detail": "475 vector lấy từ cache"
+        },
+        {
+          "label": "Search ~0,02 ms",
+          "detail": "Brute force trên 475 chunk"
+        }
+      ]
+    }
+  }
+}

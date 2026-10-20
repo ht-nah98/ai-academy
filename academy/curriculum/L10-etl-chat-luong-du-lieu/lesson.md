@@ -168,6 +168,8 @@ print(readings["temp_c"].isna().tolist())
 
 Gom lý do theo id, rồi lọc bằng mask:
 
+**Cách 1 — vòng lặp for + if**
+
 ```python
 import pandas as pd
 
@@ -175,11 +177,16 @@ df = pd.DataFrame({"student_id": ["S1", "S2", "S3"], "score": [8, 11, -1]})
 issues = [("score_out_of_range", "S2"), ("score_negative", "S3"), ("score_out_of_range", "S3")]
 reasons = {}
 for check, sid in issues:
-    reasons.setdefault(sid, set()).add(check)
+    if sid not in reasons:
+        reasons[sid] = set()      # lần đầu gặp id: tạo set rỗng
+    reasons[sid].add(check)
 print(reasons["S3"] == {"score_negative", "score_out_of_range"})
-mask = df["student_id"].isin(reasons)
+mask = df["student_id"].isin(reasons)    # True nếu id là key của reasons
 print(df[~mask].reset_index(drop=True))
-print([(sid, ", ".join(sorted(reasons[sid]))) for sid in df.loc[mask, "student_id"]])
+rejected = []
+for sid in df.loc[mask, "student_id"]:
+    rejected.append((sid, ", ".join(sorted(reasons[sid]))))
+print(rejected)
 ```
 ```output
 True
@@ -188,7 +195,16 @@ True
 [('S2', 'score_out_of_range'), ('S3', 'score_negative, score_out_of_range')]
 ```
 
-`setdefault(k, set())` tạo set rỗng nếu chưa có key — gom nhiều lý do cho một id.
+**Cách 2 — `setdefault` + list comprehension** (thay 2 vòng for ở trên, cùng kết quả):
+
+```python
+reasons = {}
+for check, sid in issues:
+    reasons.setdefault(sid, set()).add(check)
+rejected = [(sid, ", ".join(sorted(reasons[sid]))) for sid in df.loc[mask, "student_id"]]
+```
+
+> ⚖️ **So sánh:** cùng O(n), chỉ gọn hơn. `setdefault(k, set())` = "chưa có key thì gán set rỗng, rồi trả giá trị của key" — đúng 3 dòng `if`/gán/`add` của Cách 1.
 
 ### Bước 4 — Upsert → `upsert_jobs` (phần `jobs`)
 
@@ -231,9 +247,12 @@ conn = sqlite3.connect(":memory:")
 conn.execute("CREATE TABLE product_tags (sku TEXT, tag TEXT, PRIMARY KEY (sku, tag))")
 
 def load_tags(sku, tags):
+    rows = []
+    for tag in tags:
+        rows.append((sku, tag))       # hoặc gọn: [(sku, t) for t in tags]
     with conn:
         conn.execute("DELETE FROM product_tags WHERE sku = ?", (sku,))
-        conn.executemany("INSERT INTO product_tags VALUES (?, ?)", [(sku, t) for t in tags])
+        conn.executemany("INSERT INTO product_tags VALUES (?, ?)", rows)
 
 load_tags("P1", ["văn phòng", "rẻ"])
 load_tags("P1", ["văn phòng", "cao cấp"])

@@ -1,0 +1,140 @@
+{
+  "id": "L16-rag-trich-nguon",
+  "title": "RAG có trích nguồn",
+  "goal": "Trả lời câu hỏi chỉ từ các tin truy hồi được, mỗi ý kèm id tin [JR-xxxxx], từ chối khi nguồn không có câu trả lời, và kiểm tra id được trích có thật trong nguồn — 4 hàm trong rag.py qua hết 8 test.",
+  "duration_min": 180,
+  "concepts": [
+    "rag",
+    "citation"
+  ],
+  "entry": "rag.py",
+  "checklist": [
+    "Copy semantic.py (L14) và index.py (L15) vào thư mục bài, chạy được `python rag.py`",
+    "Vẽ lại được luồng RAG: truy hồi → prompt có nguồn → sinh → kiểm trích dẫn",
+    "Giải thích được vì sao cần câu từ chối cố định thay vì để model tự diễn đạt",
+    "Giải thích được vì sao không dùng ngưỡng cosine để quyết định từ chối",
+    "Phân biệt được id bịa (không có trong nguồn) và id có thật nhưng gán sai nội dung",
+    "So sánh được RAG với fine-tune cho dữ liệu thay đổi hằng ngày",
+    "Qua hết test của bài"
+  ],
+  "interview_questions": [
+    "RAG là gì? Vẽ luồng xử lý của một hệ thống RAG bạn đã làm.",
+    "Khi nào dùng RAG, khi nào fine-tune?",
+    "Làm sao giảm hallucination trong RAG?",
+    "Bạn bắt model trích nguồn thế nào, và kiểm tra trích dẫn ra sao?",
+    "Nguồn truy hồi không chứa câu trả lời thì hệ thống nên làm gì?",
+    "Prompt RAG dài thêm vì phần nguồn. Bạn kiểm soát chi phí và độ trễ thế nào?",
+    "Chọn k (số nguồn đưa vào prompt) thế nào? k lớn quá hay nhỏ quá thì sao?",
+    "Model trích id có thật nhưng gán sai nội dung. Phát hiện lỗi này bằng cách nào?"
+  ],
+  "tutor_notes": "Bài nối L14 + L15: chạy thật cần copy semantic.py và index.py của học sinh, và đã chạy `python index.py` ở L15 (make_search đọc workspace/L15-chunking-vector-index/index_c40); test KHÔNG cần (search_fn, chat_fn giả). Số thật (nemotron-3-super, k=5): câu ngân hàng → 'Saigon Fintech đang tuyển Fresher Data Engineer [JR-10108]' (bỏ sót JR-10015 PayNow dù có trong nguồn); 'thực tập AI remote' và 'Rust' → từ chối đúng; trung bình 723 token vào, 49 token ra, ~1,8 giây/câu (trung vị đầu-cuối, 20 câu). Lỗi hay gặp: (1) format_sources không gộp chunk cùng tin hoặc đổi thứ tự; (2) build_rag_messages đặt nguồn vào system, sai chuỗi 'NGUỒN:'/'CÂU HỎI:'; (3) extract_citations lấy cả id ngoài ngoặc, không tách nhiều id trong một ngoặc, không bỏ trùng, regex \\d+ nhận cả JR-1001; (4) answer_question vẫn gọi chat_fn khi không có hit/điểm thấp; so invalid với mọi id trong CSDL; ok = True khi không trích gì; quên strip(). Gợi ý: hỏi 'id JR-10999 có trong CSDL nhưng không có trong prompt — model đọc được nó không?', 'vì sao không tin điểm cosine để từ chối?' (Rust 0.35 > câu ngân hàng 0.33). Không đưa nguyên hàm; được đưa cú pháp riêng lẻ (re.findall với nhóm, [^\\[\\]]*, \\d{5}, dict.fromkeys).",
+  "tasks": [
+    {
+      "fn": "format_sources",
+      "signature": "format_sources(hits)",
+      "summary": "Chunk → khối [JR-xxxxx] text, gộp cùng tin",
+      "example": "3 hit, 2 tin → 2 khối",
+      "test_prefix": "test_format_sources"
+    },
+    {
+      "fn": "build_rag_messages",
+      "signature": "build_rag_messages(question, hits)",
+      "summary": "System = quy tắc; user = NGUỒN + CÂU HỎI",
+      "example": "[system, user]",
+      "test_prefix": "test_build_rag_messages"
+    },
+    {
+      "fn": "extract_citations",
+      "signature": "extract_citations(answer)",
+      "summary": "id trong ngoặc vuông, không trùng",
+      "example": "\"[JR-10002, JR-10001]\" → 2 id",
+      "test_prefix": "test_extract_citations"
+    },
+    {
+      "fn": "answer_question",
+      "signature": "answer_question(question, search_fn, chat_fn, k=5, min_score=0.0)",
+      "summary": "Truy hồi → gọi model → kiểm trích dẫn",
+      "example": "trích [JR-10999] → invalid_citations",
+      "test_prefix": "test_answer_question"
+    }
+  ],
+  "brief": {
+    "context": "Chỉ mục vector của L15 trả về đúng các tin liên quan tới câu hỏi. Người dùng không muốn đọc 5 tin; họ muốn một câu trả lời ngắn.",
+    "problem": "Hỏi thẳng model thì model không biết dữ liệu JobRadar và có thể bịa tên công ty, mức lương. Câu trả lời cần nêu id tin nguồn để người dùng kiểm chứng, phải từ chối khi dữ liệu không có thông tin, và hệ thống phải tự phát hiện khi model trích một id không có trong nguồn.",
+    "requirements": [
+      {
+        "task": "format_sources",
+        "purpose": "Đưa các tin truy hồi vào prompt, mỗi tin gắn id để trích."
+      },
+      {
+        "task": "build_rag_messages",
+        "purpose": "Ép model chỉ dùng nguồn, trích id, từ chối đúng câu chuẩn."
+      },
+      {
+        "task": "extract_citations",
+        "purpose": "Lấy ra các id model đã trích để kiểm tra."
+      },
+      {
+        "task": "answer_question",
+        "purpose": "Ghép cả luồng, chặn gọi model khi không có nguồn, đánh dấu id bịa."
+      }
+    ],
+    "deliverable": "rag.py qua 8/8 test. `python rag.py` trả lời 3 câu hỏi mẫu: 1 câu có nguồn hợp lệ, 2 câu từ chối đúng.",
+    "constraints": [
+      "Model: nvidia/nemotron-3-super-120b-a12b, temperature 0, có cache đĩa.",
+      "k = 5 tin nguồn mỗi câu hỏi.",
+      "Câu trả lời không trích nguồn hoặc trích id ngoài nguồn → không ok.",
+      "Test dùng search và chat giả: không gọi mạng."
+    ],
+    "product_nodes": [
+      "search-rag",
+      "llm-gateway",
+      "prompting"
+    ],
+    "workflow": {
+      "flow": "chain",
+      "inputs": [
+        {
+          "label": "Câu hỏi người dùng",
+          "detail": "Ngân hàng nào tuyển kỹ sư dữ liệu?"
+        },
+        {
+          "label": "index_c40/ của L15",
+          "detail": "475 chunk, mỗi tin một lần"
+        }
+      ],
+      "steps": [
+        {
+          "task": "format_sources",
+          "label": "Ghép nguồn có id"
+        },
+        {
+          "task": "build_rag_messages",
+          "label": "Dựng prompt có quy tắc"
+        },
+        {
+          "task": "extract_citations",
+          "label": "Tách id được trích"
+        },
+        {
+          "task": "answer_question",
+          "label": "Gọi model, kiểm nguồn"
+        }
+      ],
+      "outputs": [
+        {
+          "label": "Trả lời kèm [JR-10108]",
+          "detail": "Saigon Fintech tuyển Fresher Data Engineer"
+        },
+        {
+          "label": "Từ chối 2/2 câu",
+          "detail": "Không có tin trong dữ liệu"
+        },
+        {
+          "label": "~1,8 giây mỗi câu",
+          "detail": "Trung vị đầu-cuối trên 20 câu"
+        }
+      ]
+    }
+  }
+}

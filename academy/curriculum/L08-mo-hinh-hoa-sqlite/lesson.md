@@ -221,6 +221,10 @@ Số dòng sau khi sửa: 2
 
 Dòng thứ 3 lỗi → cả 2 dòng trước cũng bị rollback. Đó là điều bạn muốn.
 
+`executemany(sql, rows)` tương đương vòng lặp `for row in rows: conn.execute(sql, row)` đặt trong cùng `with conn:`.
+
+> ⚖️ **So sánh:** đo 100.000 dòng vào file SQLite, cùng một transaction: vòng lặp `execute` 114 ms, `executemany` 87 ms — cùng O(n), nhanh hơn ~1,3 lần. Chênh lệch thật nằm ở transaction: mỗi dòng một `with conn:` (một lần commit, ghi đĩa) thì 2.000 dòng đã mất 24,9 s. Luôn gom cả lô vào một transaction.
+
 > 💡 **Mẹo:** `df.to_dict("records")` biến DataFrame thành list dict — dễ duyệt từng tin. Đưa mọi giá trị qua `to_db` để NaN thành `NULL`.
 
 ### Bước 5 — Bảng nối nhiều–nhiều
@@ -237,7 +241,12 @@ conn.executescript("""
     INSERT INTO students VALUES ('S1', 'An'), ('S2', 'Bình');
 """)
 clubs = {"S1": ["cờ vua", "bóng đá"], "S2": ["bóng đá"]}
-rows = [(sid, club) for sid, names in clubs.items() for club in names]
+
+# Cách 1 — hai vòng for lồng nhau
+rows = []
+for sid, names in clubs.items():       # .items() cho từng cặp (key, value)
+    for club in names:
+        rows.append((sid, club))
 print(rows)
 conn.executemany("INSERT INTO student_clubs VALUES (?, ?)", rows)
 print(conn.execute("""
@@ -252,6 +261,14 @@ print(conn.execute("""
 ```
 
 List lồng nhau → list phẳng các cặp: đúng việc bạn làm với cột `skills`.
+
+**Cách 2 — comprehension lồng**, thay cho 4 dòng `rows = []`… ở trên, cùng kết quả:
+
+```python
+rows = [(sid, club) for sid, names in clubs.items() for club in names]
+```
+
+> ⚖️ **So sánh:** cùng O(n), chỉ gọn hơn. Hai `for` trong comprehension đọc từ trái sang phải đúng như thứ tự lồng của Cách 1 — dễ đọc nhầm, nên với vòng lồng Cách 1 thường rõ hơn.
 
 ### Bước 6 — `count_rows`
 

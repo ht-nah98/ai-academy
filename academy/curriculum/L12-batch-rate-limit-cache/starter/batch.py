@@ -83,7 +83,7 @@ def run_batch(jobs, client, cache_dir=CACHE_DIR, model=DEFAULT_MODEL, limiter=No
     build_messages(title, description) → messages; parse(content) → dict.
       None → dùng từ extract.py của L11:
         build_messages = build_extraction_messages
-        parse = lambda content: JobInfo.model_validate(parse_json_reply(content)).model_dump()
+        parse = hàm nhận content, trả JobInfo.model_validate(parse_json_reply(content)).model_dump()
       Import extract BÊN TRONG run_batch, chỉ khi cần (test truyền hàm giả, không có extract.py).
       Batch không dùng vòng tự sửa của L11: tin lỗi vào errors, xem lại và chạy lại riêng.
 
@@ -94,8 +94,8 @@ def run_batch(jobs, client, cache_dir=CACHE_DIR, model=DEFAULT_MODEL, limiter=No
       2. Có file <cache_dir>/<key>.json → đọc {"content", "prompt_tokens", "completion_tokens"},
          KHÔNG gọi API, cache_hits += 1.
       3. Không có → limiter.wait() (nếu có limiter) rồi
-            call_with_retry(lambda: client.chat.completions.create(model=model, messages=messages, **PARAMS),
-                            sleep=sleep)
+            call_with_retry(hàm_gửi_request, sleep=sleep), trong đó hàm_gửi_request() trả về
+            client.chat.completions.create(model=model, messages=messages, **PARAMS)
          api_calls += 1; cộng prompt_tokens, completion_tokens từ response.usage.
          Gọi thất bại hẳn → errors[job_id] = "api: <lỗi>", sang tin tiếp (KHÔNG dừng cả lô).
       4. results[job_id] = parse(content). parse lỗi (ValueError) → errors[job_id] = "parse: <lỗi>".
@@ -148,8 +148,10 @@ def load_jobs(db_path=DB_PATH, limit=None):
     rows = conn.execute("SELECT job_id, title, description FROM jobs "
                         "WHERE TRIM(COALESCE(description, '')) != '' ORDER BY job_id").fetchall()
     conn.close()
-    jobs = [{"job_id": j, "title": t, "description": d} for j, t, d in rows]
-    return jobs[:limit]
+    jobs = []
+    for job_id, title, description in rows:
+        jobs.append({"job_id": job_id, "title": title, "description": description})
+    return jobs[:limit]   # limit=None → lấy hết
 
 
 def make_client():
@@ -160,7 +162,10 @@ def make_client():
 
 
 if __name__ == "__main__":
-    limit = int(sys.argv[1]) if len(sys.argv) > 1 else None
+    if len(sys.argv) > 1:          # python batch.py 20 → chỉ chạy 20 tin
+        limit = int(sys.argv[1])
+    else:
+        limit = None
     jobs = load_jobs(limit=limit)
     t0 = time.time()
     report = run_batch(jobs, make_client(), limiter=RateLimiter(rpm=35))
@@ -171,4 +176,9 @@ if __name__ == "__main__":
     if stats["api_calls"]:
         print("Ước tính 100.000 tin:", estimate_cost(stats["prompt_tokens"], stats["completion_tokens"],
                                                      stats["api_calls"], 100_000))
-    print(f"Thời gian: {time.time() - t0:.1f}s · lỗi: {dict(list(report['errors'].items())[:5])}")
+    first_errors = {}
+    for job_id, message in report["errors"].items():
+        if len(first_errors) == 5:   # chỉ in 5 lỗi đầu
+            break
+        first_errors[job_id] = message
+    print(f"Thời gian: {time.time() - t0:.1f}s · lỗi: {first_errors}")

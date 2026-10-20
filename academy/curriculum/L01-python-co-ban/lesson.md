@@ -4,11 +4,12 @@
 
 ## 🎯 Mục tiêu
 
-Sau buổi này (khoảng 3,5 giờ) bạn sẽ:
+Sau buổi này (khoảng 4 giờ) bạn sẽ:
 
 - Viết được Python cơ bản: biến, hàm, vòng lặp.
 - Dùng **list** (dãy có thứ tự) và **dict** (bảng tra key → value).
-- Viết **list comprehension** để lọc dữ liệu.
+- Lọc, đếm, sắp xếp bằng vòng lặp **`for` / `if`** cơ bản; đọc được **list comprehension** như cách viết gọn của vòng lặp đó.
+- Ước lượng **Big-O**: vì sao đếm bằng dict (O(n)) nhanh hơn gọi `list.count()` trong vòng lặp (O(n²)).
 - Xử lý giá trị thiếu **`None`** mà không làm chương trình sập.
 - **Kết quả đo được:** 4 hàm trong `jobs.py` qua hết **15 test**.
 
@@ -43,7 +44,7 @@ Khối lệnh xác định bằng thụt lề 4 dấu cách, không dùng `{ }`.
 | Rỗng / đúng sai | `None` · `True` / `False` |
 | Độ dài, có trong không | `len(x)` · `x in arr` |
 | Cắt list | `arr[:3]` · `arr[-1]` |
-| Hàm, hàm một dòng | `def f(a, b=2):` · `lambda x: x * 2` |
+| Hàm, hàm không tên | `def f(a, b=2):` · `lambda x: x * 2` (xem Bước 6) |
 | Vòng lặp | `for x in arr:` · `for i in range(5):` |
 
 ### list, dict, tuple
@@ -65,11 +66,100 @@ Dữ liệu thật luôn thiếu. Quy tắc vàng: **quyết định rõ ràng**
 
 > 💡 **Mẹo:** viết `x is None`, không viết `x == None`. `None` chỉ có một bản duy nhất; `is` so đúng "chính nó".
 
-### Comprehension
+### Comprehension = vòng lặp viết gọn
 
-Comprehension là cách viết một dòng để **tạo list mới từ list cũ**, có thể kèm điều kiện lọc.
+Khóa học luôn viết **Cách 1 bằng vòng lặp** trước. Comprehension chỉ là cách viết gọn của đúng vòng lặp đó.
 
-`[x * 2 for x in nums if x > 0]` đọc là: "lấy `x * 2` với mỗi `x` trong `nums` nếu `x > 0`". Nó **không sửa list gốc** — thói quen quan trọng trong Data Engineering.
+**Cách 1 — vòng lặp for**
+
+```python
+nums = [3, -1, 4]
+doubled = []
+for x in nums:
+    if x > 0:
+        doubled.append(x * 2)
+print(doubled)
+```
+```output
+[6, 8]
+```
+
+**Cách 2 — list comprehension**
+
+```python
+nums = [3, -1, 4]
+doubled = [x * 2 for x in nums if x > 0]
+print(doubled)
+```
+```output
+[6, 8]
+```
+
+| Phần trong comprehension | Tương ứng trong vòng lặp |
+|---|---|
+| `[` … `]` | `doubled = []` |
+| `x * 2` | `doubled.append(x * 2)` |
+| `for x in nums` | `for x in nums:` |
+| `if x > 0` | `if x > 0:` |
+
+> ⚖️ **So sánh:** cùng O(n), chỉ gọn hơn. Cả hai đều tạo list mới, **không sửa list gốc**. Comprehension lồng nhau khó đọc → khi đó dùng Cách 1.
+
+### Độ phức tạp Big-O
+
+Big-O cho biết số bước tăng thế nào khi dữ liệu có `n` phần tử tăng lên.
+
+| Big-O | Nghĩa | Ví dụ |
+|---|---|---|
+| O(1) | Không phụ thuộc n | `d[key]`, `key in d` |
+| O(n) | Duyệt một lượt | 1 vòng `for`, `x in list`, `list.count(x)` |
+| O(n log n) | Sắp xếp | `sorted(...)` |
+| O(n²) | Vòng lặp trong vòng lặp | gọi `list.count(x)` bên trong `for` |
+
+Ví dụ: đếm 20 000 loại quả bằng hai cách.
+
+```python
+import random
+import time
+
+random.seed(1)
+fruits = ["táo", "cam", "xoài", "ổi", "mít"]
+items = []
+for i in range(20_000):
+    items.append(random.choice(fruits))
+
+# Cách A — list.count() trong vòng lặp: O(n²)
+t0 = time.perf_counter()
+counts_a = {}
+for x in items:
+    counts_a[x] = items.count(x)   # count() lại duyệt cả 20 000 phần tử
+t_a = time.perf_counter() - t0
+
+# Cách B — dict, duyệt một lượt: O(n)
+t0 = time.perf_counter()
+counts_b = {}
+for x in items:
+    counts_b[x] = counts_b.get(x, 0) + 1
+t_b = time.perf_counter() - t0
+
+print(counts_a == counts_b)
+print(f"list.count: {t_a:.2f} s")
+print(f"dict:       {t_b:.4f} s")
+```
+```output
+True
+list.count: 3.14 s
+dict:       0.0012 s
+```
+
+Số đo trên máy thử (Python 3.12), máy bạn sẽ khác chút:
+
+| n | Cách A — O(n²) | Cách B — O(n) |
+|---|---|---|
+| 10 000 | 0,79 s | 0,6 ms |
+| 20 000 | 3,14 s | 1,2 ms |
+| n tăng ×2 | thời gian **×4** | thời gian ×2 |
+
+> 🧠 **Ghi nhớ:** thấy một hàm tự duyệt list (`count`, `in`, `index`) nằm **trong** vòng `for` → nghĩ ngay tới O(n²) và thay bằng dict hoặc set.
 
 ### Module và `__main__`
 
@@ -121,9 +211,11 @@ chưa có
 
 `d["key"]` báo lỗi nếu thiếu key; `d.get("key", mặc_định)` thì không.
 
-### Bước 3 — Lọc bằng comprehension → `filter_by_skill`
+### Bước 3 — Lọc danh sách → `filter_by_skill`
 
 Lọc các khóa học có tag `"data"`, không phân biệt hoa thường:
+
+**Cách 1 — hai vòng for lồng nhau**
 
 ```python
 courses = [
@@ -131,12 +223,32 @@ courses = [
     {"name": "Vẽ tranh", "tags": ["Art"]},
     {"name": "Pandas", "tags": ["python", "data"]},
 ]
+picked = []
+for c in courses:
+    has_data = False
+    for tag in c["tags"]:
+        if tag.lower() == "data":
+            has_data = True
+            break          # thấy rồi, khỏi xét các tag còn lại
+    if has_data:
+        picked.append(c["name"])
+print(picked)
+```
+```output
+['SQL cơ bản', 'Pandas']
+```
+
+**Cách 2 — list comprehension lồng nhau**
+
+```python
 picked = [c["name"] for c in courses if "data" in [t.lower() for t in c["tags"]]]
 print(picked)
 ```
 ```output
 ['SQL cơ bản', 'Pandas']
 ```
+
+> ⚖️ **So sánh:** cùng O(tổng số tag), Cách 2 không nhanh hơn. Cách 1 còn dừng sớm nhờ `break`; Cách 2 tạo thêm một list tag mới cho mỗi khóa. Cách 2 chỉ ngắn hơn nhưng **khó đọc hơn** → khi mới học, dùng Cách 1.
 
 Giờ áp dụng cho `jobs` và `skill`. Nhớ: kết quả là **list các tin** (dict), không phải list tên.
 
@@ -170,11 +282,18 @@ flowchart TD
 
 Lọc `None` trước, rồi mới cộng:
 
+**Cách 1 — vòng lặp for, tự cộng dồn**
+
 ```python
 scores = [8, None, 6, 9, None]
-valid = [s for s in scores if s is not None]
+valid = []
+total = 0
+for s in scores:
+    if s is not None:
+        valid.append(s)
+        total = total + s
 print(valid, len(valid))
-print(sum(valid) / len(valid))
+print(total / len(valid))
 print(round(7.666, 1))
 ```
 ```output
@@ -183,15 +302,44 @@ print(round(7.666, 1))
 7.7
 ```
 
+**Cách 2 — list comprehension + `sum()`**
+
+```python
+scores = [8, None, 6, 9, None]
+valid = [s for s in scores if s is not None]
+print(valid, len(valid))
+print(sum(valid) / len(valid))
+```
+```output
+[8, 6, 9] 3
+7.666666666666667
+```
+
+> ⚖️ **So sánh:** cùng O(n), chỉ gọn hơn. `sum()` bên trong cũng là một vòng lặp cộng dồn như Cách 1.
+
 > ⚠️ **Lỗi hay gặp:** list rỗng → `ZeroDivisionError`. Kiểm tra `if not valid:` trước và trả `None`.
 
 ### Bước 6 — Đếm lồng nhau và sắp xếp → `top_skills`
 
-Đếm giống Bước 4 nhưng hai vòng `for` lồng nhau (tin → kỹ năng), nhớ `.lower()`. Sau đó sắp xếp bằng `key=`:
+Đếm giống Bước 4 nhưng hai vòng `for` lồng nhau (tin → kỹ năng), nhớ `.lower()`. Sau đó xếp hạng: số lần giảm dần, hòa thì tên A→Z.
+
+**Cách 1 — vòng lặp: mỗi lượt chọn phần tử lớn nhất**
 
 ```python
 counts = {"go": 2, "rust": 5, "c": 2}
-ranked = sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))
+remaining = dict(counts)        # bản sao, để xóa dần mà không đụng counts
+ranked = []
+while remaining:
+    best = None
+    for name in remaining:
+        if best is None:
+            best = name
+        elif remaining[name] > remaining[best]:
+            best = name
+        elif remaining[name] == remaining[best] and name < best:
+            best = name         # hòa số lần → tên đứng trước A→Z thắng
+    ranked.append((best, remaining[best]))
+    del remaining[best]
 print(ranked)
 print(ranked[:2])
 ```
@@ -200,7 +348,26 @@ print(ranked[:2])
 [('rust', 5), ('c', 2)]
 ```
 
-`-kv[1]`: số lần lớn đứng trước. `kv[0]`: hòa thì xếp tên A→Z.
+**Cách 2 — `sorted()` với `key=`**
+
+```python
+counts = {"go": 2, "rust": 5, "c": 2}
+
+def rank_key(kv):               # kv là một cặp, vd. ("rust", 5)
+    return (-kv[1], kv[0])      # số lần giảm dần, rồi tên A→Z
+
+print(sorted(counts.items(), key=rank_key))
+print(sorted(counts.items(), key=lambda kv: (-kv[1], kv[0])))
+```
+```output
+[('rust', 5), ('c', 2), ('go', 2)]
+[('rust', 5), ('c', 2), ('go', 2)]
+```
+
+- `sorted` gọi `rank_key` cho từng cặp rồi xếp theo giá trị trả về. Tuple so từng phần: `(-5, "rust")` < `(-2, "c")` < `(-2, "go")`.
+- `lambda kv: (-kv[1], kv[0])` là **hàm không tên**: giống hệt `rank_key` nhưng viết trong một dòng.
+
+> ⚖️ **So sánh:** Cách 1 mỗi lượt duyệt hết phần còn lại: lấy k phần tử tốn O(n·k), xếp hết là O(n²). `sorted` là O(n log n). Đo với 5 000 khóa: xếp hết — Cách 1 0,58 s, `sorted` 1,3 ms; chỉ lấy top 3 — Cách 1 0,6 ms, `sorted` 2 ms (Cách 1 nhanh hơn khi k rất nhỏ). Dữ liệu bài này rất nhỏ, chọn cách nào dễ đọc với bạn.
 
 ### Bước 7 — Chạy toàn bộ
 

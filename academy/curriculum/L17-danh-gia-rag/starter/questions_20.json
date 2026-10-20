@@ -1,0 +1,172 @@
+[
+ {
+  "qid": "Q01",
+  "question": "Ngân hàng hoặc công ty tài chính nào đang tuyển kỹ sư dữ liệu?",
+  "relevant": [
+   "JR-10015",
+   "JR-10090",
+   "JR-10108"
+  ],
+  "rule": "title chứa 'Data Engineer' và công ty ngân hàng/fintech (Trúc Xanh Bank, Saigon Fintech, PayNow)"
+ },
+ {
+  "qid": "Q02",
+  "question": "Có tin lập trình app Flutter nào cho làm từ xa không?",
+  "relevant": [
+   "JR-10182"
+  ],
+  "rule": "title Flutter, mô tả có 'remote'"
+ },
+ {
+  "qid": "Q03",
+  "question": "Mình ở Đà Nẵng, muốn làm vận hành và triển khai mô hình ML.",
+  "relevant": [
+   "JR-10131",
+   "JR-10135",
+   "JR-10163"
+  ],
+  "rule": "title MLOps, city Đà Nẵng"
+ },
+ {
+  "qid": "Q04",
+  "question": "Ở Hải Phòng có việc nào về phân tích hoặc khoa học dữ liệu?",
+  "relevant": [
+   "JR-10039",
+   "JR-10249"
+  ],
+  "rule": "title Data Analyst/Data Scientist, city Hải Phòng"
+ },
+ {
+  "qid": "Q05",
+  "question": "Sinh viên muốn thực tập mà làm hoàn toàn online thì có tin nào?",
+  "relevant": [
+   "JR-10095",
+   "JR-10122",
+   "JR-10164",
+   "JR-10192"
+  ],
+  "rule": "title Intern, mô tả có 'remote'"
+ },
+ {
+  "qid": "Q06",
+  "question": "Chỗ nào nhận thực tập sinh AI?",
+  "relevant": [
+   "JR-10035",
+   "JR-10101",
+   "JR-10210",
+   "JR-10250"
+  ],
+  "rule": "title 'AI Engineer Intern'"
+ },
+ {
+  "qid": "Q07",
+  "question": "Công ty bảo hiểm nào đang tuyển người làm AI hoặc machine learning?",
+  "relevant": [
+   "JR-10021",
+   "JR-10127",
+   "JR-10196"
+  ],
+  "rule": "Sen Vàng Insurance, title AI/Machine Learning"
+ },
+ {
+  "qid": "Q08",
+  "question": "Công ty công nghệ y tế có tuyển kỹ sư AI không?",
+  "relevant": [
+   "JR-10048",
+   "JR-10169"
+  ],
+  "rule": "MediCare Tech, title AI Engineer"
+ },
+ {
+  "qid": "Q09",
+  "question": "Công ty năng lượng nào cần người làm DevOps?",
+  "relevant": [
+   "JR-10066",
+   "JR-10137"
+  ],
+  "rule": "GreenGrid Energy, title DevOps"
+ },
+ {
+  "qid": "Q10",
+  "question": "Startup nông nghiệp thông minh có tuyển backend Go không?",
+  "relevant": [
+   "JR-10116"
+  ],
+  "rule": "SmartFarm VN, title Golang"
+ },
+ {
+  "qid": "Q11",
+  "question": "Công ty giáo dục nào tuyển lập trình viên mobile?",
+  "relevant": [
+   "JR-10062"
+  ],
+  "rule": "EduViet, title Mobile"
+ },
+ {
+  "qid": "Q12",
+  "question": "Ngân hàng nào cần người viết test tự động?",
+  "relevant": [
+   "JR-10075",
+   "JR-10113"
+  ],
+  "rule": "title QA Automation, công ty ngân hàng/fintech"
+ },
+ {
+  "qid": "Q13",
+  "question": "Công ty logistics nào tuyển kỹ sư hạ tầng cloud?",
+  "relevant": [
+   "JR-10132",
+   "JR-10200"
+  ],
+  "rule": "LogiFast, title DevOps"
+ },
+ {
+  "qid": "Q14",
+  "question": "Tìm việc backend Java dùng Kafka ở Đà Nẵng",
+  "relevant": [
+   "JR-10240"
+  ],
+  "rule": "title Java, mô tả có Kafka, city Đà Nẵng"
+ },
+ {
+  "qid": "Q15",
+  "question": "Vị trí frontend cấp cao làm Next.js",
+  "relevant": [
+   "JR-10233",
+   "JR-10260"
+  ],
+  "rule": "title 'Senior Frontend', mô tả có Next.js"
+ },
+ {
+  "qid": "Q16",
+  "question": "Mới ra trường muốn làm BI ở Cần Thơ",
+  "relevant": [
+   "JR-10157"
+  ],
+  "rule": "title 'Fresher BI Developer', city Cần Thơ"
+ },
+ {
+  "qid": "Q17",
+  "question": "Có công ty nào tuyển lập trình viên Rust không?",
+  "relevant": [],
+  "rule": "không tin nào nhắc Rust"
+ },
+ {
+  "qid": "Q18",
+  "question": "Có tin nào làm việc tại Singapore không?",
+  "relevant": [],
+  "rule": "không tin nào ở Singapore"
+ },
+ {
+  "qid": "Q19",
+  "question": "Công ty nào đang tuyển kế toán?",
+  "relevant": [],
+  "rule": "không tin nào tuyển kế toán"
+ },
+ {
+  "qid": "Q20",
+  "question": "Có việc lập trình iOS bằng Swift không?",
+  "relevant": [],
+  "rule": "không tin nào nhắc Swift/iOS"
+ }
+]

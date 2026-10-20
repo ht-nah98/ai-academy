@@ -148,7 +148,7 @@ def load_api_key():
             break
         if env_path.exists():
             for line in env_path.read_text(encoding="utf-8").splitlines():
-                name, _, value = line.strip().partition("=")
+                name, _, value = line.strip().partition("=")   # "A=b" → ("A", "=", "b")
                 if name.strip() == "NVIDIA_API_KEY":
                     key = value.strip().strip('"').strip("'")
     if not key or "..." in key:
@@ -162,7 +162,10 @@ def make_client():
 
 
 if __name__ == "__main__":
-    n = int(sys.argv[1]) if len(sys.argv) > 1 else 3
+    if len(sys.argv) > 1:          # python extract.py 5 → lấy 5 tin
+        n = int(sys.argv[1])
+    else:
+        n = 3
     client = make_client()
     if not DB_PATH.exists():
         raise SystemExit(f"Chưa có {DB_PATH} — hãy chạy `python pipeline.py` ở bài L10 trước.")

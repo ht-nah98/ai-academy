@@ -1,0 +1,139 @@
+{
+  "id": "L17-danh-gia-rag",
+  "title": "Đánh giá RAG",
+  "goal": "Đo RAG trên 20 câu hỏi gán nhãn (16 có đáp án, 4 không): recall@k, MRR cho truy hồi; từ chối đúng, trích dẫn hợp lệ, citation precision/recall cho câu trả lời; so hai cấu hình chunk — 4 hàm trong eval_rag.py qua hết 8 test.",
+  "duration_min": 180,
+  "concepts": [
+    "rag-eval",
+    "labeled-eval-set",
+    "error-analysis"
+  ],
+  "entry": "eval_rag.py",
+  "checklist": [
+    "Đọc rule của 4 câu trong questions_20.json và kiểm lại nhãn bằng SQL",
+    "Tính tay được recall@3 và reciprocal rank cho một danh sách 5 kết quả",
+    "Giải thích được vì sao recall@1 của câu có 3 tin đúng tối đa là 1/3",
+    "Giải thích được vì sao tập đánh giá RAG phải có câu không có đáp án",
+    "Phân biệt được citation_valid (không cần nhãn) với citation precision/recall (cần nhãn)",
+    "Chạy `python eval_rag.py`, chỉ ra lỗi nằm ở tầng tìm hay tầng đọc, và chọn cấu hình kèm cảnh báo về cỡ mẫu",
+    "Qua hết test của bài"
+  ],
+  "interview_questions": [
+    "Bạn đánh giá một hệ thống RAG thế nào?",
+    "recall@k và MRR là gì? Khi nào dùng cái nào?",
+    "Xây tập câu hỏi đánh giá cho RAG thế nào? Vì sao cần câu không có đáp án?",
+    "RAG trả lời sai. Làm sao biết lỗi do truy hồi hay do model?",
+    "Trích dẫn hợp lệ có nghĩa câu trả lời đúng không?",
+    "LLM-as-judge là gì? Ưu, nhược điểm khi dùng để chấm RAG?",
+    "Chọn chunk size thế nào?",
+    "Hai cấu hình chênh MRR 0.1 trên 16 câu hỏi. Bạn có kết luận được không?"
+  ],
+  "tutor_notes": "Dữ liệu: questions_20.json (16 câu có đáp án, gán nhãn theo rule SQL-able; 4 câu không có đáp án: Rust, Singapore, kế toán, iOS/Swift); runs_whole.json, runs_c10.json là output THẬT của answer_question (L16) với index size=None và size=10/overlap=3, k=5, nemotron-3-embed-1b + nemotron-3-super. Kết quả đúng của `python eval_rag.py`: whole recall@1 0.5781, @3 0.7969, @5 0.8333, MRR 0.9688; c10 0.4688, 0.776, 0.8125, 0.8646; cả hai correct_refusal 1.0, false_refusal 0.0, citation_valid 1.0; citation_precision 0.7812 / 0.7931; citation_recall 0.7353 / 0.6765; misses rỗng. Lỗi đáng kể: Q01 bỏ sót JR-10015 dù có trong nguồn, Q15 liệt kê frontend không phải Senior, Q10 gán JR-10114 cho nhầm công ty. Lỗi hay gặp: (1) recall_at_k không bỏ trùng hoặc chia cho len(retrieved) (đó là precision@k); (2) reciprocal_rank hạng bắt đầu từ 0; (3) evaluate_retrieval tính cả câu không có đáp án, bỏ qua câu thiếu trong runs, làm tròn trước khi lấy trung bình; (4) evaluate_answers dùng chung một mẫu số cho mọi chỉ số, gộp câu không có đáp án vào citation_precision, chia cho 0. Gợi ý: cho học sinh tính tay ví dụ trong test (MRR = (1 + 1/4 + 0)/3). Không đưa nguyên hàm; được đưa cú pháp (enumerate(start=1), next(gen, None), set &).",
+  "tasks": [
+    {
+      "fn": "recall_at_k",
+      "signature": "recall_at_k(relevant, retrieved, k)",
+      "summary": "Tỉ lệ tin đúng nằm trong top k",
+      "example": "3 tin đúng, top 3 có 2 → 0.6667",
+      "test_prefix": "test_recall_at_k"
+    },
+    {
+      "fn": "reciprocal_rank",
+      "signature": "reciprocal_rank(relevant, retrieved)",
+      "summary": "1 / hạng của tin đúng đầu tiên",
+      "example": "tin đúng ở hạng 2 → 0.5",
+      "test_prefix": "test_reciprocal_rank"
+    },
+    {
+      "fn": "evaluate_retrieval",
+      "signature": "evaluate_retrieval(questions, runs, ks=(1, 3, 5))",
+      "summary": "recall@k, MRR trung bình trên câu có đáp án",
+      "example": "whole: recall@5 0.8333, MRR 0.9688",
+      "test_prefix": "test_evaluate_retrieval"
+    },
+    {
+      "fn": "evaluate_answers",
+      "signature": "evaluate_answers(questions, runs)",
+      "summary": "Từ chối, trích dẫn hợp lệ, citation P/R",
+      "example": "whole: citation precision 0.7812",
+      "test_prefix": "test_evaluate_answers"
+    }
+  ],
+  "brief": {
+    "context": "RAG của L16 trả lời có nguồn. Có hai cách dựng chỉ mục: giữ nguyên mô tả mỗi tin, hoặc chia chunk nhỏ; mới chỉ thử vài câu hỏi bằng mắt.",
+    "problem": "Chưa có con số nào cho biết RAG tìm đúng tin bao nhiêu phần, từ chối đúng lúc không, trích nguồn có đúng tin không, nên chưa chọn được cấu hình chỉ mục. Khi trả lời sai, cũng chưa biết lỗi do bước tìm hay do model đọc nguồn.",
+    "requirements": [
+      {
+        "task": "recall_at_k",
+        "purpose": "Đo bao nhiêu phần tin đúng lọt vào k nguồn đưa cho model."
+      },
+      {
+        "task": "reciprocal_rank",
+        "purpose": "Đo tin đúng đầu tiên đứng ở hạng mấy."
+      },
+      {
+        "task": "evaluate_retrieval",
+        "purpose": "Gộp chỉ số truy hồi trên cả bộ, chỉ ra câu trượt hẳn."
+      },
+      {
+        "task": "evaluate_answers",
+        "purpose": "Đo từ chối và chất lượng trích dẫn của câu trả lời."
+      }
+    ],
+    "deliverable": "eval_rag.py qua 8/8 test. `python eval_rag.py` in bảng whole vs c10 và kết luận chọn cấu hình, dựa trên số liệu.",
+    "constraints": [
+      "Chỉ dùng thư viện chuẩn, không cần API key.",
+      "Chỉ số truy hồi chỉ tính trên câu có đáp án.",
+      "Câu thiếu kết quả tính là sai, không bị bỏ qua.",
+      "Mỗi chỉ số ghi rõ mẫu số."
+    ],
+    "product_nodes": [
+      "search-rag"
+    ],
+    "workflow": {
+      "flow": "chain",
+      "inputs": [
+        {
+          "label": "questions_20.json",
+          "detail": "16 có đáp án, 4 không"
+        },
+        {
+          "label": "runs whole, c10",
+          "detail": "Output thật của RAG L16"
+        }
+      ],
+      "steps": [
+        {
+          "task": "recall_at_k",
+          "label": "Tin đúng trong top k"
+        },
+        {
+          "task": "reciprocal_rank",
+          "label": "Hạng tin đúng đầu tiên"
+        },
+        {
+          "task": "evaluate_retrieval",
+          "label": "Chỉ số truy hồi cả bộ"
+        },
+        {
+          "task": "evaluate_answers",
+          "label": "Từ chối và trích dẫn"
+        }
+      ],
+      "outputs": [
+        {
+          "label": "MRR 0.97 vs 0.86",
+          "detail": "Không chia chunk tốt hơn"
+        },
+        {
+          "label": "Từ chối đúng 4/4",
+          "detail": "Không bịa câu nào"
+        },
+        {
+          "label": "Citation precision 0.78",
+          "detail": "Lỗi chủ yếu ở tầng đọc"
+        }
+      ]
+    }
+  }
+}

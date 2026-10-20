@@ -284,7 +284,10 @@ for attempt in range(2):
         {"role": "assistant", "content": content},
         {"role": "user", "content": REPAIR.format(error="quantity: phải là số nguyên")},
     ]
-print([m["role"] for m in messages])
+roles = []
+for m in messages:
+    roles.append(m["role"])
+print(roles)          # viết gọn: print([m["role"] for m in messages])
 ```
 ```output
 Lần 1: gửi 2 message → {"product": "Bút bi", "quantity": "ba"}

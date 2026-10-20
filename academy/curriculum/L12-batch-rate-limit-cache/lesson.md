@@ -196,10 +196,18 @@ def get_rate(currency, fetch):
     os.replace(tmp, path)
     return value, "API"
 
-fetch = lambda c: {"USD": 25000, "EUR": 27000}[c]
+def fetch(currency):                 # "API" giả
+    rates = {"USD": 25000, "EUR": 27000}
+    return rates[currency]
+
 for c in ["USD", "EUR", "USD", "USD"]:
-    print(c, *get_rate(c, fetch))
-print(sorted(p.name for p in cache.iterdir()))
+    value, source = get_rate(c, fetch)
+    print(c, value, source)
+
+names = []
+for p in cache.iterdir():            # mọi file trong thư mục cache
+    names.append(p.name)
+print(sorted(names))
 ```
 ```output
 USD 25000 API
@@ -209,6 +217,8 @@ USD 25000 cache
 ['EUR.json', 'USD.json']
 ```
 
+> 💡 **Mẹo:** dạng gọn hay gặp: `fetch = lambda c: {...}[c]` (hàm không tên, như `def` một dòng `return`) và `sorted(p.name for p in cache.iterdir())`. Cùng O(n), chỉ gọn hơn.
+
 Trong bài, file cache lưu `{"content", "prompt_tokens", "completion_tokens"}` — lưu **nội dung thô** của model, parse lại mỗi lần đọc. Ghi cache **sau** khi parse thành công.
 
 ### Bước 5 — Ghép cả lô → `run_batch`
@@ -216,10 +226,35 @@ Trong bài, file cache lưu `{"content", "prompt_tokens", "completion_tokens"}` 
 Đi theo đúng 5 bước trong docstring. Ba điểm hay sai:
 
 - `limiter.wait()` chỉ gọi khi **thật sự** gọi API (cache hit thì không).
-- Gọi API qua `call_with_retry(lambda: client.chat.completions.create(...), sleep=sleep)` — truyền `sleep` để test không chờ thật.
+- Gọi API qua `call_with_retry(hàm_gửi_request, sleep=sleep)` — truyền `sleep` để test không chờ thật.
 - Token và chi phí chỉ cộng cho lần gọi **thật**. Cache hit = 0 đồng.
 
-> 💡 **Mẹo:** `lambda: client.chat.completions.create(model=model, messages=messages, **PARAMS)` là "hàm chưa gọi" — `call_with_retry` quyết định gọi mấy lần. `**PARAMS` bung dict thành các tham số `temperature=0, max_tokens=400, extra_body=...`.
+`call_with_retry` nhận một **hàm chưa gọi** và tự quyết gọi mấy lần. Cách truyền hàm, trên ví dụ đặt phòng:
+
+```python
+def book(room, nights=1, breakfast=False):
+    return f"{room}: {nights} đêm, ăn sáng={breakfast}"
+
+OPTIONS = {"nights": 3, "breakfast": True}
+
+def call_later(fn):            # giống call_with_retry: nhận hàm, tự gọi
+    return fn()
+
+# Cách 1 — def đặt tên, truyền từng tham số
+def book_a101():
+    return book("A101", nights=OPTIONS["nights"], breakfast=OPTIONS["breakfast"])
+
+print(call_later(book_a101))   # truyền book_a101, KHÔNG có () — chưa gọi
+
+# Cách 2 — lambda + **dict
+print(call_later(lambda: book("A101", **OPTIONS)))
+```
+```output
+A101: 3 đêm, ăn sáng=True
+A101: 3 đêm, ăn sáng=True
+```
+
+> ⚖️ **So sánh:** chạy như nhau. `lambda: ...` là `def` không tên chỉ có một dòng `return`; `**OPTIONS` bung dict thành `nights=3, breakfast=True` (trong bài: `**PARAMS` → `temperature=0, max_tokens=400, extra_body=...`). Cách 2 gọn, tự cập nhật khi dict thêm key; Cách 1 dễ đọc và dễ đặt breakpoint hơn.
 
 ### Bước 6 — Ước tính chi phí → `estimate_cost`
 

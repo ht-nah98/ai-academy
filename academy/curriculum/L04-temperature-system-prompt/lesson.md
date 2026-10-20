@@ -43,7 +43,36 @@ flowchart TD
     F --> A
 ```
 
-Mô phỏng với 4 token ứng viên cho câu "Ngôn ngữ Data Engineer dùng nhiều nhất là ___":
+Mô phỏng với 4 token ứng viên cho câu "Ngôn ngữ Data Engineer dùng nhiều nhất là ___". Softmax: lấy `exp(điểm / T)` cho từng token, rồi chia cho tổng.
+
+**Cách 1 — vòng lặp for**
+
+```python
+import math
+logits = {"Python": 2.0, "SQL": 1.5, "Scala": 0.5, "Rust": 0.0}
+
+def probs(T):
+    e = {}
+    for w in logits:
+        e[w] = math.exp(logits[w] / T)
+    total = 0
+    for w in e:
+        total = total + e[w]
+    result = {}
+    for w in e:
+        result[w] = round(e[w] / total, 2)
+    return result
+
+for T in (0.2, 1.0, 2.0):
+    print(T, probs(T))
+```
+```output
+0.2 {'Python': 0.92, 'SQL': 0.08, 'Scala': 0.0, 'Rust': 0.0}
+1.0 {'Python': 0.51, 'SQL': 0.31, 'Scala': 0.11, 'Rust': 0.07}
+2.0 {'Python': 0.38, 'SQL': 0.3, 'Scala': 0.18, 'Rust': 0.14}
+```
+
+**Cách 2 — dict comprehension + `sum()`**
 
 ```python
 import math
@@ -63,6 +92,10 @@ for T in (0.2, 1.0, 2.0):
 2.0 {'Python': 0.38, 'SQL': 0.3, 'Scala': 0.18, 'Rust': 0.14}
 ```
 
+`{w: ... for w, s in logits.items()}` là dict comprehension: giống list comprehension (L01) nhưng tạo dict `key: value`. `.items()` trả từng cặp `(key, value)`, gán vào `w, s`.
+
+> ⚖️ **So sánh:** cùng O(n), chỉ gọn hơn.
+
 | Temperature | Hành vi | Hợp với |
 |---|---|---|
 | 0 | Gần như luôn chọn token cao điểm nhất | Trích xuất, phân loại, SQL |
@@ -74,6 +107,31 @@ for T in (0.2, 1.0, 2.0):
 ### top_p
 
 top_p (nucleus sampling) là cách thứ hai để bớt ngẫu nhiên: chỉ giữ **nhóm token nhỏ nhất có tổng xác suất ≥ p**, bỏ phần đuôi hiếm rồi mới bốc thăm.
+
+Xếp token theo xác suất giảm dần, cộng dồn tới khi đủ `p = 0.8`:
+
+**Cách 1 — hàm `def` làm khóa sắp xếp**
+
+```python
+probs = {"Python": 0.55, "SQL": 0.30, "Scala": 0.10, "Rust": 0.05}
+
+def by_prob(kv):           # kv = ("Python", 0.55)
+    return -kv[1]          # dấu trừ → xác suất lớn đứng trước
+
+kept = []
+total = 0
+for word, p in sorted(probs.items(), key=by_prob):
+    kept.append(word)
+    total = total + p
+    if total >= 0.8:
+        break
+print(kept)
+```
+```output
+['Python', 'SQL']
+```
+
+**Cách 2 — `lambda` (hàm không tên)**
 
 ```python
 probs = {"Python": 0.55, "SQL": 0.30, "Scala": 0.10, "Rust": 0.05}
@@ -88,6 +146,10 @@ print(kept)
 ```output
 ['Python', 'SQL']
 ```
+
+`kept, total = [], 0` gán hai biến một lúc; `total += p` là `total = total + p`.
+
+> ⚖️ **So sánh:** giống hệt nhau, cùng O(n log n) do `sorted`; Cách 2 chỉ gọn hơn.
 
 > 💡 **Mẹo:** thường chỉ chỉnh **một** trong hai (temperature **hoặc** top_p), để cái kia mặc định. Chỉnh cả hai cùng lúc khó đoán kết quả.
 
@@ -152,11 +214,17 @@ Kích hoạt venv gốc của repo: `source .venv/bin/activate` (Windows: `.venv
 
 Ví dụ với một bot review CV (khác đề bài):
 
+**Cách 1 — vòng lặp for**
+
 ```python
 parts = ["Bạn là người review CV.", "", "  Chấm thang 10  "]
-clean = [p.strip() for p in parts if p.strip()]
+clean = []
+for p in parts:
+    text = p.strip()
+    if text:                # bỏ phần rỗng
+        clean.append(text)
 print(clean)
-print("\n".join(clean))
+print("\n".join(clean))     # nối các phần, mỗi phần một dòng
 print(f"- {clean[-1]}")
 ```
 ```output
@@ -165,6 +233,19 @@ Bạn là người review CV.
 Chấm thang 10
 - Chấm thang 10
 ```
+
+**Cách 2 — list comprehension**
+
+```python
+parts = ["Bạn là người review CV.", "", "  Chấm thang 10  "]
+clean = [p.strip() for p in parts if p.strip()]
+print(clean)
+```
+```output
+['Bạn là người review CV.', 'Chấm thang 10']
+```
+
+> ⚖️ **So sánh:** cùng O(n), chỉ gọn hơn. Cách 2 gọi `strip()` hai lần cho mỗi phần; Cách 1 gọi một lần nhờ biến `text`.
 
 Hàm của bạn: persona → (dòng `Luật:` + mỗi luật một dòng `- ...`) → (dòng `Định dạng: ...`). Phần nào rỗng thì bỏ.
 
@@ -196,21 +277,49 @@ Giống `ask` ở L03 nhưng gọi **n lần** và thêm `temperature=temperatur
 
 ### Bước 5 — Đếm phiếu → `diversity`
 
-`Counter` đếm số lần xuất hiện, sau khi chuẩn hóa:
+Đếm số lần xuất hiện sau khi chuẩn hóa, rồi tìm phiếu nhiều nhất:
+
+**Cách 1 — dict + vòng lặp for (như L01)**
+
+```python
+votes = ["SQL", "sql ", "Python", "SQL"]
+counts = {}
+for v in votes:
+    key = v.strip().lower()
+    counts[key] = counts.get(key, 0) + 1
+print(counts)
+
+best_key = None
+for key in counts:
+    if best_key is None or counts[key] > counts[best_key]:
+        best_key = key
+print(len(counts), best_key, counts[best_key])
+print(round(2 / 3, 2))
+```
+```output
+{'sql': 3, 'python': 1}
+2 sql 3
+0.67
+```
+
+**Cách 2 — `collections.Counter`**
 
 ```python
 from collections import Counter
 votes = ["SQL", "sql ", "Python", "SQL"]
 c = Counter(v.strip().lower() for v in votes)
-print(c)
-print(len(c), c.most_common(1))
-print(round(2 / 3, 2))
+print(dict(c))
+best_key, best_count = c.most_common(1)[0]
+print(len(c), best_key, best_count)
 ```
 ```output
-Counter({'sql': 3, 'python': 1})
-2 [('sql', 3)]
-0.67
+{'sql': 3, 'python': 1}
+2 sql 3
 ```
+
+`Counter` là dict chuyên đếm; `most_common(1)` trả list một cặp `(key, số_lần)` nhiều nhất.
+
+> ⚖️ **So sánh:** cùng O(n). `Counter` đếm bằng code C nên nhanh hơn khoảng 2 lần (đo 1 triệu phiếu: Cách 1 53 ms, Cách 2 22 ms) và gọn hơn. Với vài phiếu như bài này, khác biệt không đáng kể.
 
 `unique` = có bao nhiêu khóa; `stability` = số phiếu của khóa nhiều nhất chia tổng.
 

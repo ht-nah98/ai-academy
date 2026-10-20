@@ -143,6 +143,13 @@ Qua bài = `ok` (returncode 0, không fail, ≥1 test pass). Khái niệm `learn
 - Starter giữ nguyên signature + docstring, thân hàm `raise NotImplementedError`.
 - Docstring nêu đủ mọi yêu cầu mà test kiểm tra (học viên không phải đoán).
 - Lời giải tham chiếu để ngoài repo, không commit.
+**Nhiều cách giải: vòng lặp cơ bản luôn đi trước**
+- Học viên chưa quen cú pháp viết tắt của Python. Mọi demo có xử lý dữ liệu đều có **Cách 1** viết bằng `for` / `while` / `if-else` cơ bản: mỗi dòng một việc, biến trung gian có tên rõ, có comment ngắn khi cần.
+- Cách viết gọn hoặc dùng thư viện (comprehension, `lambda`, `sorted(key=)`, `Counter`, `any/all`, `zip`, generator, pandas vectorized, numpy…) chỉ là **Cách 2, Cách 3…**, đặt ngay sau Cách 1, đầu ra giống hệt. Lần đầu một cú pháp viết tắt xuất hiện trong khóa, phải chỉ ra nó tương đương đoạn vòng lặp nào.
+- Tiêu đề mỗi cách: `**Cách 1 — vòng lặp for**`, `**Cách 2 — list comprehension**`…
+- Sau các cách là callout `> ⚖️ **So sánh:** …`. Nó nói cách sau tốt hơn ở đâu: độ phức tạp Big-O (vd. `list.count()` trong vòng lặp O(n²) → dict O(n); `x in list` O(n) → `x in set` O(1)), tốc độ thực (vòng lặp chạy trong C của numpy/pandas), bộ nhớ (generator), hay chỉ gọn hơn. Nếu cùng Big-O thì ghi rõ "cùng O(n), chỉ gọn hơn". Không phóng đại.
+- Khi viết tắt khiến code khó đọc hơn, nói thẳng điều đó và khuyên dùng Cách 1.
+- Docstring và gợi ý TODO trong starter không ép một cách viết cụ thể; test chỉ kiểm tra kết quả.
 **Brief và workflow**
 - `tasks[].fn` khớp từng `workflow.steps[].task`, mỗi fn đúng một lần.
 - `workflow.inputs` và `outputs` không rỗng; `flow` là `chain` hoặc `parallel`.

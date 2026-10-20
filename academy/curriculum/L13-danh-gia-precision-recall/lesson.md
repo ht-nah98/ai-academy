@@ -140,8 +140,11 @@ Thứ tự: `strip` → `lower` → gộp khoảng trắng (`" ".join(s.split())
 ```python
 gold = {"táo", "cam", "chuối", "xoài"}      # trái cây thật sự có trong giỏ
 pred = {"táo", "cam", "lê"}                  # hệ thống nhận diện được
-tp, fp, fn = len(gold & pred), len(pred - gold), len(gold - pred)
-precision, recall = tp / (tp + fp), tp / (tp + fn)
+tp = len(gold & pred)    # & : giao — có ở cả hai
+fp = len(pred - gold)    # - : hiệu — có ở pred, không có ở gold
+fn = len(gold - pred)
+precision = tp / (tp + fp)
+recall = tp / (tp + fn)
 f1 = 2 * precision * recall / (precision + recall)
 print(f"tp={tp} fp={fp} fn={fn}")
 print(f"precision={precision:.4f} recall={recall:.4f} f1={f1:.4f}")
@@ -179,11 +182,34 @@ Giỏ B2 sót trọn: trung bình theo giỏ phạt nặng (1/3 số giỏ hỏn
 
 ### Bước 4 — Từng trường → `field_accuracy`
 
+**Cách 1 — vòng lặp for + dict đếm**
+
+```python
+gold = {"D1": "loại A", "D2": "loại A", "D3": "loại B", "D4": "loại B"}
+pred = {"D1": "loại A", "D2": "loại B", "D3": "loại B", "D4": "loại A"}
+pairs = {}
+correct = 0
+for k in gold:
+    pair = (gold[k], pred[k])
+    if pair in pairs:
+        pairs[pair] += 1
+    else:
+        pairs[pair] = 1
+    if gold[k] == pred[k]:
+        correct += 1
+print(pairs)
+print("đúng:", correct, "/", len(gold))
+```
+```output
+{('loại A', 'loại A'): 1, ('loại A', 'loại B'): 1, ('loại B', 'loại B'): 1, ('loại B', 'loại A'): 1}
+đúng: 2 / 4
+```
+
+**Cách 2 — `Counter` + generator**
+
 ```python
 from collections import Counter
 
-gold = {"D1": "loại A", "D2": "loại A", "D3": "loại B", "D4": "loại B"}
-pred = {"D1": "loại A", "D2": "loại B", "D3": "loại B", "D4": "loại A"}
 pairs = Counter((gold[k], pred[k]) for k in gold)
 print(pairs)
 print("đúng:", sum(n for (g, p), n in pairs.items() if g == p), "/", len(gold))
@@ -193,21 +219,51 @@ Counter({('loại A', 'loại A'): 1, ('loại A', 'loại B'): 1, ('loại B', 
 đúng: 2 / 4
 ```
 
+> ⚖️ **So sánh:** `Counter` là dict đếm có sẵn (in ra kèm chữ `Counter`), làm đúng khối `if pair in pairs` của Cách 1 — cùng O(n), gọn hơn và nhanh hơn chút. Thứ thật sự chậm là gọi `danh_sách.count(x)` trong vòng lặp: mỗi lần duyệt lại cả list → O(n²). Đo 20.000 kỹ năng (500 loại): `list.count` 66 ms, dict 1,3 ms, `Counter` 0,5 ms.
+
 Đếm theo cặp `(đúng, dự_đoán)` cho thấy model nhầm theo hướng nào, không chỉ "sai 2 tin". Trong bài còn hai trường hợp demo không có: tin **thiếu** trong pred và giá trị `None` — quy tắc ở docstring `field_accuracy`.
 
 ### Bước 5 — Xếp hạng lỗi → `error_report`
+
+**Cách 1 — vòng lặp + `sort()` trên tuple**
+
+```python
+baskets = [({"táo", "lê"}, {"táo"}), ({"lê", "nho"}, {"lê"}), ({"mận", "lê"}, set())]
+misses = {}
+for gold, pred in baskets:
+    for fruit in gold - pred:              # quả bị sót
+        if fruit in misses:
+            misses[fruit] += 1
+        else:
+            misses[fruit] = 1
+rows = []
+for fruit, count in misses.items():
+    rows.append((-count, fruit))           # -count trước: sort() tăng dần = count giảm dần
+rows.sort()                                # tuple so phần tử đầu, bằng nhau thì so phần tử sau
+ranked = []
+for neg_count, fruit in rows:
+    ranked.append((fruit, -neg_count))
+print(ranked)
+```
+```output
+[('lê', 2), ('mận', 1), ('nho', 1)]
+```
+
+**Cách 2 — `Counter` + `sorted(key=lambda)`**
 
 ```python
 from collections import Counter
 
 misses = Counter()
-for gold, pred in [({"táo", "lê"}, {"táo"}), ({"lê", "nho"}, {"lê"}), ({"mận", "lê"}, set())]:
+for gold, pred in baskets:
     misses.update(gold - pred)
 print(sorted(misses.items(), key=lambda kv: (-kv[1], kv[0])))
 ```
 ```output
 [('lê', 2), ('mận', 1), ('nho', 1)]
 ```
+
+> ⚖️ **So sánh:** cùng O(n log n) (do bước sắp xếp), Cách 2 chỉ gọn hơn. `key=lambda kv: (-kv[1], kv[0])` = "sắp theo tuple (−count, tên)" — đúng mẹo `rows.append((-count, fruit))` của Cách 1, nhưng không phải đảo lại sau khi sắp.
 
 `-kv[1]`: count giảm dần; `kv[0]`: bằng count thì A→Z. Sắp **tường minh** để báo cáo ra cùng thứ tự mọi lần chạy (thứ tự duyệt `set` thay đổi giữa các lần chạy Python).
 
