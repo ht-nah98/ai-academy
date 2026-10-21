@@ -4,7 +4,7 @@
 
 ## 🎯 Mục tiêu
 
-Sau buổi này (khoảng 2–2,5 giờ) bạn sẽ:
+Sau buổi này (khoảng 3,5 giờ với người mới) bạn sẽ:
 
 - Giải thích vì sao kết nối **chết im lặng** (half-open TCP, NAT/proxy cắt kết nối nhàn rỗi) và vì sao `close` có thể tới sau **hàng giờ**.
 - Viết **heartbeat** phía server: ping định kỳ, kết nối không trả pong thì `terminate()`.
@@ -24,7 +24,7 @@ Sau buổi này (khoảng 2–2,5 giờ) bạn sẽ:
 | `backoffDelay(attempt, {baseMs, maxMs, random})` | Thời gian chờ lần thử thứ `attempt`: nhân đôi, có trần, jitter trong [cap/2, cap] |
 | `createReconnectingClient(url, options)` | Client tự kết nối lại theo `backoffDelay`, xếp hàng tin lúc offline, `close()` dừng hẳn |
 
-Phần chạy thử (`npm start`, `npm run client`) đã viết sẵn ở cuối file, dùng chính các hàm của bạn.
+Phần chạy thử (`npm start`, `npm run client`, `npm run client:freeze`) đã viết sẵn ở cuối file, dùng chính các hàm của bạn.
 
 **Xong khi:** `# pass 9`, rồi chạy server + client ở 2 terminal, tắt/bật server và thấy client tự nối lại, gửi bù tin.
 
@@ -35,13 +35,21 @@ Phần chạy thử (`npm start`, `npm run client`) đã viết sẵn ở cuối
 | Tình huống | Server thấy gì | Bao lâu mới có `close` |
 |---|---|---|
 | Client gọi `ws.close()` / đóng tab | Frame close | Ngay (code 1000/1001) |
-| Tiến trình client bị kill | TCP FIN/RST từ hệ điều hành | Ngay (code 1006) |
-| Wi-Fi rớt, laptop gập máy, mất điện | **Không gì cả** | Khi server gửi dữ liệu và TCP hết lượt gửi lại: Linux `tcp_retries2 = 15` ≈ **15 phút**, hoặc TCP keepalive: Linux mặc định 7200 giây + 9 × 75 giây ≈ **2 giờ 11 phút** |
-| NAT / load balancer cắt kết nối nhàn rỗi | Không gì cả | Như trên. Nhiều proxy cắt sau 60 giây im lặng (vd. nginx `proxy_read_timeout`, AWS ALB idle timeout mặc định) |
+| Tiến trình client bị kill | Hệ điều hành của client gửi FIN/RST | Ngay (code 1006) |
+| Wi-Fi rớt, laptop gập máy, mất điện | **Không gì cả** | Nếu server đang gửi dữ liệu: khi TCP gửi lại mãi không được, Linux bỏ cuộc sau ≈ **15 phút**. Nếu không ai gửi gì: chỉ TCP keepalive phát hiện, mặc định ≈ **2 giờ 11 phút** |
+| NAT / proxy / load balancer cắt kết nối nhàn rỗi | Không gì cả | Như trên. Nhiều proxy cắt sau 60 giây im lặng (vd. nginx mặc định 60 giây; AWS ALB — bộ cân bằng tải của Amazon — mặc định 60 giây) |
+
+> 🧠 **Ghi nhớ — vài từ của tầng mạng:**
+> - **TCP**: "đường ống byte" tin cậy giữa hai máy mà WebSocket (và HTTP) chạy bên trên; byte gửi đi được đánh số, mất thì gửi lại.
+> - **FIN**: gói "tạm biệt" — một bên đóng kết nối đàng hoàng. **RST**: gói "cúp máy" — huỷ kết nối ngay. Cả hai đều là **gói tin**: phải có máy còn sống gửi đi thì bên kia mới biết.
+> - **NAT / proxy / load balancer**: trạm trung gian giữa client và server (router Wi-Fi, proxy công ty, bộ chia tải). Nó nhớ "ai đang nói chuyện với ai"; im lặng quá lâu thì nó **quên** mà không báo ai.
+> - **TCP keepalive**: hệ điều hành tự gửi gói thăm dò khi kết nối im lặng — nhưng mặc định sau 2 giờ mới bắt đầu, quá muộn cho chat.
+>
+> Nguồn các con số Linux: `tcp_retries2 = 15` (≈ 15 phút gửi lại); `tcp_keepalive_time = 7200` giây + 9 lần thăm dò × `tcp_keepalive_intvl = 75` giây ≈ 2 giờ 11 phút. Không cần nhớ tên tham số; chỉ cần nhớ cỡ "phút tới giờ".
 
 Kết nối mà một bên đã mất còn bên kia vẫn tưởng mở gọi là **half-open**. Hậu quả với TeamPulse: tên "ma" nằm mãi trong danh sách online, tin gửi đi không ai nhận, bộ nhớ cho kết nối chết không được giải phóng.
 
-Chạy thử: client "treo" (ngừng đọc socket), server vẫn gửi được, `readyState` vẫn `OPEN`:
+Chạy thử: client "treo" (ngừng đọc socket), server vẫn gửi được, `readyState` vẫn `OPEN`. (`client._socket` là socket TCP bên dưới — thuộc tính **nội bộ** của `ws`, dấu `_` nghĩa là "không phải API công khai"; chỉ dùng để giả lập sự cố trong demo/test, không dùng trong code thật.)
 
 ```js
 import { WebSocketServer, WebSocket } from 'ws';
@@ -123,7 +131,7 @@ Kết nối chết bị phát hiện sau khoảng `intervalMs` tới `2 × inter
 
 ### Kết nối lại: backoff mũ và jitter
 
-Client mất kết nối thì thử lại. Thử lại **ngay lập tức, liên tục** thì khi server sập, mỗi client gửi hàng trăm request/giây vào server đang khởi động. Ý tưởng giống retry khi gọi API lỗi: **chờ lâu dần** (exponential backoff), và **mỗi client chờ một khoảng hơi khác nhau** (jitter).
+Client mất kết nối thì thử lại. Thử lại **ngay lập tức, liên tục** thì khi server sập, mỗi client gửi hàng trăm request/giây vào server đang khởi động. Ý tưởng giống retry khi gọi API lỗi: **chờ lâu dần** (exponential backoff), và **mỗi client chờ một khoảng hơi khác nhau** (jitter). Bạn đã gặp đúng ý tưởng này ở `backoff_delays` bài L06 khóa AI & Data (retry khi gặp 429). Khác ở hai chỗ: ở đó dùng full jitter, bài này dùng equal jitter (bảng dưới); và thứ được thử lại là **cả một kết nối**, không phải một request.
 
 Vì sao cần jitter: server khởi động lại, 1000 client cùng mất kết nối cùng lúc. Không jitter → cả 1000 kết nối lại trong **cùng 1 ms** ("thundering herd"), rồi lại cùng lúc ở lần thử sau.
 
@@ -167,11 +175,38 @@ jitter 0–1000 : [ 221, 194, 182, 193, 210 ]
 ### Bước 1 — Chuẩn bị
 
 ```bash
-cd <workspace>/N05-heartbeat-reconnect
+cd academy/courses/node-realtime/workspace/N05-heartbeat-reconnect
 npm test    # 9 fail vì TODO — bình thường
 ```
 
-Dòng `ExperimentalWarning: The MockTimers API` là bình thường: một test dùng **đồng hồ giả** (`mock.timers` của `node:test`) để kiểm tra `setInterval` mà không phải chờ thật.
+Chạy **riêng một nhóm test** khi đang làm một hàm — nhanh hơn và output gọn hơn. Mẫu (`--test-name-pattern` là biểu thức chính quy so với tên test; dùng được y hệt trên PowerShell):
+
+```bash
+node --test --test-name-pattern="backoffDelay" "../../curriculum/N05-heartbeat-reconnect/tests/*.test.js"
+```
+
+> ⚠️ **Lỗi hay gặp:** `npm test -- --test-name-pattern=backoffDelay` **không** lọc được: npm nối cờ vào **sau** đường dẫn file test, mà `node --test` bỏ qua cờ đứng sau file → vẫn chạy cả 9 test. Cờ phải đứng **trước** đường dẫn như lệnh trên.
+
+Dòng `ExperimentalWarning: The MockTimers API` là bình thường: một test dùng **đồng hồ giả** (`mock.timers` của `node:test`) để kiểm tra `setInterval` mà không phải chờ thật. Đồng hồ giả hoạt động thế này:
+
+```js
+import { mock } from 'node:test';
+
+mock.timers.enable({ apis: ['setInterval'] });   // từ đây setInterval dùng đồng hồ giả
+let ticks = 0;
+const id = setInterval(() => { ticks += 1; }, 1000);
+mock.timers.tick(3500);                           // "tua" 3,5 giây — chạy ngay, không chờ thật
+console.log('sau tick(3500):', ticks, 'lần gọi');
+clearInterval(id);
+mock.timers.reset();                              // trả lại đồng hồ thật
+```
+```output
+sau tick(3500): 3 lần gọi
+(node:565540) ExperimentalWarning: The MockTimers API is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+```
+
+`tick(3500)` chạy ngay lập tức mọi callback lẽ ra đến hạn trong 3,5 giây. Test `startHeartbeat` dùng cách này để kiểm tra "mỗi `intervalMs` gọi `sweep` một lần" trong vài mili giây.
 
 ### Bước 2 — Một lượt kiểm tra → `startHeartbeat`
 
@@ -235,6 +270,12 @@ Ghép vào `startHeartbeat`:
 
 > 💡 **Mẹo:** quên `stop()` thì `setInterval` giữ tiến trình sống mãi: test không thoát, server không tắt êm. Mọi timer bạn tạo phải có đường dọn.
 
+Chạy riêng 3 test của hàm này:
+
+```bash
+node --test --test-name-pattern="startHeartbeat" "../../curriculum/N05-heartbeat-reconnect/tests/*.test.js"
+```
+
 ### Bước 3 — Thời gian chờ → `backoffDelay`
 
 Ví dụ: lịch thử gọi lại một API thời tiết, bắt đầu 200 ms, trần 5000 ms (chưa có jitter):
@@ -275,7 +316,62 @@ console.log(plan.join(' → '));
 
 Trong `backoffDelay`: tính `cap` theo Cách 2, rồi cộng jitter "một nửa" như docstring. `random` là **tham số** để test truyền `() => 0` hoặc `() => 1` và có kết quả xác định.
 
+```bash
+node --test --test-name-pattern="backoffDelay" "../../curriculum/N05-heartbeat-reconnect/tests/*.test.js"
+```
+
 ### Bước 4 — `readyState` và hàng đợi offline → `createReconnectingClient`
+
+Đây là hàm khó nhất bài: một object có **trạng thái riêng** (kết nối hiện tại, số lần thử, hàng đợi, timer) sống qua nhiều lần kết nối. Làm theo 4 bước con 4a → 4d; starter đã có **khung chú thích** ghi rõ chỗ của từng bước.
+
+#### 🧩 Hàm tạo object giữ trạng thái (closure) và getter
+
+Ôn nhanh hai cú pháp JavaScript bài này cần (getter ở Bước 7, closure ở Bước 8 của bài N00 nói kỹ hơn). Một hàm tạo biến bằng `let`, rồi trả về object có các hàm dùng biến đó: mỗi lần gọi hàm có **một bộ biến riêng**, bên ngoài không đụng vào được — gọi là **closure**. Còn `get value() {...}` là **getter**: đọc như thuộc tính (`c.value`, không có ngoặc) nhưng chạy lại hàm mỗi lần đọc.
+
+```js
+function createCounter() {
+  let n = 0;                     // biến riêng: chỉ các hàm viết bên trong createCounter thấy được
+  return {
+    inc() { n += 1; },           // hàm trong object vẫn đọc/sửa được n (closure)
+    snapshot: n,                 // giá trị CHỤP MỘT LẦN lúc tạo object
+    get value() { return n; },   // getter: đọc như thuộc tính, nhưng chạy lại hàm MỖI LẦN đọc
+  };
+}
+const a = createCounter();
+a.inc();
+a.inc();
+console.log('a.snapshot:', a.snapshot, '| a.value:', a.value);
+const b = createCounter();       // lần gọi mới → biến n mới, không dính tới a
+b.inc();
+console.log('a.value:', a.value, '| b.value:', b.value);
+console.log('a.n:', a.n, '← bên ngoài không đụng được n');
+```
+```output
+a.snapshot: 0 | a.value: 2
+a.value: 2 | b.value: 1
+a.n: undefined ← bên ngoài không đụng được n
+```
+
+Viết bằng `class` (như `class ... extends EventEmitter` ở N02) cho kết quả y hệt:
+
+```js
+class Counter {
+  #n = 0;                        // trường riêng (#) của class
+  inc() { this.#n += 1; }
+  get value() { return this.#n; }
+}
+const a = new Counter();
+a.inc();
+a.inc();
+console.log('a.value:', a.value);
+```
+```output
+a.value: 2
+```
+
+> ⚖️ **So sánh:** hàm tạo object + closure và `class` + trường `#` làm cùng một việc, cùng tốc độ; chọn theo thói quen của codebase. Điều quan trọng là **getter so với giá trị chụp**: `snapshot: n` lấy giá trị **một lần** lúc tạo object (mãi là 0), `get value()` tính lại **mỗi lần đọc**. Test đọc `c.queued` sau khi gửi thêm tin, nên `queued` và `readyState` của bạn **phải** là getter — viết `queued: queue.length` sẽ fail với thông báo khó hiểu ("queued phải là 2, nhận 0").
+
+#### Bước 4a — `send` và hàng đợi
 
 Ví dụ hàng đợi: máy in mất mạng, lệnh in xếp hàng tối đa 3 lệnh, có mạng thì in bù đúng thứ tự:
 
@@ -314,6 +410,61 @@ in ngay : hoa-don-5
 
 `push` thêm vào cuối, `shift` lấy ra từ đầu → thứ tự vào trước ra trước (FIFO).
 
+Trong client: `send(obj)` → `JSON.stringify(obj)`; kết nối hiện tại đang `OPEN` (`ws.readyState === OPEN`) → `ws.send`, trả `'sent'`; không thì làm như máy in: đầy (`queue.length >= maxQueue`) thì `shift()` bỏ tin cũ nhất, rồi `push`, trả `'queued'`. Cùng bước này: listener `message` gọi `onMessage(String(data))`, và một listener `error` rỗng (thiếu nó thì lỗi `ECONNREFUSED` làm sập tiến trình); getter `queued`, `readyState` (chưa có kết nối → `CLOSED`).
+
+#### Bước 4b — `open`: gửi bù
+
+Khi `open`: `attempt = 0`, gửi bù bằng vòng `while (queue.length > 0 && <kết nối>.readyState === OPEN)` + `shift()` (như vòng "in bù" ở trên), rồi `onOpen()`. Chạy test của 4a + 4b:
+
+```bash
+node --test --test-name-pattern="xếp hàng rồi gửi bù" "../../curriculum/N05-heartbeat-reconnect/tests/*.test.js"
+```
+
+#### Bước 4c — `close`: hẹn giờ thử lại
+
+Cùng khuôn ở miền khác — máy pha cà phê dò Wi-Fi, hỏng thì **tự hẹn giờ gọi lại chính hàm dò**, chờ lâu dần, tắt máy thì huỷ hẹn giờ:
+
+```js
+// Máy pha cà phê dò Wi-Fi: hỏng thì hẹn giờ thử lại, chờ lâu dần; tắt máy thì huỷ hẹn giờ.
+function createWifiProbe(name, results) {
+  let attempt = 0;
+  let timer = null;
+  function probe() {
+    timer = null;
+    const ok = results.shift();
+    if (ok) {
+      console.log(`${name}: lần ${attempt + 1} có Wi-Fi`);
+      attempt = 0;
+      return;
+    }
+    const delay = 100 * 2 ** attempt;
+    console.log(`${name}: lần ${attempt + 1} lỗi, hẹn thử lại sau ${delay} ms`);
+    attempt += 1;
+    timer = setTimeout(probe, delay);
+  }
+  probe();
+  return {
+    turnOff() {
+      if (timer) clearTimeout(timer);         // huỷ lần thử đang chờ — không có dòng này máy vẫn tự thử tiếp
+      console.log(`${name}: tắt máy, đã huỷ hẹn giờ`);
+    },
+  };
+}
+createWifiProbe('máy 1', [false, false, true]);
+const m2 = createWifiProbe('máy 2', [false, false, false, false, false]);
+setTimeout(() => m2.turnOff(), 250);
+```
+```output
+máy 1: lần 1 lỗi, hẹn thử lại sau 100 ms
+máy 2: lần 1 lỗi, hẹn thử lại sau 100 ms
+máy 1: lần 2 lỗi, hẹn thử lại sau 200 ms
+máy 2: lần 2 lỗi, hẹn thử lại sau 200 ms
+máy 2: tắt máy, đã huỷ hẹn giờ
+máy 1: lần 3 có Wi-Fi
+```
+
+Hai máy chạy xen kẽ nhưng mỗi máy có `attempt`, `timer` riêng — đúng là closure ở mục 🧩.
+
 Vòng đời client tự kết nối lại:
 
 | Sự kiện của kết nối hiện tại | Việc |
@@ -323,11 +474,23 @@ Vòng đời client tự kết nối lại:
 | `error` | Lắng nghe để không sập; không làm gì thêm — `close` luôn đến sau |
 | `close` | Đã gọi `close()` → thôi. Không thì `delay = backoffDelay(attempt, ...)`, `onRetry({attempt, delay})`, `attempt += 1`, `setTimeout(connect, delay)` |
 
-Mỗi lần kết nối lại là một `new WebSocket(url)` **mới** — một object WebSocket đã `CLOSED` không mở lại được. Vì vậy `send` phải dùng biến "kết nối hiện tại", không giữ object cũ.
+Mỗi lần kết nối lại là một `new WebSocket(url)` **mới** — một object WebSocket đã `CLOSED` không mở lại được. Vì vậy `send` phải dùng biến "kết nối hiện tại", không giữ object cũ. Thứ tự trong `close` quan trọng: tính `delay` với `attempt` **hiện tại** (lần đầu là 0) rồi mới tăng.
+
+```bash
+node --test --test-name-pattern="onRetry|từ chối|hàng đợi đầy" "../../curriculum/N05-heartbeat-reconnect/tests/*.test.js"
+```
+
+#### Bước 4d — `close()`: dừng hẳn
+
+`close()`: đặt `stopped = true`, `clearTimeout(timer)` (huỷ lần nối lại đang chờ, như `turnOff`), rồi đóng kết nối hiện tại. Đóng kết nối vẫn phát sự kiện `close` — listener ở 4c thấy `stopped` thì thôi, không gọi `onRetry`.
 
 > ⚠️ **Lỗi hay gặp:** `close()` chỉ đóng socket mà không huỷ `setTimeout` đang chờ → client vẫn tự kết nối lại sau khi "đã đóng". Cần cờ `stopped` và `clearTimeout`.
 
 > 💡 **Mẹo:** hàng đợi **phải có giới hạn**. Mất mạng 1 giờ, mỗi giây 1 tin → 3600 tin dồn lại, ập tới server cùng lúc khi có mạng. Bỏ tin cũ nhất (như bài này) hợp với dữ liệu "mới nhất mới quan trọng" (vị trí, trạng thái); tin chat quan trọng thì lưu lại để gửi lại sau, hoặc báo người dùng.
+
+```bash
+node --test --test-name-pattern="không kết nối lại" "../../curriculum/N05-heartbeat-reconnect/tests/*.test.js"
+```
 
 ### Bước 5 — Chạy test
 
@@ -339,32 +502,53 @@ Test kiểm tra heartbeat bằng `wss` giả và đồng hồ giả (không ch�
 
 ### Bước 6 — Chạy thật: treo client, tắt server
 
-Terminal 1: `npm start`. Terminal 2: `npm run client`. Rồi giả lập sự cố: `kill -STOP <pid client>` (dừng tiến trình như laptop gập máy), 11 giây sau `kill -CONT`; sau đó Ctrl+C server, 3,5 giây sau `npm start` lại. Log thật (cột giây tính từ lúc mỗi tiến trình chạy):
+Terminal 1: `npm start`. Terminal 2: `npm run client:freeze` — client chạy bình thường, tới giây 3,7 tự **đóng băng** 11 giây rồi chạy tiếp. Đóng băng = chặn event loop bằng một vòng lặp bận: tiến trình không đọc socket, không trả pong, không gửi gì — giống laptop gập máy. Khoảng giây 17, Ctrl+C server; chờ 3–4 giây rồi `npm start` lại.
+
+| Hệ điều hành | Cách giả lập "gập máy" |
+|---|---|
+| Mọi nơi (Windows PowerShell, macOS, Linux, WSL) | `npm run client:freeze` (hoặc `node heartbeat.js client --freeze 11`) |
+| Chỉ Linux / WSL / macOS (cách phụ) | `npm run client`, rồi ở terminal thứ ba `kill -STOP $(pgrep -f "heartbeat.js client")`, 11 giây sau `kill -CONT $(pgrep -f "heartbeat.js client")` — `pgrep -f` tìm số tiến trình (pid) theo dòng lệnh |
+
+Log thật (cột giây tính từ lúc mỗi tiến trình chạy, client chạy sau server 0,5 giây; `…` là dòng lặp lại đã lược):
 
 ```output
-# server (heartbeat 5 s) — client bị dừng ở giây 3,7
+# server (heartbeat 5 s)
   0.5s server: kết nối #1 mở (1 đang mở)
   3.5s server: #1 gửi {"type":"chat","n":3}
- 10.0s server: #1 không trả pong → terminate        ← phát hiện sau 6,3 s
+ 10.0s server: #1 không trả pong → terminate        ← client đóng băng từ 3,7 s: phát hiện sau 6,3 s
  10.0s server: kết nối #1 đóng, code 1006
- 15.0s server: kết nối #2 mở (1 đang mở)           ← client chạy lại, tự nối lại
+ 15.5s server: kết nối #2 mở (1 đang mở)           ← client chạy lại, tự nối lại
+ 16.2s server: #2 gửi {"type":"chat","n":5}         ← không có dòng nào gửi n:4
+# (Ctrl+C ở 17,2 s; npm start lại — server mới đếm giây từ 0)
+  1.7s server: kết nối #1 mở (1 đang mở)
+  1.7s server: #1 gửi {"type":"chat","n":6}
+  …
+  1.7s server: #1 gửi {"type":"chat","n":11}
 
 # client
+  3.0s client: gửi tin 3 → 'sent'
   3.0s client: nhận {"type":"ack","got":"{\"type\":\"chat\",\"n\":3}"}
- 14.2s client: mất kết nối, thử lại lần 1 sau 326 ms
- 14.5s client: đã kết nối
- 17.2s client: mất kết nối, thử lại lần 1 sau 457 ms      ← Ctrl+C server
- 17.6s client: mất kết nối, thử lại lần 2 sau 564 ms
- 18.2s client: tin 8 vào hàng đợi (1 tin)
- 18.2s client: mất kết nối, thử lại lần 3 sau 1991 ms
- 20.2s client: mất kết nối, thử lại lần 4 sau 2829 ms
- 22.2s client: tin 12 vào hàng đợi (5 tin)
- 23.0s client: đã kết nối
- 23.0s client: nhận {"type":"ack","got":"{\"type\":\"chat\",\"n\":8}"}   ← gửi bù 8…12 đúng thứ tự
- 23.0s client: nhận {"type":"ack","got":"{\"type\":\"chat\",\"n\":12}"}
+  3.7s client: ĐÓNG BĂNG 11 giây (không đọc socket, không trả pong)
+ 14.7s client: chạy lại
+ 14.7s client: gửi tin 4 → 'sent'                     ← kết nối đã chết từ 10,0 s nhưng client chưa biết
+ 14.7s client: mất kết nối, thử lại lần 1 sau 311 ms
+ 15.0s client: đã kết nối
+ 15.7s client: gửi tin 5 → 'sent'
+ 16.7s client: mất kết nối, thử lại lần 1 sau 293 ms   ← Ctrl+C server
+ 16.7s client: tin 6 vào hàng đợi (1 tin)
+ 17.0s client: mất kết nối, thử lại lần 2 sau 977 ms
+ 17.9s client: mất kết nối, thử lại lần 3 sau 1152 ms
+ 19.1s client: mất kết nối, thử lại lần 4 sau 2770 ms
+ 21.7s client: tin 11 vào hàng đợi (6 tin)
+ 21.9s client: đã kết nối
+ 21.9s client: nhận {"type":"ack","got":"{\"type\":\"chat\",\"n\":6}"}    ← gửi bù 6…11 đúng thứ tự
+ …
+ 21.9s client: nhận {"type":"ack","got":"{\"type\":\"chat\",\"n\":11}"}
 ```
 
-Đọc kỹ log: tin số **4** và **7** mất. Lúc gửi, client vẫn thấy `readyState === OPEN` (chưa biết kết nối đã chết), nên `send` trả `'sent'` — hàng đợi không cứu được tin "đang bay". Muốn chắc chắn tới nơi cần **xác nhận (ack)** từ server và gửi lại khi không có ack — đó là phần đầu của N06.
+Đọc kỹ log: tin số **4** mất — server không có dòng `gửi {"type":"chat","n":4}` ở kết nối nào, client không nhận ack của nó. Lúc gửi (14,7 s), client vừa chạy lại và vẫn thấy `readyState === OPEN` (sự kiện `close` chưa kịp xử lý), nên `send` trả `'sent'` — hàng đợi không cứu được tin "đang bay". Tin 6–11 gửi lúc server tắt thì vào hàng đợi và tới nơi đủ. Muốn chắc chắn tới nơi cần **xác nhận (ack)** từ server và gửi lại khi không có ack — đó là phần đầu của N06.
+
+> 💡 **Mẹo:** báo `EADDRINUSE` (cổng 3005 đang bận)? Đổi cổng cho cả server lẫn client: bash `PORT=3006 npm start` và `PORT=3006 npm run client:freeze`; PowerShell `$env:PORT=3006; npm start` (biến `$env:` giữ tới khi đóng cửa sổ terminal, nên terminal client cũng phải đặt `$env:PORT=3006`).
 
 ## ✅ Tự kiểm tra
 

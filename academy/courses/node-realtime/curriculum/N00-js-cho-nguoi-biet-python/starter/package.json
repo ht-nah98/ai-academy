@@ -1,0 +1,10 @@
+{
+  "name": "teampulse-n00",
+  "private": true,
+  "type": "module",
+  "description": "TeamPulse — bài N00: JavaScript cho người đã biết Python",
+  "scripts": {
+    "start": "node basics.js",
+    "test": "node --test \"../../curriculum/N00-js-cho-nguoi-biet-python/tests/*.test.js\""
+  }
+}

@@ -4,6 +4,7 @@
  * Dùng ở: chat.test.js (test bạn tự viết cho chat-server.js) và load.js (đo tải).
  *
  * Chạy test chấm bài:    npm test
+ * Chạy riêng một nhóm:   node --test --test-name-pattern="waitForMessage" "../../curriculum/N09-test-debug-realtime/tests/*.test.js"
  * Chạy test của bạn:     npm run test:mine
  * Đo tải:                npm run load        (LOAD_CLIENTS, LOAD_MSGS để đổi số client / số tin)
  */
@@ -26,7 +27,18 @@ import { WebSocket } from 'ws';
  * @returns {Promise<any>}
  */
 export function waitForMessage(ws, predicate = () => true, { timeoutMs = 2000 } = {}) {
-  // TODO: new Promise; gắn onMessage/onClose; setTimeout; hàm cleanup gỡ cả ba
+  // Khung gợi ý (Bước 2 trong bài) — giống withTimeout ở N01, thêm lọc predicate và gỡ listener:
+  //
+  // return new Promise((resolve, reject) => {
+  //   let timer = null;
+  //   function cleanup() { ... }        // clearTimeout(timer); ws.off('message', onMessage); ws.off('close', onClose)
+  //   function onMessage(data) { ... }  // JSON.parse trong try (hỏng → return); predicate sai → return; đúng → cleanup(), resolve(msg)
+  //   function onClose() { ... }        // cleanup(), reject(new Error('closed: ...'))
+  //   timer = setTimeout(() => { ... }, timeoutMs);   // cleanup(), reject(new Error('timeout: ...'))
+  //   ws.on('message', onMessage);
+  //   ws.on('close', onClose);
+  // });
+  // TODO: viết theo khung trên
   throw new Error('TODO: viết waitForMessage');
 }
 
@@ -67,6 +79,31 @@ export function percentile(values, p) {
  *                    msgsPerSec: number, latency: {p50: number, p95: number, p99: number, max: number}}>}
  */
 export async function runLoadTest({ url, clients = 10, messagesPerClient = 20, timeoutMs = 10000 }) {
-  // TODO: mở kết nối, gửi, đếm, đo độ trễ, đóng, tính kết quả
+  // Khung (Bước 5 trong bài). Bước 1 và 5 đã viết sẵn dưới đây ở dạng chú thích — bỏ dấu // để dùng;
+  // bạn viết bước 2–4 và phần tính kết quả.
+  //
+  // // Bước 1 — mở `clients` kết nối, chờ TẤT CẢ mở xong
+  // const sockets = [];
+  // for (let i = 0; i < clients; i += 1) {
+  //   sockets.push(new WebSocket(`${url}?name=load${i}`));
+  // }
+  // await Promise.all(sockets.map((ws) => new Promise((resolve, reject) => {
+  //   ws.once('open', resolve);
+  //   ws.once('error', reject);
+  // })));
+  //
+  // // Bước 3 + 4 — gắn listener 'message' cho từng client TRƯỚC khi gửi:
+  // //   đếm received; tin của chính client (from === `load${i}`) → đẩy độ trễ vào mảng latencies;
+  // //   đủ `expected` thì báo xong. Gợi ý "báo xong": let finish; const done = new Promise((r) => { finish = r; });
+  //
+  // // Bước 2 — t0 = performance.now(); mỗi client gửi messagesPerClient tin {type: 'chat', text: 'load', sentAt: performance.now()}
+  //
+  // // Bước 4 — chờ `done` hoặc hết timeoutMs (setTimeout(finish, timeoutMs), nhớ clearTimeout); durationMs = performance.now() - t0
+  //
+  // // Bước 5 — đóng mọi kết nối
+  // for (const ws of sockets) ws.terminate();
+  //
+  // // Kết quả: { clients, sent, received, expected, durationMs, msgsPerSec, latency: { p50, p95, p99, max } }
+  // TODO: viết theo khung trên
   throw new Error('TODO: viết runLoadTest');
 }

@@ -2,7 +2,7 @@
   "id": "N05-heartbeat-reconnect",
   "title": "Heartbeat ping/pong & tự kết nối lại",
   "goal": "Phát hiện kết nối chết bằng ping/pong, tự kết nối lại có backoff + jitter, gửi bù tin lúc offline; qua hết 9 test.",
-  "duration_min": 140,
+  "duration_min": 210,
   "concepts": [
     "half-open-connection",
     "heartbeat-ping-pong",
@@ -17,6 +17,7 @@
     "Biết khi nào dùng terminate() thay vì close()",
     "Giải thích exponential backoff và vì sao cần jitter (thundering herd)",
     "Biết vì sao hàng đợi offline phải có giới hạn và vẫn có thể mất tin đang bay",
+    "Giải thích vì sao queued/readyState phải là getter, không phải giá trị chụp lúc tạo object",
     "Chạy server + client, tắt/bật server và thấy client tự nối lại, gửi bù tin",
     "Qua hết test của bài"
   ],
@@ -30,7 +31,7 @@
     "Client mất kết nối trong lúc người dùng đang gửi tin: bạn xử lý thế nào để không mất tin?",
     "TCP keepalive có thay được heartbeat ở tầng WebSocket không?"
   ],
-  "tutor_notes": "Học viên đã có phòng chat (N04) và đã nghe 'close luôn đến' — bài này chỉ ra close có thể đến rất muộn (half-open). Dẫn bằng demo _socket.pause(): readyState vẫn OPEN, send không lỗi, không có pong. Lỗi hay gặp: (1) startHeartbeat: đặt isAlive trong sweep thay vì ở connection, kiểm tra !ws.isAlive (undefined cũng bị coi là chết) thay vì === false, dùng close() thay terminate(), quên onDead, không trả số đã terminate, stop() gỡ listener bằng arrow function mới (không gỡ được), quên clearInterval; (2) backoffDelay: quên Math.min với maxMs, quên Math.round, dùng random() * cap (full jitter) thay vì cap/2 + random()*cap/2, tính 2 * attempt thay vì 2 ** attempt; (3) createReconnectingClient: dùng lại object WebSocket cũ, attempt tăng trước khi tính delay (lần đầu phải là attempt 0), không reset attempt khi open, gửi bù khi readyState chưa OPEN, close() không clearTimeout nên vẫn nối lại, gọi onRetry khi chính mình close(), hàng đợi không giới hạn hoặc bỏ tin mới thay vì tin cũ, quên lắng nghe error (ECONNREFUSED làm sập). Khi chạy thật: EADDRINUSE → PORT=3006 npm start và PORT=3006 npm run client. MockTimers ExperimentalWarning là bình thường. Không viết hộ thân hàm.",
+  "tutor_notes": "Học viên đã có phòng chat (N04) và đã nghe 'close luôn đến' — bài này chỉ ra close có thể đến rất muộn (half-open). Dẫn bằng demo _socket.pause(): readyState vẫn OPEN, send không lỗi, không có pong. Lỗi hay gặp: (1) startHeartbeat: đặt isAlive trong sweep thay vì ở connection, kiểm tra !ws.isAlive (undefined cũng bị coi là chết) thay vì === false, dùng close() thay terminate(), quên onDead, không trả số đã terminate, stop() gỡ listener bằng arrow function mới (không gỡ được), quên clearInterval; (2) backoffDelay: quên Math.min với maxMs, quên Math.round, dùng random() * cap (full jitter) thay vì cap/2 + random()*cap/2, tính 2 * attempt thay vì 2 ** attempt; (3) createReconnectingClient: dùng lại object WebSocket cũ, attempt tăng trước khi tính delay (lần đầu phải là attempt 0), không reset attempt khi open, gửi bù khi readyState chưa OPEN, close() không clearTimeout nên vẫn nối lại, gọi onRetry khi chính mình close(), hàng đợi không giới hạn hoặc bỏ tin mới thay vì tin cũ, quên lắng nghe error (ECONNREFUSED làm sập). Khi chạy thật: EADDRINUSE → bash `PORT=3006 npm start` / `PORT=3006 npm run client`, PowerShell `$env:PORT=3006; npm start` (đặt ở cả hai terminal). Giả lập gập máy: `npm run client:freeze` (chạy mọi hệ điều hành, chặn event loop 11 giây); `kill -STOP` chỉ là cách phụ trên Linux/WSL/macOS. Học viên ít JS: nếu `queued` sai dù code có vẻ đúng, hỏi họ viết `queued: queue.length` hay `get queued()` — gợi lại mục closure/getter ở Bước 4 và bài N00. Gợi ý chạy riêng test: `node --test --test-name-pattern=\"...\" \"../../curriculum/N05-heartbeat-reconnect/tests/*.test.js\"` (`npm test -- --test-name-pattern` không lọc được vì cờ đứng sau file). MockTimers ExperimentalWarning là bình thường. Không viết hộ thân hàm.",
   "tasks": [
     {
       "fn": "startHeartbeat",

@@ -133,8 +133,8 @@ Duyệt phẳng các bài theo thứ tự lộ trình:
 |---|---|
 | `planned` | `status == "planned"` (bị bỏ qua khi xét "bài trước") |
 | `passed` | `progress.passed` |
+| `in_progress` | `started` hoặc thư mục workspace tồn tại (bài đã bắt đầu không bị khóa lại khi lộ trình chèn bài mới phía trước) |
 | `locked` | không phải bài đầu, bài trước chưa `passed`, chưa `unlocked` thủ công |
-| `in_progress` | `started` hoặc thư mục workspace tồn tại |
 | `not_started` | còn lại |
 
 Qua bài = `ok` (returncode 0, không fail, ≥1 test pass). Khái niệm `learned` = hợp `meta.concepts` của các bài đã `passed`.

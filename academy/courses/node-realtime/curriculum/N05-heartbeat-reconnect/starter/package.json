@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node heartbeat.js server",
     "client": "node heartbeat.js client",
+    "client:freeze": "node heartbeat.js client --freeze 11",
     "test": "node --test \"../../curriculum/N05-heartbeat-reconnect/tests/*.test.js\""
   }
 }

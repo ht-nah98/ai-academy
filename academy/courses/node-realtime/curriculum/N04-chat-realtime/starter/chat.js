@@ -89,8 +89,22 @@ export function broadcast(clients, payload, except = null) {
  * @returns {http.Server}
  */
 export function createChatServer() {
-  // TODO: http.createServer(...) + new WebSocketServer({ server, path: '/ws' })
-  //       + một Map ws → tên để biết ai đã join
+  // TODO: viết theo Bước 6a–6f của bài. Khung xương (điền chỗ /* ... */):
+  //   const server = http.createServer(async (req, res) => { /* như N03: GET / → index.html, khác → 404 */ });
+  //   const names = new Map();                 // CHUNG: ws → tên, chỉ chứa người đã join
+  //   const users = () => /* mảng tên trong names, sắp A→Z */;
+  //   const wss = new WebSocketServer({ server, path: '/ws' });
+  //   wss.on('connection', (ws) => {           // chạy MỘT lần cho MỖI kết nối
+  //     ws.on('error', /* ghi log */);
+  //     ws.on('message', (raw) => {
+  //       const parsed = parseClientMessage(raw);
+  //       /* !parsed.ok → gửi riêng { type: 'error', error }; return */
+  //       /* join: already_joined? name_taken? → names.set, welcome cho mình, joined cho người khác */
+  //       /* chat: chưa join → not_joined; rồi → broadcast(names.keys(), { type: 'chat', ... }) */
+  //     });
+  //     ws.on('close', () => { /* đã join → names.delete, broadcast left */ });
+  //   });
+  //   return server;                           // KHÔNG listen ở đây
   throw new Error('TODO: viết createChatServer');
 }
 

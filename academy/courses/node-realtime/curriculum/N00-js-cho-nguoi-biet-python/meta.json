@@ -1,0 +1,218 @@
+{
+  "id": "N00-js-cho-nguoi-biet-python",
+  "title": "JavaScript cho người đã biết Python",
+  "goal": "Viết 9 hàm nhỏ luyện cú pháp JavaScript nền (biến, object, hàm, class, closure, JSON, await); qua hết 19 test.",
+  "duration_min": 120,
+  "concepts": [
+    "js-syntax-basics",
+    "js-objects-arrays",
+    "js-functions-callbacks",
+    "js-destructuring-spread",
+    "js-classes",
+    "js-closures",
+    "js-errors-json"
+  ],
+  "entry": "basics.js",
+  "checklist": [
+    "Chạy được file bằng node basics.js và chạy test của một hàm bằng --test-name-pattern",
+    "Đọc được JSDoc: @param, tham số tùy chọn [x=1], @returns {A | null}",
+    "Giải thích được vì sao luôn dùng === và khác biệt null / undefined",
+    "Kể được các giá trị falsy và biết [] / {} là truthy trong JS",
+    "Viết được object/mảng, duyệt bằng for...of (không nhầm với for...in)",
+    "Truyền được một hàm làm callback mà không gọi nó ngay",
+    "Dùng destructuring, spread, tham số mặc định; biết b = a không copy object",
+    "Viết được class có constructor, this, getter; đối chiếu được với __init__/self của Python",
+    "Giải thích được closure bằng ví dụ bộ đếm riêng",
+    "Viết cùng một việc chờ Promise bằng .then và bằng await",
+    "Qua hết test của bài"
+  ],
+  "interview_questions": [
+    "== và === khác nhau thế nào? Vì sao nên dùng ===?",
+    "null và undefined khác nhau thế nào? typeof null trả gì?",
+    "Kể các giá trị falsy trong JavaScript. Mảng rỗng là truthy hay falsy?",
+    "let, const và var khác nhau thế nào? const có làm object bất biến không?",
+    "Arrow function khác function thường ở điểm nào bạn biết?",
+    "Closure là gì? Cho một ví dụ dùng closure để giữ trạng thái.",
+    "Destructuring và spread dùng để làm gì? Spread object copy nông hay sâu?",
+    "async/await khác .then() thế nào? Lỗi trong hàm async được bắt ra sao?"
+  ],
+  "tutor_notes": "Học viên biết HTML/CSS, rất ít JS, đã học xong khóa Python. Đây là bài cú pháp: luôn giải thích bằng cách đối chiếu Python (f-string ↔ template literal, dict ↔ object, lambda ↔ arrow, __init__/self ↔ constructor/this, nonlocal ↔ closure, json.loads ↔ JSON.parse). Lỗi hay gặp: (1) cleanName dùng if (!value) rồi gọi value.trim() trên số → TypeError, hoặc quên trả null cho số; (2) formatMessage dùng dấu nháy thường thay vì backtick nên ${} không thay giá trị, hoặc lấy slice(11, 19) in cả giây; (3) uniqueUsers dùng for...in nên được chỉ số; (4) pickMessages gọi keep() hai lần hoặc trả chính mảng đầu vào; (5) withDefaults viết Object.assign(DEFAULTS, options) làm hỏng DEFAULTS, hoặc trả DEFAULTS khi không có options; (6) Inbox quên this., viết unreadCount() là method thay vì getter; (7) createIdGenerator đặt biến đếm ngoài hàm nên các bộ sinh dùng chung; (8) parseJsonOr trả fallback cho 'null'; (9) greetUser quên await nên try/catch không bắt được lỗi. Không viết hộ thân hàm; chỉ ra dòng tương đương trong Python.",
+  "tasks": [
+    {
+      "fn": "cleanName",
+      "signature": "cleanName(value)",
+      "summary": "Chuỗi có chữ → đã trim; còn lại → null",
+      "example": "cleanName('  an ') → 'an'",
+      "test_prefix": "cleanName"
+    },
+    {
+      "fn": "formatMessage",
+      "signature": "formatMessage({ user, text, ts })",
+      "summary": "Tin chat → '[HH:MM] user: text'",
+      "example": "→ '[09:05] an: Chào'",
+      "test_prefix": "formatMessage"
+    },
+    {
+      "fn": "uniqueUsers",
+      "signature": "uniqueUsers(messages)",
+      "summary": "Người gửi không trùng, theo thứ tự",
+      "example": "→ ['an', 'binh']",
+      "test_prefix": "uniqueUsers"
+    },
+    {
+      "fn": "pickMessages",
+      "signature": "pickMessages(messages, keep)",
+      "summary": "Giữ tin mà callback keep đồng ý",
+      "example": "pickMessages(msgs, (m) => m.user === 'an')",
+      "test_prefix": "pickMessages"
+    },
+    {
+      "fn": "withDefaults",
+      "signature": "withDefaults(options = {})",
+      "summary": "Ghép options với DEFAULTS thành object mới",
+      "example": "withDefaults({ port: 8080 }).host → '127.0.0.1'",
+      "test_prefix": "withDefaults"
+    },
+    {
+      "fn": "Inbox",
+      "signature": "class Inbox { constructor(owner); add(text); markAllRead(); get unreadCount }",
+      "summary": "Hộp thư: thêm tin, đếm tin chưa đọc",
+      "example": "inbox.add('a') → 1; inbox.unreadCount → 1",
+      "test_prefix": "Inbox"
+    },
+    {
+      "fn": "createIdGenerator",
+      "signature": "createIdGenerator(prefix = 'msg') → () => string",
+      "summary": "Closure sinh id 'an-1', 'an-2'...",
+      "example": "next() → 'an-1', next() → 'an-2'",
+      "test_prefix": "createIdGenerator"
+    },
+    {
+      "fn": "parseJsonOr",
+      "signature": "parseJsonOr(text, fallback = null)",
+      "summary": "JSON.parse, hỏng thì trả fallback",
+      "example": "parseJsonOr('{hỏng', {}) → {}",
+      "test_prefix": "parseJsonOr"
+    },
+    {
+      "fn": "greetUser",
+      "signature": "async greetUser(getUser, id)",
+      "summary": "await getUser(id) → lời chào; lỗi → chào khách",
+      "example": "→ 'Xin chào, An!'",
+      "test_prefix": "greetUser"
+    }
+  ],
+  "brief": {
+    "context": "Mọi bài TeamPulse viết bằng JavaScript chạy trên Node.js. Bạn đã viết Python; chưa quen cú pháp JavaScript.",
+    "problem": "Người mới thường không kẹt ở ý tưởng mà ở cú pháp: === thay cho ==, mảng rỗng là truthy, { port } = options, => và callback, this thay cho self. Kẹt cú pháp ở N01–N04 thì không còn sức để hiểu event loop hay WebSocket.",
+    "requirements": [
+      {
+        "task": "cleanName",
+        "purpose": "Dữ liệu người dùng gửi lên có thể là bất cứ gì; luyện typeof, ===, truthy/falsy."
+      },
+      {
+        "task": "formatMessage",
+        "purpose": "Ghép chuỗi hiển thị tin chat; luyện destructuring và template literal."
+      },
+      {
+        "task": "uniqueUsers",
+        "purpose": "Danh sách ai đang nói chuyện; luyện mảng, for...of, includes."
+      },
+      {
+        "task": "pickMessages",
+        "purpose": "Hàm nhận hàm khác — khuôn của mọi listener sự kiện trong Node."
+      },
+      {
+        "task": "withDefaults",
+        "purpose": "Cấu hình server với giá trị mặc định; luyện spread và tham chiếu object."
+      },
+      {
+        "task": "Inbox",
+        "purpose": "Đọc được class ChatRoom ở N02; luyện constructor, this, getter."
+      },
+      {
+        "task": "createIdGenerator",
+        "purpose": "Giữ trạng thái riêng trong closure — khuôn của startPolling (N03) và heartbeat (N05)."
+      },
+      {
+        "task": "parseJsonOr",
+        "purpose": "Tin từ mạng có thể hỏng; luyện try/catch và JSON."
+      },
+      {
+        "task": "greetUser",
+        "purpose": "Đọc được code async: await, try/catch, và cách viết .then tương đương."
+      }
+    ],
+    "deliverable": "basics.js qua 19/19 test; npm start in kết quả đúng của cả 9 hàm.",
+    "constraints": [
+      "Chỉ dùng JavaScript có sẵn, không cài thư viện.",
+      "Không sửa đối số đầu vào (mảng, object) của hàm.",
+      "Hàm parseJsonOr và greetUser không được ném lỗi ra ngoài.",
+      "Test chỉ kiểm tra kết quả: vòng lặp hay hàm có sẵn đều được."
+    ],
+    "product_nodes": [
+      "runtime"
+    ],
+    "workflow": {
+      "flow": "parallel",
+      "inputs": [
+        {
+          "label": "Kiến thức Python",
+          "detail": "biến, hàm, list, dict, class"
+        },
+        {
+          "label": "basics.js",
+          "detail": "9 hàm có JSDoc, thân TODO"
+        }
+      ],
+      "steps": [
+        {
+          "task": "cleanName",
+          "label": "Làm sạch tên"
+        },
+        {
+          "task": "formatMessage",
+          "label": "Định dạng một tin"
+        },
+        {
+          "task": "uniqueUsers",
+          "label": "Lọc người gửi trùng"
+        },
+        {
+          "task": "pickMessages",
+          "label": "Lọc tin bằng callback"
+        },
+        {
+          "task": "withDefaults",
+          "label": "Ghép cấu hình mặc định"
+        },
+        {
+          "task": "Inbox",
+          "label": "Class hộp thư"
+        },
+        {
+          "task": "createIdGenerator",
+          "label": "Bộ sinh id bằng closure"
+        },
+        {
+          "task": "parseJsonOr",
+          "label": "Parse JSON an toàn"
+        },
+        {
+          "task": "greetUser",
+          "label": "Chờ Promise bằng await"
+        }
+      ],
+      "outputs": [
+        {
+          "label": "9 hàm JavaScript chạy đúng",
+          "detail": "Qua 19 test của bài"
+        },
+        {
+          "label": "Bảng đối chiếu Python ↔ JS",
+          "detail": "Tra lại khi đọc bài sau"
+        }
+      ]
+    }
+  }
+}

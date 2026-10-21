@@ -165,6 +165,24 @@ test('createRoomServer: chat sai → ack lỗi, không ai nhận', async () => {
   assert.equal((await binh.next()).data.text, 'không cần ack', 'Client không gửi ack → server vẫn xử lý, không ném lỗi');
 });
 
+test('createRoomServer: gửi lại cùng clientId → chỉ phát một lần, ack id cũ (idempotent)', async () => {
+  const base = await startRooms();
+  const an = await member(base, 'An', ['dev']);
+  const binh = await member(base, 'Binh', ['dev']);
+  await an.next(); // joined Binh
+  assert.deepEqual(await an.ask('chat', { room: 'dev', text: 'Deploy 10h', clientId: 'an-1' }), { ok: true, id: 1 },
+    'Lần gửi đầu với clientId "an-1" → ack {ok: true, id: 1}');
+  assert.equal((await binh.next()).data.text, 'Deploy 10h', 'Lần gửi đầu: Binh nhận tin');
+  assert.deepEqual(await an.ask('chat', { room: 'dev', text: 'Deploy 10h', clientId: 'an-1' }), { ok: true, id: 1 },
+    'Gửi lại cùng clientId "an-1" → ack lại {ok: true, id: 1} như lần đầu, không cấp id mới');
+  assert.deepEqual(await binh.nothing(), [], 'Gửi lại cùng clientId → KHÔNG phát "chat" lần nữa');
+  assert.deepEqual(await an.ask('chat', { room: 'dev', text: 'Deploy 10h', clientId: 'an-2' }), { ok: true, id: 2 },
+    'clientId khác ("an-2") → tin mới, id 2');
+  assert.equal((await binh.next()).data.id, 2, 'Binh nhận tin id 2');
+  assert.deepEqual(await an.ask('chat', { room: 'dev', text: 'không có clientId' }), { ok: true, id: 3 }, 'Không có clientId → tin mới, id 3');
+  assert.deepEqual(await an.ask('chat', { room: 'dev', text: 'không có clientId' }), { ok: true, id: 4 }, 'Không có clientId → mỗi lần là tin mới, id 4');
+});
+
 test('createRoomServer: leave và ngắt kết nối → left cho người còn lại', async () => {
   const base = await startRooms();
   const an = await member(base, 'An', ['dev', 'general']);

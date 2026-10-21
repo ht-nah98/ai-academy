@@ -4,7 +4,7 @@
 
 ## 🎯 Mục tiêu
 
-Sau buổi này (khoảng 2–2,5 giờ) bạn sẽ:
+Sau buổi này (khoảng 3,5 giờ với người mới) bạn sẽ:
 
 - Ký và kiểm tra **token HMAC-SHA256** bằng `node:crypto` (cùng ý tưởng với JWT), so chữ ký bằng `timingSafeEqual`.
 - Chọn **nơi đặt token** khi mở WebSocket (header, cookie, query, subprotocol) và biết vì sao query string bị ghi vào log.
@@ -93,14 +93,22 @@ client (kho-123): connect
 
 ### Đặt token ở đâu khi mở WebSocket
 
+> 🧠 **Ghi nhớ — cookie và Origin trong 6 dòng:**
+> - **Cookie**: server trả header `Set-Cookie: tp_token=abc` một lần; từ đó trình duyệt **tự đính** `Cookie: tp_token=abc` vào request sau tới server đó — kể cả request mở WebSocket — miễn là luật `SameSite` cho phép (mục CSWSH bên dưới). Code JavaScript của trang không phải làm gì.
+> - Thuộc tính cookie: `HttpOnly` = JavaScript trên trang không đọc được (script lạ chèn vào trang không lấy trộm được token); `Secure` = chỉ gửi qua HTTPS/WSS; `SameSite` = có gửi kèm khi request xuất phát từ trang **khác site** hay không.
+> - **Origin** của trang = `giao thức://tên miền:cổng`, vd. `https://teampulse.cty.vn`. **Same-origin** = cả ba giống nhau. **Site** rộng hơn: cùng giao thức và cùng tên miền đăng ký — `chat.cty.vn` và `blog.cty.vn` cùng site `cty.vn` nhưng khác origin.
+> - Trình duyệt tự đặt header `Origin` (origin của trang đang mở kết nối) vào request WebSocket; JavaScript trên trang không sửa được nó.
+> - **CORS** là luật trình duyệt áp cho `fetch`/XHR: trang chỉ đọc được response từ origin khác nếu server cho phép. WebSocket **không** áp CORS.
+> - **Referer**: header trình duyệt ghi URL của trang (hoặc link) dẫn tới request — URL có `?token=` có thể lọt ra theo đường này.
+
 `new WebSocket(url)` của trình duyệt **không cho đặt header** tuỳ ý. Bốn lựa chọn thường gặp:
 
 | Nơi đặt | Trình duyệt làm được? | Rủi ro / ghi chú |
 |---|---|---|
 | Header `Authorization: Bearer ...` | Không (chỉ client Node, app mobile) | Sạch nhất cho client không phải trình duyệt |
-| Cookie (`tp_token=...; HttpOnly; Secure; SameSite`) | Có, trình duyệt tự gửi | Tự gửi cả khi trang **lạ** mở kết nối → bắt buộc kiểm tra Origin |
+| Cookie (`tp_token=...; HttpOnly; Secure; SameSite=Lax`) | Có, trình duyệt tự gửi | Vẫn đi kèm khi trang **lạ cùng site** (subdomain khác) mở kết nối, và cả trang khác site nếu cookie là `SameSite=None` → bắt buộc kiểm tra Origin |
 | Query `?token=...` | Có | URL bị ghi vào access log, lịch sử, header Referer |
-| `Sec-WebSocket-Protocol: auth, <token>` | Có (`new WebSocket(url, ['auth', token])`) | Mẹo lách; server phải chọn lại đúng một subprotocol khi trả 101 |
+| `Sec-WebSocket-Protocol: auth, <token>` | Có (`new WebSocket(url, ['auth', token])`) | Header này vốn để client đề xuất "giao thức con" (tên định dạng tin nhắn) và server chọn một; nhét token vào là mẹo lách — server phải chọn lại đúng một subprotocol khi trả 101 |
 
 Query string vào log thế nào — một access log bình thường:
 
@@ -124,15 +132,36 @@ server.close();
 
 Ai đọc được log (đội vận hành, dịch vụ gom log, bản sao lưu) là có token. Bài này nhận **Bearer** (client Node) và **cookie** (trình duyệt), không nhận query. Nếu bắt buộc dùng query (vd. client cũ), dùng token **rất ngắn hạn, dùng một lần**, xin qua một API HTTP có xác thực ngay trước khi mở WebSocket.
 
+**Token đến từ đâu?** Bài này tự ký token bằng `signToken` (trong `npm start`, `demo.js`) để tập trung vào phía WebSocket. Ở sản phẩm thật, trình duyệt lấy token qua một trang đăng nhập — phần đăng nhập thật (băm mật khẩu, session) nằm ngoài P2:
+
+```mermaid
+flowchart TD
+    L["Trình duyệt: POST /login<br/>(tên + mật khẩu)"] --> S["Server kiểm mật khẩu,<br/>signToken({sub, rooms})"]
+    S --> C["Response: Set-Cookie: tp_token=...<br/>HttpOnly; Secure; SameSite=Lax"]
+    C --> W["Trang chat chạy new WebSocket('wss://.../ws')"]
+    W --> H["Handshake tự kèm Cookie: tp_token=...<br/>và Origin của trang"]
+    H --> V["authenticateUpgrade: kiểm Origin,<br/>đọc cookie, verifyToken → 101"]
+```
+
+Client không phải trình duyệt (service khác, app mobile, test) thì xin token qua API rồi gửi bằng header `Authorization: Bearer ...`.
+
 ### Cross-Site WebSocket Hijacking (CSWSH)
 
-WebSocket **không** bị chính sách same-origin/CORS chặn: trang `https://evil.example` mở được `new WebSocket('wss://teampulse.cty.vn/ws')`, và trình duyệt **tự gửi cookie** của `teampulse.cty.vn`. Nếu server chỉ nhìn cookie, trang lạ đọc được toàn bộ chat của nạn nhân. Chặn: trình duyệt luôn gửi header `Origin` thật (JavaScript không sửa được) → server chỉ chấp nhận Origin trong danh sách. Client không phải trình duyệt thường không gửi Origin — cho qua bước này, vì bước token vẫn bắt họ chứng minh danh tính.
+WebSocket **không** bị chính sách same-origin/CORS chặn: trang nào cũng mở được `new WebSocket('wss://teampulse.cty.vn/ws')`. Cookie đăng nhập của `teampulse.cty.vn` có đi kèm handshake đó không thì do thuộc tính `SameSite` của cookie quyết định:
 
-> 🎯 **Phỏng vấn hay hỏi:** "WebSocket có bị CORS chặn không?" — không. Trình duyệt cho mọi trang mở WebSocket tới mọi server và gửi kèm cookie; server phải tự kiểm tra `Origin` trong handshake (chống CSWSH) và xác thực token trước khi trả 101.
+| Cookie | Trang **khác site** (`https://evil.example`) mở WebSocket | Trang **cùng site, khác origin** (`https://blog.cty.vn`) mở WebSocket |
+|---|---|---|
+| `SameSite=Strict` hoặc `SameSite=Lax` | Không gửi | **Có gửi** |
+| `SameSite=None; Secure` | **Có gửi** (trừ khi trình duyệt/người dùng chặn cookie bên thứ ba) | **Có gửi** |
+| Không ghi `SameSite` | Chrome/Edge coi như `Lax` → không gửi; Firefox, Safari có luật riêng tuỳ phiên bản và chế độ chống theo dõi → đừng dựa vào mặc định | Có gửi |
+
+Khi cookie đi kèm mà server chỉ nhìn cookie, trang lạ mở được kết nối **dưới danh nghĩa nạn nhân** và đọc toàn bộ chat — gọi là **Cross-Site WebSocket Hijacking**. `SameSite=Lax`/`Strict` là lớp phòng thủ **thứ hai** tốt, nhưng không đủ: mọi subdomain cùng site (trang blog, trang upload file người dùng, một subdomain bị chiếm) vẫn qua được, và cookie buộc phải để `None` khi giao diện nằm ở site khác API. Chặn chắc: trình duyệt luôn gửi header `Origin` thật (JavaScript không sửa được) → server chỉ chấp nhận Origin trong danh sách. Client không phải trình duyệt thường không gửi Origin — cho qua bước này, vì bước token vẫn bắt họ chứng minh danh tính.
+
+> 🎯 **Phỏng vấn hay hỏi:** "WebSocket có bị CORS chặn không?" — không. Trình duyệt cho mọi trang mở WebSocket tới mọi server, và gửi kèm cookie khi luật `SameSite` cho phép (luôn có với trang cùng site; cả trang khác site nếu cookie `SameSite=None`). Server phải tự kiểm tra `Origin` trong handshake (chống CSWSH) và xác thực token trước khi trả 101; `SameSite` chỉ là lớp phòng thủ thứ hai.
 
 ### Token có chữ ký: HMAC
 
-Token mang thông tin (`sub`, `rooms`, `exp`) ở dạng **đọc được** (base64url chỉ là mã hoá, không phải mã hoá bí mật), kèm **chữ ký** HMAC tính từ nội dung + `secret` chỉ server biết. Ai sửa nội dung mà không có `secret` thì chữ ký không khớp. Ví dụ phiếu giảm giá:
+Token mang thông tin (`sub`, `rooms`, `exp`) ở dạng **đọc được** (base64url chỉ là **đổi cách viết** — encoding — ai cũng giải ngược được; không phải **mật mã** — encryption — cần khoá mới đọc được), kèm **chữ ký** HMAC tính từ nội dung + `secret` chỉ server biết. Ai sửa nội dung mà không có `secret` thì chữ ký không khớp. Ví dụ phiếu giảm giá:
 
 ```js
 import { createHmac } from 'node:crypto';
@@ -188,8 +217,14 @@ true false
 ### Bước 1 — Chuẩn bị
 
 ```bash
-cd <workspace>/N07-xac-thuc-handshake
+cd academy/courses/node-realtime/workspace/N07-xac-thuc-handshake
 npm test    # 9 fail vì TODO — bình thường
+```
+
+Chạy riêng test của hàm đang làm — cờ `--test-name-pattern` (biểu thức chính quy so với tên test) phải đứng **trước** đường dẫn file; `npm test -- --test-name-pattern=...` không lọc được vì npm nối cờ vào sau đường dẫn. Dùng y hệt trên PowerShell:
+
+```bash
+node --test --test-name-pattern="signToken" "../../curriculum/N07-xac-thuc-handshake/tests/*.test.js"
 ```
 
 ### Bước 2 — Ký → `signToken`
@@ -197,6 +232,10 @@ npm test    # 9 fail vì TODO — bình thường
 Theo đúng docstring: bản sao payload + `exp` (giây Unix, `Math.floor(now() / 1000) + ttlSec`) → `JSON.stringify` → `Buffer.from(...).toString('base64url')` → HMAC của **chuỗi body** → nối bằng `.`. Dùng spread `{ ...payload, exp }` để tạo bản sao — không sửa object người gọi truyền vào.
 
 > 💡 **Mẹo:** `exp` tính bằng **giây** (quy ước của JWT), `Date.now()` trả **mili giây**. Nhầm đơn vị là lỗi số một: token "hết hạn năm 58000" hoặc hết hạn ngay khi tạo.
+
+```bash
+node --test --test-name-pattern="signToken" "../../curriculum/N07-xac-thuc-handshake/tests/*.test.js"
+```
 
 ### Bước 3 — Kiểm tra → `verifyToken`
 
@@ -206,8 +245,12 @@ Thứ tự trong docstring có lý do: **kiểm chữ ký trước khi tin nội
 |---|---|
 | Là chuỗi, `split('.')` ra đúng 2 phần không rỗng | `malformed` |
 | Tính lại HMAC của phần 1, so với phần 2 bằng `timingSafeEqual` (kiểm độ dài trước) | `bad_signature` |
-| `JSON.parse(Buffer.from(body, 'base64url').toString())` trong `try/catch`, kết quả là object thường | `malformed` |
+| `JSON.parse(Buffer.from(body, 'base64url').toString())` trong `try/catch`, kết quả là object thường: `typeof v === 'object' && v !== null && !Array.isArray(v)` (vì `typeof null === 'object'` — bẫy đã gặp ở N01 — và mảng cũng là object) | `malformed` |
 | `exp` là số và `now() < exp × 1000` | `expired` |
+
+```bash
+node --test --test-name-pattern="verifyToken" "../../curriculum/N07-xac-thuc-handshake/tests/*.test.js"
+```
 
 ### Bước 4 — Tìm token → `authenticateUpgrade`
 
@@ -258,14 +301,56 @@ do a=b null
 
 Header `authorization` có dạng `Bearer <token>`: kiểm tra `startsWith('Bearer ')` rồi cắt phần sau. Node đưa mọi tên header về **chữ thường** (`req.headers.authorization`, `req.headers.origin`).
 
+```bash
+node --test --test-name-pattern="authenticateUpgrade" "../../curriculum/N07-xac-thuc-handshake/tests/*.test.js"
+```
+
 ### Bước 5 — Từ chối trước 101 → `createAuthServer`
+
+Hàm dài nhất bài; làm từng phần 5a → 5e theo khung chú thích trong starter, mỗi phần chạy riêng test của nó. Phần ghép chuỗi HTTP thô (`HTTP/1.1 401 ...\r\n...`) đã có sẵn trong hàm `rejectUpgrade(socket, status, error)` — bạn chỉ cần gọi.
 
 | Phần | Việc |
 |---|---|
 | `new WebSocketServer({ noServer: true })` | `ws` không tự nghe `upgrade` nữa; bạn quyết định |
-| `server.on('upgrade', (req, socket, head) => ...)` | `socket` là TCP thô: từ chối bằng `socket.end('HTTP/1.1 401 Unauthorized\r\n...\r\n\r\n{...}')` — `end` gửi hết rồi mới đóng; `write` rồi `destroy()` ngay có thể làm mất response |
+| `server.on('upgrade', (req, socket, head) => ...)` | `socket` là TCP thô (chưa phải WebSocket): từ chối bằng `rejectUpgrade(socket, status, error)` |
 | Đúng → `wss.handleUpgrade(req, socket, head, (ws) => ...)` | Gắn `ws.user`, rồi `wss.emit('connection', ws, req)` để dùng `wss.on('connection')` như cũ |
 | Mỗi tin | Hết hạn → `token_expired` + `ws.close(4001, ...)`; room ngoài `ws.user.rooms` → `forbidden`; được → gửi cho kết nối OPEN có quyền ở room |
+
+#### Bước 5a — Server và `wss` không tự nâng cấp
+
+`http.createServer` trả 404 cho mọi request thường; `new WebSocketServer({ noServer: true })`; `return server` (chưa `listen`). Đến đây test chưa qua — cần 5b.
+
+#### Bước 5b — `upgrade`: đường dẫn, rồi `authenticateUpgrade`
+
+Trong `server.on('upgrade', ...)`: lấy đường dẫn bằng `new URL(req.url, 'http://x').pathname` (bỏ phần `?...`), khác `/ws` → `rejectUpgrade(socket, 404, 'not_found')`; gọi `authenticateUpgrade` (Bước 4), sai → `rejectUpgrade(socket, result.status, result.error)`. Thêm `socket.on('error', () => {})` để client cắt ngang không làm sập server. Test gửi request nâng cấp **thô** và đọc đúng dòng `HTTP/1.1 401 ...`:
+
+```bash
+node --test --test-name-pattern="từ chối 401" "../../curriculum/N07-xac-thuc-handshake/tests/*.test.js"
+```
+
+#### Bước 5c — `handleUpgrade` và chat theo quyền
+
+Hợp lệ → `wss.handleUpgrade(req, socket, head, (ws) => { ws.user = result.user; wss.emit('connection', ws, req); })`. Trong `wss.on('connection')`, tin chat hợp lệ gửi `{type: 'chat', room, from: ws.user.sub, text}` cho mọi `c` của `wss.clients` có `c.readyState === OPEN` **và** `c.user.rooms.includes(room)` — vòng `for...of` + `if` như `broadcast` ở N04, thêm một điều kiện.
+
+```bash
+node --test --test-name-pattern="token đúng → kết nối" "../../curriculum/N07-xac-thuc-handshake/tests/*.test.js"
+```
+
+#### Bước 5d — Kiểm tra từng tin: `bad_message`, `forbidden`
+
+`JSON.parse` trong `try/catch`; không phải `{type: 'chat', room: <chuỗi>, text: <chuỗi>}` → `bad_message`; `room` không có trong `ws.user.rooms` → `forbidden`, không gửi cho ai.
+
+> ⚠️ **Lỗi hay gặp:** chỉ kiểm tra quyền lúc handshake. Token hợp lệ không có nghĩa mọi tin đều hợp lệ: người chỉ có quyền `general` vẫn gửi được `{room: "dev"}` nếu server không kiểm tra **từng tin**.
+
+> ⚠️ **Lỗi hay gặp:** tin `sub` hay `name` client tự gửi trong tin chat. `from` phải lấy từ `ws.user.sub` (đã ký), không lấy từ dữ liệu client.
+
+```bash
+node --test --test-name-pattern="forbidden" "../../curriculum/N07-xac-thuc-handshake/tests/*.test.js"
+```
+
+#### Bước 5e — Token hết hạn giữa chừng
+
+Đầu handler `message` (trước mọi kiểm tra khác): `now() >= ws.user.exp * 1000` → gửi `{type: 'error', error: 'token_expired'}` rồi `ws.close(4001, 'token_expired')`. Dùng `now` được truyền vào (đồng hồ giả của test), không gọi `Date.now()` trực tiếp.
 
 | Mã đóng | Nghĩa |
 |---|---|
@@ -274,9 +359,9 @@ Header `authorization` có dạng `Bearer <token>`: kiểm tra `startsWith('Bear
 | `1008` | Chuẩn: vi phạm chính sách (chung chung, client không biết phải làm gì) |
 | `4000–4999` | Dành cho ứng dụng tự đặt nghĩa: `4001` = "token hết hạn, xin token mới rồi kết nối lại" |
 
-> ⚠️ **Lỗi hay gặp:** chỉ kiểm tra quyền lúc handshake. Token hợp lệ không có nghĩa mọi tin đều hợp lệ: người chỉ có quyền `general` vẫn gửi được `{room: "dev"}` nếu server không kiểm tra **từng tin**.
-
-> ⚠️ **Lỗi hay gặp:** tin `sub` hay `name` client tự gửi trong tin chat. `from` phải lấy từ `ws.user.sub` (đã ký), không lấy từ dữ liệu client.
+```bash
+node --test --test-name-pattern="hết hạn giữa chừng" "../../curriculum/N07-xac-thuc-handshake/tests/*.test.js"
+```
 
 ### Bước 6 — Chạy kịch bản
 
@@ -311,4 +396,4 @@ Mục tiêu: `# pass 9`. Test gửi request nâng cấp **thô** qua TCP (`node:
 
 ## 🎤 Câu hỏi phỏng vấn
 
-> 🎯 **Phỏng vấn hay hỏi:** "Bạn xác thực kết nối WebSocket thế nào?" — kiểm tra trong handshake, trước 101: (1) `Origin` nằm trong danh sách cho phép (chống CSWSH, vì WebSocket không bị CORS chặn và trình duyệt tự gửi cookie); (2) token từ header `Authorization` (client không phải trình duyệt) hoặc cookie `HttpOnly` (trình duyệt), tránh query string vì bị ghi log; (3) kiểm chữ ký bằng so sánh thời gian hằng, rồi mới đọc `exp`; sai thì trả 401/403 bằng HTTP và đóng socket. Sau đó vẫn phân quyền **từng tin** (room nào được gửi), lấy danh tính từ token chứ không từ dữ liệu client, và xử lý token hết hạn giữa chừng (đóng với mã 4001 để client xin token mới).
+> 🎯 **Phỏng vấn hay hỏi:** "Bạn xác thực kết nối WebSocket thế nào?" — kiểm tra trong handshake, trước 101: (1) `Origin` nằm trong danh sách cho phép (chống CSWSH: WebSocket không bị CORS chặn, và trình duyệt gửi kèm cookie khi `SameSite` cho phép — luôn có với trang cùng site; `SameSite` chỉ là lớp phòng thủ thứ hai); (2) token từ header `Authorization` (client không phải trình duyệt) hoặc cookie `HttpOnly` (trình duyệt), tránh query string vì bị ghi log; (3) kiểm chữ ký bằng so sánh thời gian hằng, rồi mới đọc `exp`; sai thì trả 401/403 bằng HTTP và đóng socket. Sau đó vẫn phân quyền **từng tin** (room nào được gửi), lấy danh tính từ token chứ không từ dữ liệu client, và xử lý token hết hạn giữa chừng (đóng với mã 4001 để client xin token mới).

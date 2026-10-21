@@ -2,7 +2,7 @@
   "id": "N04-chat-realtime",
   "title": "Chat realtime: broadcast, giao thức, presence",
   "goal": "Viết server chat nhiều người: giao thức JSON có kiểm tra, broadcast, tên, vào/ra, danh sách online; qua hết 13 test và chat được giữa hai tab.",
-  "duration_min": 150,
+  "duration_min": 180,
   "concepts": [
     "broadcast",
     "message-protocol",
@@ -17,6 +17,8 @@
     "Giải thích được vì sao dọn dẹp đặt ở sự kiện close (code 1000/1001/1006)",
     "Dùng Map với khóa là object; biết .sort() sửa tại chỗ",
     "Chat được giữa hai tab, thấy thông báo vào/ra và danh sách online đúng",
+    "Chỉ ra được biến nào là chung của server (Map) và biến nào riêng của từng kết nối",
+    "Dùng checklist 8 mục để tìm nơi nhận kết nối, xác thực, giao thức, broadcast, dọn dẹp, heartbeat trong một repo thật",
     "Qua hết test của bài"
   ],
   "interview_questions": [
@@ -27,9 +29,10 @@
     "Làm sao biết một người đã rời phòng? Client mất mạng đột ngột thì server biết khi nào?",
     "Bạn lưu trạng thái 'kết nối này là ai' ở đâu? Vì sao dùng Map thay vì object thường?",
     "XSS trong ứng dụng chat là gì? Phòng tránh thế nào ở phía giao diện?",
-    "Chạy hai instance server chat sau load balancer thì người ở hai server có thấy tin của nhau không? Giải quyết thế nào?"
+    "Chạy hai instance server chat sau load balancer thì người ở hai server có thấy tin của nhau không? Giải quyết thế nào?",
+    "Bạn mới vào một dự án có WebSocket. Bạn đọc code theo thứ tự nào để hiểu nó?"
   ],
-  "tutor_notes": "Học viên vừa làm echo server (N03). Nhấn mạnh: WebSocket chỉ chuyển byte, ý nghĩa nằm ở giao thức JSON tự định nghĩa. Lần đầu dùng Map/Set và spread. Liên hệ Python: Map ~ dict nhưng khóa là object; Set ~ set; [...x] ~ list(x). Lỗi hay gặp: (1) parseClientMessage ném lỗi với JSON hỏng, quên kiểm tra mảng/null, kiểm tra độ dài trước khi trim, giữ lại khóa thừa, so type không phân biệt hoa thường (JOIN phải là unknown_type); (2) broadcast stringify trong vòng lặp, quên except, gửi cho client không OPEN, không trả số lượng; (3) createChatServer gửi joined trước khi lưu tên (users thiếu người mới), gửi joined cho cả người vừa vào, broadcast chat qua wss.clients nên người chưa join cũng nhận, so trùng tên phân biệt hoa thường, quên xoá tên ở close (tên bị giữ mãi), báo left cho người chưa join, đóng kết nối khi tin hỏng, users không sort; (4) quên ws.on('error'). Khi chạy thật: hai tab cùng trình duyệt vẫn là hai kết nối riêng; EADDRINUSE → PORT=3003 npm start. Không viết hộ thân hàm.",
+  "tutor_notes": "Học viên vừa làm echo server (N03). Nhấn mạnh: WebSocket chỉ chuyển byte, ý nghĩa nằm ở giao thức JSON tự định nghĩa. Lần đầu dùng Map/Set và spread. Liên hệ Python: Map ~ dict nhưng khóa là object; Set ~ set; [...x] ~ list(x). Lỗi hay gặp: (1) parseClientMessage ném lỗi với JSON hỏng, quên kiểm tra mảng/null, kiểm tra độ dài trước khi trim, giữ lại khóa thừa, so type không phân biệt hoa thường (JOIN phải là unknown_type); (2) broadcast stringify trong vòng lặp, quên except, gửi cho client không OPEN, không trả số lượng; (3) createChatServer gửi joined trước khi lưu tên (users thiếu người mới), gửi joined cho cả người vừa vào, broadcast chat qua wss.clients nên người chưa join cũng nhận, so trùng tên phân biệt hoa thường, quên xoá tên ở close (tên bị giữ mãi), báo left cho người chưa join, đóng kết nối khi tin hỏng, users không sort; (4) quên ws.on('error'). Khi chạy thật: hai tab cùng trình duyệt vẫn là hai kết nối riêng; EADDRINUSE → PORT=3102 npm start (PowerShell: $env:PORT=3102; npm start). Không viết hộ thân hàm. Bài có ví dụ mẫu quầy gửi xe (Bước 5) cho trạng thái chung (Map ngoài connection) và riêng (biến trong connection), và bảng Bước 6a–6f kèm test xanh dần theo từng bước — hỏi học viên đang ở bước nào và test nào còn đỏ. Lỗi hay gặp: khai báo Map bên trong connection.",
   "tasks": [
     {
       "fn": "parseClientMessage",

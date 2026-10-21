@@ -15,7 +15,9 @@
  *
  * Chạy thử:   npm start   → server ws://127.0.0.1:3007/ws, in token mẫu
  *             npm run demo → chạy các kịch bản: không token, sai Origin, sai room, token hết hạn
- * Chạy test:  node --test "../../curriculum/N07-xac-thuc-handshake/tests/*.test.js"
+ * Chạy test:  npm test
+ * Chạy riêng một nhóm test (vd. tên chứa "verifyToken"):
+ *   node --test --test-name-pattern="verifyToken" "../../curriculum/N07-xac-thuc-handshake/tests/*.test.js"
  */
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import http from 'node:http';
@@ -48,7 +50,9 @@ export function signToken(payload, secret, { ttlSec = 3600, now = Date.now } = {
  * Trả `{ ok: true, user }` (user = payload đã giải mã, gồm cả `exp`) hoặc `{ ok: false, error }`:
  * - `'malformed'`     — không phải chuỗi; không có đúng 2 phần ngăn bởi `.`; một trong hai phần rỗng;
  *                      hoặc (sau khi chữ ký đúng) body không `JSON.parse` được, hay parse ra thứ không phải
- *                      object thường (mảng, `null`, số, chuỗi...).
+ *                      object thường (mảng, `null`, số, chuỗi...). Kiểm tra "object thường":
+ *                      `typeof v === 'object' && v !== null && !Array.isArray(v)` (vì `typeof null === 'object'`
+ *                      và mảng cũng là object).
  * - `'bad_signature'` — chữ ký không khớp. So sánh bằng `timingSafeEqual` (độ dài khác nhau → coi là sai luôn).
  * - `'expired'`       — `exp` không phải số, hoặc `now() >= exp × 1000`.
  * Thứ tự kiểm tra: tách 2 phần → chữ ký → giải mã body → hạn dùng.
@@ -85,13 +89,26 @@ export function authenticateUpgrade(req, { secret, allowedOrigins, now = Date.no
 }
 
 /**
+ * (Đã viết sẵn) Từ chối một request nâng cấp bằng response HTTP thường rồi đóng socket TCP, vd.
+ *   HTTP/1.1 401 Unauthorized\r\nContent-Type: application/json\r\nConnection: close\r\n\r\n{"error":"no_token"}
+ * `socket.end(text)` gửi hết rồi mới đóng — đừng `write` rồi `destroy()` ngay (có thể mất response).
+ *
+ * @param {import('node:net').Socket} socket  socket TCP thô của sự kiện `upgrade`
+ * @param {401 | 403 | 404} status
+ * @param {string} error  mã lỗi, gửi trong body `{"error": "<mã>"}`
+ */
+export function rejectUpgrade(socket, status, error) {
+  const reason = { 401: 'Unauthorized', 403: 'Forbidden', 404: 'Not Found' }[status] || 'Error';
+  socket.end(`HTTP/1.1 ${status} ${reason}\r\nContent-Type: application/json\r\nConnection: close\r\n\r\n${JSON.stringify({ error })}`);
+}
+
+/**
  * HTTP server (CHƯA listen) có WebSocket ở đường dẫn `/ws`, xác thực trước khi nâng cấp.
  *
  * - Request HTTP thường → 404.
- * - Sự kiện `upgrade` của server: đường dẫn khác `/ws` → trả `HTTP/1.1 404 Not Found` rồi đóng socket.
- *   Gọi `authenticateUpgrade`; sai → ghi thẳng ra socket một response HTTP
- *   `HTTP/1.1 <status> <Unauthorized|Forbidden>\r\nContent-Type: application/json\r\nConnection: close\r\n\r\n{"error":"<mã>"}`
- *   bằng `socket.end(response)` — gửi hết rồi mới đóng (đừng `write` rồi `destroy()` ngay: có thể mất response). Đúng → `wss.handleUpgrade(...)` (wss tạo với `noServer: true`), gắn `ws.user = user`.
+ * - Sự kiện `upgrade` của server: đường dẫn khác `/ws` → `rejectUpgrade(socket, 404, 'not_found')`.
+ *   Gọi `authenticateUpgrade`; sai → `rejectUpgrade(socket, status, error)` (hàm đã viết sẵn ở trên).
+ *   Đúng → `wss.handleUpgrade(...)` (wss tạo với `noServer: true`), gắn `ws.user = user`.
  * - Tin từ client: `{type: 'chat', room, text}` (JSON hỏng / sai dạng → `{type:'error', error:'bad_message'}`).
  *   1. Token hết hạn giữa chừng (`now() >= ws.user.exp × 1000`) → gửi `{type:'error', error:'token_expired'}`
  *      rồi `ws.close(4001, 'token_expired')`. Kiểm tra mỗi khi nhận tin.
@@ -103,7 +120,28 @@ export function authenticateUpgrade(req, { secret, allowedOrigins, now = Date.no
  * @returns {http.Server}
  */
 export function createAuthServer({ secret, allowedOrigins, now = Date.now }) {
-  // TODO: http.createServer, new WebSocketServer({ noServer: true }), server.on('upgrade', ...)
+  // Khung gợi ý — làm lần lượt Bước 5a → 5e trong bài (xoá dòng throw khi bắt đầu viết):
+  //
+  // const server = http.createServer((req, res) => { ... });   // Bước 5a: request HTTP thường → 404
+  // const wss = new WebSocketServer({ noServer: true });       // Bước 5a: ws KHÔNG tự nhận upgrade
+  //
+  // server.on('upgrade', (req, socket, head) => {               // Bước 5b
+  //   socket.on('error', () => {});                            //   client cắt ngang thì không sập
+  //   // đường dẫn (new URL(req.url, 'http://x').pathname) khác '/ws' → rejectUpgrade(...)
+  //   // const result = authenticateUpgrade(req, { secret, allowedOrigins, now }); sai → rejectUpgrade(...)
+  //   // đúng → wss.handleUpgrade(req, socket, head, (ws) => { ... });   // Bước 5c: ws.user, wss.emit('connection', ws, req)
+  // });
+  //
+  // wss.on('connection', (ws) => {
+  //   ws.on('error', () => {});
+  //   ws.on('message', (raw) => {
+  //     // Bước 5e: token hết hạn? → gửi token_expired, ws.close(4001, 'token_expired'), return
+  //     // Bước 5d: JSON hỏng / sai dạng → bad_message; room ngoài ws.user.rooms → forbidden
+  //     // Bước 5c: gửi {type:'chat', room, from: ws.user.sub, text} cho mọi kết nối OPEN có quyền ở room
+  //   });
+  // });
+  // return server;
+  // TODO: viết theo khung trên
   throw new Error('TODO: viết createAuthServer');
 }
 

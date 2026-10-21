@@ -2,7 +2,7 @@
   "id": "N07-xac-thuc-handshake",
   "title": "Xác thực token khi handshake",
   "goal": "Ký và kiểm token HMAC, từ chối 401/403 trước khi nâng cấp, chặn Origin lạ, phân quyền từng tin, xử lý token hết hạn; qua hết 9 test.",
-  "duration_min": 150,
+  "duration_min": 210,
   "concepts": [
     "hmac-token",
     "ws-auth-token",
@@ -14,6 +14,7 @@
     "Giải thích vì sao xác thực phải xong trước 101",
     "So sánh 4 nơi đặt token (header, cookie, query, subprotocol) và rủi ro của query string",
     "Giải thích CSWSH và vì sao kiểm tra Origin chặn được",
+    "Giải thích SameSite=Lax/Strict/None quyết định cookie có đi kèm handshake không, và vì sao vẫn phải kiểm Origin",
     "Biết token base64url đọc được bởi bất kỳ ai; chữ ký chỉ chống sửa",
     "Giải thích vì sao so chữ ký bằng timingSafeEqual, và phải kiểm chữ ký trước khi đọc nội dung",
     "Biết vì sao vẫn phải phân quyền từng tin sau khi đã xác thực",
@@ -30,7 +31,7 @@
     "Đã xác thực ở handshake rồi, còn cần kiểm tra quyền ở từng tin không? Vì sao?",
     "Mã đóng 1006, 1008 và 4001 khác nhau thế nào?"
   ],
-  "tutor_notes": "Học viên đã có server ws (N03–N05) và middleware io.use của Socket.IO (N06). Nhấn mạnh: sau 101 không còn HTTP, nên xác thực phải xong trước; base64url không phải mã hoá bí mật; chữ ký chỉ chống sửa. Lỗi hay gặp: (1) signToken: sửa thẳng payload truyền vào, exp tính bằng mili giây, ký trên JSON gốc thay vì chuỗi body base64url, dùng digest('hex'); (2) verifyToken: JSON.parse trước khi kiểm chữ ký, timingSafeEqual ném lỗi khi khác độ dài (phải kiểm độ dài trước), không bắt lỗi parse, coi mảng là object, so now() với exp không nhân 1000, dùng > thay vì >= (đúng bằng exp là hết hạn); (3) authenticateUpgrade: đọc req.headers.Authorization (Node đưa về chữ thường), split cookie theo '=' làm mất phần sau dấu '=' của giá trị, đọc token từ query, kiểm Origin sau token (phải trả 403 kể cả khi token đúng), chặn cả request không có Origin; (4) createAuthServer: dùng WebSocketServer({server}) nên ws tự nâng cấp trước khi kiểm tra, ghi response thiếu \\r\\n\\r\\n, write rồi destroy() ngay (client không nhận được 401) hoặc không đóng socket, lấy from từ tin client thay vì ws.user.sub, chỉ kiểm quyền lúc handshake, quên kiểm hết hạn mỗi tin, đóng code 1000 thay vì 4001. Khi chạy thật: EADDRINUSE → PORT=3008 npm start. Không viết hộ thân hàm.",
+  "tutor_notes": "Học viên đã có server ws (N03–N05) và middleware io.use của Socket.IO (N06). Nhấn mạnh: sau 101 không còn HTTP, nên xác thực phải xong trước; base64url không phải mã hoá bí mật; chữ ký chỉ chống sửa. Lỗi hay gặp: (1) signToken: sửa thẳng payload truyền vào, exp tính bằng mili giây, ký trên JSON gốc thay vì chuỗi body base64url, dùng digest('hex'); (2) verifyToken: JSON.parse trước khi kiểm chữ ký, timingSafeEqual ném lỗi khi khác độ dài (phải kiểm độ dài trước), không bắt lỗi parse, coi mảng là object, so now() với exp không nhân 1000, dùng > thay vì >= (đúng bằng exp là hết hạn); (3) authenticateUpgrade: đọc req.headers.Authorization (Node đưa về chữ thường), split cookie theo '=' làm mất phần sau dấu '=' của giá trị, đọc token từ query, kiểm Origin sau token (phải trả 403 kể cả khi token đúng), chặn cả request không có Origin; (4) createAuthServer: dùng WebSocketServer({server}) nên ws tự nâng cấp trước khi kiểm tra, tự ghép lại chuỗi HTTP thay vì gọi rejectUpgrade đã viết sẵn, quên return sau rejectUpgrade (vẫn handleUpgrade), lấy from từ tin client thay vì ws.user.sub, chỉ kiểm quyền lúc handshake, quên kiểm hết hạn mỗi tin, đóng code 1000 thay vì 4001. Khi chạy thật: EADDRINUSE → bash `PORT=3017 npm start`, PowerShell `$env:PORT=3017; npm start`. Cookie/SameSite: nếu học viên nói 'trình duyệt luôn gửi cookie cho trang lạ', sửa lại: Lax/Strict không gửi từ trang khác site, nhưng vẫn gửi từ trang cùng site (subdomain khác) và SameSite=None gửi cả khác site → Origin vẫn bắt buộc. Gợi ý chạy riêng test: `node --test --test-name-pattern=\"verifyToken\" \"../../curriculum/N07-xac-thuc-handshake/tests/*.test.js\"`. Không viết hộ thân hàm.",
   "tasks": [
     {
       "fn": "signToken",

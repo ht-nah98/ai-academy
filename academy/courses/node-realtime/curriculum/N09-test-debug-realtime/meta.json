@@ -2,7 +2,7 @@
   "id": "N09-test-debug-realtime",
   "title": "Test & debug ứng dụng realtime",
   "goal": "Tự viết test tích hợp cho server WebSocket bắt được 4 bug, chờ tin không dùng sleep, đo tải p50/p95/p99, debug bằng log có id; qua hết 10 test.",
-  "duration_min": 150,
+  "duration_min": 270,
   "concepts": [
     "deterministic-waits",
     "ws-testing-debugging",
@@ -13,6 +13,7 @@
   "checklist": [
     "Giải thích vì sao sleep làm test realtime chập chờn và waitForMessage sửa thế nào",
     "Biết phải tạo Promise chờ TRƯỚC khi gửi tin",
+    "Viết được test nhiều client: tạo mọi Promise chờ trước khi gửi, rồi Promise.all",
     "Viết được test tích hợp: server cổng 0, nhiều client, đóng hết trong after",
     "Test của mình bắt được cả 4 server lỗi của bài chấm",
     "Giải thích vì sao đo p50/p95/p99 thay vì trung bình; tính được nearest-rank",
@@ -30,7 +31,7 @@
     "Người dùng báo 'thỉnh thoảng không nhận được tin'. Bạn debug từ đâu?",
     "Bạn ghi log gì cho một kết nối WebSocket để debug được sự cố production?"
   ],
-  "tutor_notes": "Bài cuối P2, lần đầu học viên tự viết test. Nhấn mạnh: test phải fail khi hành vi sai (bài chấm chạy test của họ với 4 server lỗi: chỉ gửi lại người gửi, bỏ qua người gửi, đóng kết nối khi JSON hỏng, splice(i) xoá nhầm người phía sau). Lỗi hay gặp: (1) waitForMessage: dùng ws.once (không lọc được predicate), không gỡ listener ở nhánh timeout/close, quên clearTimeout (test không thoát), reject khi gặp tin không phải JSON, gỡ bằng arrow function mới; (2) chat.test.js: gửi trước rồi mới waitForMessage (lỡ tin), chỉ kiểm tra 'không lỗi' mà không assert from/text, test 'rời đi' chỉ có 2 người (không bắt được splice(i)), không chờ server xử lý close, sửa dòng import CHAT_SERVER, quên t.after đóng client; (3) percentile: sort không có hàm so sánh, sort tại chỗ làm đổi mảng gốc, dùng Math.floor/round thay vì ceil, rank 0 khi p = 0; (4) runLoadTest: gửi trước khi mọi client mở, đo độ trễ cả tin của người khác, không có timeout, quên terminate. Khi chạy thật: npm run test:mine để xem test của mình; EADDRINUSE → PORT=3010 npm start. Không viết hộ thân hàm hay test.",
+  "tutor_notes": "Bài cuối P2, lần đầu học viên tự viết test. Nhấn mạnh: test phải fail khi hành vi sai (bài chấm chạy test của họ với 4 server lỗi: chỉ gửi lại người gửi, bỏ qua người gửi, đóng kết nối khi JSON hỏng, xoá nhầm những người còn lại khỏi danh sách khi một người rời — lỗi này lộ ra bất kể thứ tự kết nối). Lỗi hay gặp: (1) waitForMessage: dùng ws.once (không lọc được predicate), không gỡ listener ở nhánh timeout/close, quên clearTimeout (test không thoát), reject khi gặp tin không phải JSON, gỡ bằng arrow function mới; (2) chat.test.js: gửi trước rồi mới waitForMessage (lỡ tin), chỉ kiểm tra 'không lỗi' mà không assert from/text, test 'rời đi' không kiểm tra người còn lại có nhận tin (chỉ kiểm tra Binh đã đóng), không chờ server xử lý close, sửa dòng import CHAT_SERVER, quên t.after đóng client; (3) percentile: sort không có hàm so sánh, sort tại chỗ làm đổi mảng gốc, dùng Math.floor/round thay vì ceil, rank 0 khi p = 0; (4) runLoadTest: gửi trước khi mọi client mở, đo độ trễ cả tin của người khác, không có timeout, quên terminate. Khi chạy thật: npm run test:mine để xem test của mình; EADDRINUSE → bash `PORT=3010 npm start`, PowerShell `$env:PORT=3010; npm start`; đổi tải: bash `LOAD_CLIENTS=50 npm run load`, PowerShell `$env:LOAD_CLIENTS=50; npm run load`. Học viên mới viết test lần đầu: chỉ họ tới ví dụ bảng giá (nhiều client, chờ trước rồi gửi) và bảng assert.* ở Bước 3; runLoadTest đã có sẵn bước 1 và 5 trong khung chú thích. Chạy riêng test: `node --test --test-name-pattern=\"percentile\" \"../../curriculum/N09-test-debug-realtime/tests/*.test.js\"`. Không viết hộ thân hàm hay test.",
   "tasks": [
     {
       "fn": "waitForMessage",
@@ -57,7 +58,7 @@
       "fn": "chat.test.js",
       "signature": "chat.test.js: 4 test bạn viết (npm run test:mine)",
       "summary": "Bắt 4 bug: không broadcast, bỏ người gửi, JSON hỏng, xoá nhầm",
-      "example": "server splice(i) → test 'một người rời đi' fail",
+      "example": "server xoá nhầm người còn lại → test 'một người rời đi' fail",
       "test_prefix": "chat.test.js"
     }
   ],

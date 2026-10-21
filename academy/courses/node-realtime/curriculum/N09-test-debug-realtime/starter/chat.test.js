@@ -8,6 +8,7 @@
 // - Mỗi test tự mở server cổng 0 trên 127.0.0.1 và đóng mọi thứ trong t.after().
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { once } from 'node:events'; // once(ws, 'close') → Promise resolve khi ws phát 'close'
 import { WebSocket } from 'ws';
 import { waitForMessage } from './testkit.js';
 
@@ -44,23 +45,37 @@ test('kết nối nhận welcome có id và name', async (t) => {
 });
 
 test('tin chat của một người tới người khác', async (t) => {
-  // TODO: An và Binh kết nối; Binh chờ tin chat; An gửi {type: 'chat', text: ...};
-  //       kiểm tra Binh nhận đúng from và text
+  // Arrange: startServer(t); An và Binh kết nối bằng connect(t, url, tên)
+  // Act:     Binh BẮT ĐẦU chờ trước: const got = waitForMessage(binh, (m) => m.type === 'chat');
+  //          rồi An gửi: an.send(JSON.stringify({ type: 'chat', text: '...' }))
+  // Assert:  const m = await got; assert.equal cho m.from và m.text
+  // TODO: viết test này theo 3 bước trên
   throw new Error('TODO: viết test này');
 });
 
 test('người gửi cũng nhận lại tin của chính mình', async (t) => {
-  // TODO
+  // Arrange: server; An kết nối (thêm một người khác cũng được)
+  // Act:     An bắt đầu chờ tin chat CỦA CHÍNH MÌNH; An gửi
+  // Assert:  An nhận lại đúng text đã gửi
+  // TODO: viết test này theo 3 bước trên
   throw new Error('TODO: viết test này');
 });
 
 test('JSON hỏng → error bad_json, kết nối vẫn dùng được', async (t) => {
-  // TODO: gửi chuỗi không phải JSON, chờ {type: 'error'}; rồi gửi một tin chat hợp lệ và chờ nhận lại
+  // Arrange: server; An kết nối
+  // Act 1:   An chờ {type: 'error'}; gửi chuỗi không phải JSON, vd. '{hỏng'
+  // Assert 1: error === 'bad_json'
+  // Act 2 + Assert 2: An chờ tin chat; gửi một tin chat hợp lệ; nhận lại được → kết nối vẫn mở, vẫn dùng được
+  // TODO: viết test này theo các bước trên
   throw new Error('TODO: viết test này');
 });
 
 test('một người rời đi, những người còn lại vẫn nhận tin', async (t) => {
-  // TODO: An, Binh, Chi kết nối; Binh đóng; An gửi; Chi phải nhận
-  //       (gợi ý: chờ một chút sau khi Binh đóng, hoặc chờ sự kiện 'close' của Binh)
+  // Arrange: server; An, Binh, Chi kết nối (cần cả 3: Binh rời, An gửi, Chi là người nhận KHÁC người gửi)
+  // Act 1:   Binh đóng: const closed = once(binh, 'close'); binh.close(); await closed;
+  //          rồi chờ thêm vài chục ms để server xử lý xong việc Binh rời (server không gửi tin báo nào)
+  // Act 2:   Chi bắt đầu chờ tin chat; An gửi
+  // Assert:  Chi nhận đúng text
+  // TODO: viết test này theo các bước trên
   throw new Error('TODO: viết test này');
 });

@@ -15,9 +15,13 @@
  *   broker.subscribe(channel, handler)       → Promise<unsubscribe>  (handler(message: string))
  *
  * Chạy thử 1 máy, 2 node:  npm start                → node A :3008, node B :3009, cùng memory broker
- * Với Redis thật:          REDIS_URL=redis://127.0.0.1:6379 npm start
+ * Client dòng lệnh:        npm run cli -- "ws://127.0.0.1:3008/ws?name=An"
+ * Với Redis thật:          bash:        REDIS_URL=redis://127.0.0.1:6379 npm start
+ *                          PowerShell:  $env:REDIS_URL="redis://127.0.0.1:6379"; npm start
  * Đo độ trễ broker:        npm run bench            (thêm REDIS_URL để đo Redis)
- * Chạy test:               node --test "../../curriculum/N08-scale-redis-pubsub/tests/*.test.js"
+ * Chạy test:               npm test
+ * Chạy riêng một nhóm test (vd. tên chứa "createMemoryBroker"):
+ *   node --test --test-name-pattern="createMemoryBroker" "../../curriculum/N08-scale-redis-pubsub/tests/*.test.js"
  */
 import { EventEmitter } from 'node:events';
 import http from 'node:http';
@@ -86,7 +90,25 @@ export function createRedisBroker({ pub, sub }) {
  * @returns {Promise<http.Server & {stats: {published: number, received: number, sent: number}}>}
  */
 export async function createChatNode({ broker, nodeId }) {
-  // TODO: http.createServer, WebSocketServer({ server, path: '/ws' }), await broker.subscribe(CHANNEL, ...)
+  // Khung gợi ý — làm lần lượt Bước 4a → 4d trong bài (xoá dòng throw khi bắt đầu viết):
+  //
+  // const stats = { published: 0, received: 0, sent: 0 };
+  // const server = http.createServer((req, res) => { ... });    // Bước 4a: request HTTP thường → 404
+  // server.stats = stats;
+  // const wss = new WebSocketServer({ server, path: '/ws' });
+  //
+  // const unsubscribe = await broker.subscribe(CHANNEL, (message) => {
+  //   // Bước 4c: stats.received += 1; JSON.parse trong try (hỏng → return);
+  //   //          gửi {type: 'chat', ..., via: nodeId} cho mọi client OPEN, mỗi lần gửi stats.sent += 1
+  // });
+  // server.on('close', () => { ... });                          // Bước 4d: gọi unsubscribe
+  //
+  // wss.on('connection', (ws, req) => {                          // Bước 4a: tên từ ?name=, rỗng → ws.close(1008)
+  //   ws.on('error', () => {});
+  //   ws.on('message', async (raw) => { ... });                  // Bước 4b: sai → bad_message; đúng → publish
+  // });
+  // return server;
+  // TODO: viết theo khung trên
   throw new Error('TODO: viết createChatNode');
 }
 

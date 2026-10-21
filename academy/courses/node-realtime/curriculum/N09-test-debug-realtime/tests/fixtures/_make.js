@@ -5,7 +5,7 @@ import { WebSocketServer } from 'ws';
 export function makeServer(bug) {
   const server = http.createServer((req, res) => { res.writeHead(404); res.end(); });
   const wss = new WebSocketServer({ server, path: '/ws' });
-  const list = []; // dùng mảng riêng để có thể cài lỗi "xoá nhầm"
+  let list = []; // dùng mảng riêng để có thể cài lỗi "xoá nhầm"
   let nextId = 1;
   wss.on('connection', (ws, req) => {
     ws.id = nextId++;
@@ -35,9 +35,10 @@ export function makeServer(bug) {
       }
     });
     ws.on('close', () => {
-      const i = list.indexOf(ws);
-      if (bug === 'splice-rest') list.splice(i);      // lỗi: thiếu số phần tử → xoá cả những người sau
-      else list.splice(i, 1);
+      // lỗi 'drop-others': đảo điều kiện lọc (=== thay vì !==) → giữ lại đúng người vừa rời, xoá hết người còn lại.
+      // Không phụ thuộc thứ tự kết nối (khác lỗi splice(i) chỉ xoá những người kết nối SAU người rời).
+      if (bug === 'drop-others') list = list.filter((c) => c === ws);
+      else list = list.filter((c) => c !== ws);
     });
   });
   return server;

@@ -1,8 +1,8 @@
 {
   "id": "N06-socketio-rooms-ack",
   "title": "Socket.IO: room, ack, so với ws thuần",
-  "goal": "Viết lại phòng chat bằng Socket.IO: middleware, room, ack có timeout và gửi lại; đo chi phí so với ws; qua hết 10 test.",
-  "duration_min": 150,
+  "goal": "Viết lại phòng chat bằng Socket.IO: middleware, room, ack có timeout và gửi lại, chống trùng theo clientId; đo chi phí so với ws; qua hết 11 test.",
+  "duration_min": 210,
   "concepts": [
     "socketio-events",
     "socketio-rooms-ack",
@@ -13,8 +13,10 @@
   "checklist": [
     "Phân biệt socket.emit, socket.to(room).emit, io.to(room).emit, io.emit",
     "Giải thích ack giải quyết tin 'đang bay' bị mất ở N05 thế nào",
-    "Biết vì sao gửi lại theo ack có thể tạo bản trùng và cách chống (id phía client)",
+    "Biết vì sao gửi lại theo ack có thể tạo bản trùng và chống bằng clientId (idempotent) — server ack lại id cũ, không phát lại",
     "Biết vì sao phải join lại room sau khi Socket.IO tự kết nối lại",
+    "Giải thích middleware io.use: next() cho đi tiếp, next(err) chặn, quên next thì client treo",
+    "Giải thích HTTP long-polling khác polling ở N03 thế nào",
     "Dùng disconnecting (không phải disconnect) để báo rời room",
     "Nói được bằng số Socket.IO tốn thêm gì so với ws và vì sao client ws không vào được server Socket.IO",
     "Mở DevTools thấy request polling, 101 websocket và frame 2/3/42/43",
@@ -28,9 +30,10 @@
     "Middleware io.use dùng để làm gì? Lỗi trong middleware đến client dưới dạng nào?",
     "Socket.IO tốn thêm chi phí gì so với ws thuần (bắt tay, mỗi tin, phụ thuộc)?",
     "Khi nào bạn chọn ws thuần, khi nào chọn Socket.IO?",
-    "Namespace và room khác nhau thế nào?"
+    "Namespace và room khác nhau thế nào?",
+    "Gửi lại tin khi không có ack có thể tạo bản trùng. Bạn làm server idempotent thế nào?"
   ],
-  "tutor_notes": "Học viên đã tự làm giao thức {type}, broadcast, heartbeat, reconnect bằng ws (N03–N05); bài này cho thấy Socket.IO làm sẵn những thứ đó nhưng là giao thức riêng. Nhấn mạnh ack nối tiếp vấn đề tin 'đang bay' bị mất ở cuối N05. Lỗi hay gặp: (1) normalizeRoom: kiểm tra độ dài trước khi trim, quên toLowerCase, regex thiếu ^ $, không trả null với non-string (gọi .trim trên số); (2) createRoomServer: new Server() không truyền http server, middleware quên gọi next() (client treo) hoặc next('chuỗi') thay vì next(new Error(...)), gọi ack khi client không truyền callback (TypeError làm sập cả tiến trình), dùng io.to khi phải là socket.to (người vào nhận joined của chính mình), members tính trước khi join, gửi joined lần nữa khi join lại, gửi left ở 'disconnect' (rooms đã rỗng) thay vì 'disconnecting', quên bỏ room trùng socket.id, id không tăng toàn server; (3) sendWithRetry: dùng socket.emit thường không có timeout (chờ mãi), bắt lỗi nhưng không thử lại, đếm attempts sai (retries=2 nghĩa là 3 lần gửi), reject với message khác 'ack_timeout'. Khi chạy thật: client trình duyệt lấy /socket.io/socket.io.js do server tự phục vụ; EADDRINUSE → PORT=3007 npm start. Không viết hộ thân hàm.",
+  "tutor_notes": "Học viên đã tự làm giao thức {type}, broadcast, heartbeat, reconnect bằng ws (N03–N05); bài này cho thấy Socket.IO làm sẵn những thứ đó nhưng là giao thức riêng. Nhấn mạnh ack nối tiếp vấn đề tin 'đang bay' bị mất ở cuối N05. Lỗi hay gặp: (1) normalizeRoom: kiểm tra độ dài trước khi trim, quên toLowerCase, regex thiếu ^ $, không trả null với non-string (gọi .trim trên số); (2) createRoomServer: new Server() không truyền http server, middleware quên gọi next() (client treo) hoặc next('chuỗi') thay vì next(new Error(...)), gọi ack khi client không truyền callback (TypeError làm sập cả tiến trình), dùng io.to khi phải là socket.to (người vào nhận joined của chính mình), members tính trước khi join, gửi joined lần nữa khi join lại, gửi left ở 'disconnect' (rooms đã rỗng) thay vì 'disconnecting', quên bỏ room trùng socket.id, id không tăng toàn server; (3) sendWithRetry: dùng socket.emit thường không có timeout (chờ mãi), bắt lỗi nhưng không thử lại, đếm attempts sai (retries=2 nghĩa là 3 lần gửi), reject với message khác 'ack_timeout'. Khi chạy thật: client trình duyệt lấy /socket.io/socket.io.js do server tự phục vụ; EADDRINUSE → bash `PORT=3016 npm start`, PowerShell `$env:PORT=3016; npm start`. Chống trùng: lỗi hay gặp là ghi clientId vào Map trước khi kiểm tra room/text (tin bị từ chối lại bị nhớ), tăng seq trước khi kiểm tra trùng, hoặc ack lại mà vẫn phát 'chat'. Gợi ý chạy riêng test: `node --test --test-name-pattern=\"middleware\" \"../../curriculum/N06-socketio-rooms-ack/tests/*.test.js\"` (cờ phải đứng trước đường dẫn; `npm test -- --test-name-pattern` không lọc được). Không viết hộ thân hàm.",
   "tasks": [
     {
       "fn": "normalizeRoom",
@@ -42,7 +45,7 @@
     {
       "fn": "createRoomServer",
       "signature": "createRoomServer() → { server, io }",
-      "summary": "Middleware tên, join/leave/chat có ack, left khi ngắt",
+      "summary": "Middleware tên, join/leave/chat có ack, chống trùng clientId, left khi ngắt",
       "example": "join ' DEV ' → ack {ok: true, room: 'dev', members: 2}",
       "test_prefix": "createRoomServer"
     },
@@ -71,11 +74,12 @@
         "purpose": "Client biết chắc tin tới nơi, hoặc báo lỗi rõ."
       }
     ],
-    "deliverable": "rooms.js qua 10/10 test; hai tab chat theo room; bảng so sánh byte/request ws vs Socket.IO từ npm run compare.",
+    "deliverable": "rooms.js qua 11/11 test; hai tab chat theo room; bảng so sánh byte/request ws vs Socket.IO từ npm run compare.",
     "constraints": [
       "Mọi sự kiện client gửi đều trả ack {ok, ...}.",
       "Client không gửi ack thì server không được sập.",
       "Báo rời room ở disconnecting, không ở disconnect.",
+      "Gửi lại cùng clientId không tạo tin thứ hai.",
       "Gửi lại có giới hạn, hết lượt báo ack_timeout."
     ],
     "product_nodes": [

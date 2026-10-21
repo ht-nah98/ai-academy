@@ -65,10 +65,11 @@ def compute_status(course: Course, lesson: dict, prev_passed: bool, first: bool,
         return "planned"
     if entry.get("passed"):
         return "passed"
-    if not (first or prev_passed or entry.get("unlocked")):
-        return "locked"
+    # Bài đã bắt đầu không bị khóa lại (vd. khi lộ trình chèn thêm bài phía trước)
     if entry.get("started") or _workspace(course, lesson["id"]).is_dir():
         return "in_progress"
+    if not (first or prev_passed or entry.get("unlocked")):
+        return "locked"
     return "not_started"
 
 

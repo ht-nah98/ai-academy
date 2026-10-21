@@ -94,7 +94,7 @@ export function sendJson(res, status, data) {
  * @param {number} [limit=10000]
  * @returns {Promise<object>}
  */
-export async function readJsonBody(req, limit = 10_000) {
+export async function readJsonBody(req, limit = 10_000) { // 10_000 = 10000; dấu _ chỉ để dễ đọc số
   // TODO: for await (const chunk of req) { ... } rồi Buffer.concat(...).toString('utf8')
   throw new Error('TODO: viết readJsonBody');
 }
@@ -117,7 +117,14 @@ export async function readJsonBody(req, limit = 10_000) {
  * @returns {http.Server}
  */
 export function createApp(room) {
-  // TODO: return http.createServer(async (req, res) => { ... })
+  // TODO: viết theo Bước 6a–6e của bài (ví dụ mẫu cùng khuôn: server quán ăn /menu, /orders).
+  //   return http.createServer(async (req, res) => {
+  //     /* 6a: GET /health; đường dẫn lạ → 404 */
+  //     /* 6b: GET /messages?since= */
+  //     /* 6c: POST /messages → 201 */
+  //     /* 6d: method khác trên /messages → 405 + header Allow */
+  //     /* 6e: mọi lỗi → JSON với err.status hoặc 500 */
+  //   });
   throw new Error('TODO: viết createApp');
 }
 
@@ -126,7 +133,7 @@ function main() {
   const room = new ChatRoom();
   room.on('message', (m) => console.log(`[sự kiện message] #${m.id} ${m.user}: ${m.text}`));
   const server = createApp(room);
-  const port = Number(process.env.PORT) || 3000;
+  const port = Number(process.env.PORT) || 3000; // biến môi trường PORT, vd. PORT=3005 npm start
   server.listen(port, '127.0.0.1', () => {
     console.log(`TeamPulse API chạy ở http://127.0.0.1:${port}  (Ctrl+C để dừng)`);
   });

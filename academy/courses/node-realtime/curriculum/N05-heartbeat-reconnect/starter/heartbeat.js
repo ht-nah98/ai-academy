@@ -6,9 +6,12 @@
  * Client: mất kết nối thì tự kết nối lại, chờ theo backoff mũ có jitter;
  *         tin gửi trong lúc mất mạng được xếp hàng và gửi bù khi kết nối lại.
  *
- * Chạy thử (2 terminal):  npm start          → server ws://127.0.0.1:3005, heartbeat 5 giây
- *                         npm run client     → client gửi 1 tin/giây; Ctrl+C server rồi npm start lại
- * Chạy test:              node --test "../../curriculum/N05-heartbeat-reconnect/tests/*.test.js"
+ * Chạy thử (2 terminal):  npm start             → server ws://127.0.0.1:3005, heartbeat 5 giây
+ *                         npm run client        → client gửi 1 tin/giây; Ctrl+C server rồi npm start lại
+ *                         npm run client:freeze → như trên, nhưng ở giây 3,7 client "đóng băng" 11 giây
+ * Chạy test:              npm test
+ * Chạy riêng một nhóm test (vd. tên chứa "backoffDelay"):
+ *   node --test --test-name-pattern="backoffDelay" "../../curriculum/N05-heartbeat-reconnect/tests/*.test.js"
  */
 import { pathToFileURL } from 'node:url';
 import { WebSocket, WebSocketServer } from 'ws';
@@ -72,7 +75,9 @@ export function backoffDelay(attempt, { baseMs = 500, maxMs = 30000, random = Ma
  * - `send(obj)`: `JSON.stringify(obj)`; kết nối đang OPEN → gửi ngay, trả `'sent'`;
  *   không thì đưa vào hàng đợi, trả `'queued'`. Hàng đợi đầy (`maxQueue`) → bỏ tin CŨ NHẤT.
  * - `close()`: dừng hẳn — huỷ lần kết nối lại đang chờ, đóng kết nối hiện tại, không thử lại nữa.
- * - `readyState`: readyState của kết nối hiện tại; `queued`: số tin đang chờ trong hàng đợi.
+ * - `readyState`: readyState của kết nối hiện tại (chưa có kết nối → `CLOSED`); `queued`: số tin đang chờ
+ *   trong hàng đợi. Cả hai là GETTER (`get queued() { ... }`): test đọc lại nhiều lần sau khi trạng thái đổi,
+ *   nên phải tính lại mỗi lần đọc — `queued: queue.length` chỉ chụp giá trị một lần lúc tạo object.
  *
  * @param {string} url
  * @param {{baseMs?: number, maxMs?: number, random?: () => number, maxQueue?: number,
@@ -84,8 +89,30 @@ export function createReconnectingClient(url, {
   baseMs = 500, maxMs = 30000, random = Math.random, maxQueue = 100,
   onOpen = () => {}, onMessage = () => {}, onRetry = () => {},
 } = {}) {
-  // TODO: hàm connect() tạo new WebSocket(url) và gắn open/message/close/error;
-  //       biến attempt, hàng đợi, timer chờ, cờ đã-đóng
+  // Khung gợi ý — làm lần lượt Bước 4a → 4d trong bài (xoá dòng throw khi bắt đầu viết):
+  //
+  // let ws = null;          // kết nối HIỆN TẠI — mỗi lần nối lại là một object WebSocket mới
+  // let attempt = 0;        // số lần đã thử lại liên tiếp (lần đầu là 0)
+  // let timer = null;       // id của setTimeout đang chờ nối lại (để close() huỷ được)
+  // let stopped = false;    // đã gọi close() chưa
+  // const queue = [];       // tin chờ gửi, đã JSON.stringify
+  //
+  // function connect() {
+  //   ws = new WebSocket(url);
+  //   ws.on('message', ...);  // Bước 4a: onMessage(String(data))
+  //   ws.on('error', ...);    // Bước 4a: chỉ cần có listener, không làm gì
+  //   ws.on('open', ...);     // Bước 4b: attempt = 0; gửi bù hàng đợi (while + shift); onOpen()
+  //   ws.on('close', ...);    // Bước 4c: stopped → thôi; không thì tính delay, onRetry, attempt += 1, setTimeout(connect, delay)
+  // }
+  // connect();
+  //
+  // return {
+  //   send(obj) { ... },        // Bước 4a: OPEN → gửi, trả 'sent'; không thì xếp hàng (đầy → bỏ tin cũ nhất), trả 'queued'
+  //   close() { ... },          // Bước 4d: stopped = true, clearTimeout(timer), đóng ws
+  //   get readyState() { ... }, // getter: chưa có ws thì trả CLOSED
+  //   get queued() { ... },     // getter: số tin trong hàng đợi — xem mục "Hàm tạo object giữ trạng thái"
+  // };
+  // TODO: viết theo khung trên
   throw new Error('TODO: viết createReconnectingClient');
 }
 
@@ -114,7 +141,7 @@ function runServer() {
   console.log(`Server heartbeat 5 s: ws://127.0.0.1:${PORT}`);
 }
 
-function runClient() {
+function runClient(freezeSec) {
   let n = 0;
   const client = createReconnectingClient(`ws://127.0.0.1:${PORT}`, {
     onOpen: () => console.log(`${at()} client: đã kết nối`),
@@ -125,10 +152,23 @@ function runClient() {
     n += 1;
     const r = client.send({ type: 'chat', n });
     if (r === 'queued') console.log(`${at()} client: tin ${n} vào hàng đợi (${client.queued} tin)`);
+    else console.log(`${at()} client: gửi tin ${n} → '${r}'`);
   }, 1000);
+  if (freezeSec > 0) {
+    // Giả lập laptop gập máy: chặn event loop freezeSec giây — tiến trình không đọc socket,
+    // không trả pong, không chạy timer (như kill -STOP), rồi chạy tiếp.
+    setTimeout(() => {
+      console.log(`${at()} client: ĐÓNG BĂNG ${freezeSec} giây (không đọc socket, không trả pong)`);
+      const end = Date.now() + freezeSec * 1000;
+      while (Date.now() < end) { /* bận chờ có chủ đích */ }
+      console.log(`${at()} client: chạy lại`);
+    }, 3700);
+  }
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  if (process.argv[2] === 'client') runClient();
+  const i = process.argv.indexOf('--freeze');
+  const freezeSec = i === -1 ? 0 : Number(process.argv[i + 1]) || 11;
+  if (process.argv[2] === 'client') runClient(freezeSec);
   else runServer();
 }

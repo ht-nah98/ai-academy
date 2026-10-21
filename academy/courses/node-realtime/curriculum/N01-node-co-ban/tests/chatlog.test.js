@@ -130,7 +130,9 @@ test('withTimeout: quá hạn → lỗi "timeout"', async () => {
 
 test('withTimeout: promise lỗi → ném đúng lỗi đó', async () => {
   const boom = new Error('hỏng');
-  await assert.rejects(withTimeout(Promise.reject(boom), 500), (err) => {
+  const failing = Promise.reject(boom);
+  failing.catch(() => {}); // chặn cảnh báo unhandledRejection khi withTimeout chưa viết
+  await assert.rejects(withTimeout(failing, 500), (err) => {
     assert.equal(err, boom, 'Phải reject với ĐÚNG lỗi của promise gốc, không bọc lại');
     return true;
   });

@@ -4,13 +4,13 @@
 
 ## 🎯 Mục tiêu
 
-Sau buổi này (khoảng 2–2,5 giờ) bạn sẽ:
+Sau buổi này (khoảng 4–5 giờ với người mới — bài dài nhất P2, có thể chia hai buổi: Bước 1–3 rồi Bước 4–6) bạn sẽ:
 
 - Viết **`waitForMessage`**: chờ tin có điều kiện, có timeout, không rò listener — thay cho `sleep` gây test chập chờn (flaky).
 - **Tự viết test tích hợp** cho server chat: mở server cổng 0, nhiều client, kiểm tra ai nhận gì; test của bạn phải **bắt được 4 bug** cài sẵn.
 - Viết **load test**: N client, đo **tin/giây** và độ trễ **p50/p95/p99** bằng hàm **`percentile`** tự viết.
 - Debug bằng **log vòng đời kết nối có id**, client dòng lệnh, DevTools; nhận ra **5 lỗi realtime hay gặp**.
-- **Kết quả đo được:** chấm bài qua hết **10 test** (5 cho testkit, 5 chạy chính `chat.test.js` của bạn với 1 server đúng + 4 server lỗi); `npm run load`: 20 client × 20 tin → 8.000 tin giao trong 38 ms (~209.000 tin/giây), p50 33,8 ms, p99 37,3 ms.
+- **Kết quả đo được:** chấm bài qua hết **10 test** (5 cho testkit, 5 chạy chính `chat.test.js` của bạn với 1 server đúng + 4 server lỗi); `npm run load`: 20 client × 20 tin → 8.000 tin giao trong 38 ms (~209.000 tin/giây), p50 33,8 ms, p99 37,3 ms — đo trên loopback, client và server chung một tiến trình: là mốc để so sánh trước/sau khi sửa code, không phải năng lực của server thật (Bước 5).
 
 > 🧠 **Ghi nhớ:** test realtime khó vì **thời gian**: tin đến "lúc nào đó". Test tốt không bao giờ đoán thời gian (`sleep(100)` rồi hy vọng), mà **chờ sự kiện cụ thể** với giới hạn tối đa — nhanh khi máy nhanh, vẫn đúng khi máy chậm, và báo lỗi rõ khi tin không bao giờ đến.
 
@@ -40,7 +40,7 @@ Chấm `chat.test.js`: bài chấm chạy file của bạn với server đúng (
 
 ### `sleep` làm test chập chờn
 
-Server trả lời sau 30 ms lúc máy rảnh, 80 ms lúc máy CI bận:
+Server trả lời sau 30 ms lúc máy rảnh, 80 ms lúc máy CI bận (CI: máy chạy test tự động mỗi lần đẩy code lên, thường dùng chung và chậm hơn máy bạn):
 
 ```js
 import { once } from 'node:events';
@@ -189,7 +189,7 @@ readyState phía server: 3 (CLOSED)
 callback send: WebSocket is not open: readyState 3 (CLOSED)
 ```
 
-Tự giữ danh sách kết nối (mảng, `Map`) mà quên xoá ở `close` thì danh sách phình mãi và vòng broadcast chạy qua cả "xác chết". Xoá **sai** còn tệ hơn: `arr.splice(i)` (thiếu tham số thứ hai) xoá luôn mọi người **sau** vị trí `i` — đó là một trong 4 bug test của bạn phải bắt.
+Tự giữ danh sách kết nối (mảng, `Map`) mà quên xoá ở `close` thì danh sách phình mãi và vòng broadcast chạy qua cả "xác chết". Xoá **sai** còn tệ hơn: `arr.splice(i)` (thiếu tham số thứ hai) xoá luôn mọi người **sau** vị trí `i`; `arr.filter((c) => c === ws)` (đảo điều kiện, đúng ra là `!==`) giữ lại đúng người vừa đi và xoá hết người còn lại. Một lỗi "xoá nhầm" như vậy là một trong 4 bug test của bạn phải bắt.
 
 **4. Backpressure: client đọc chậm** — server cứ gửi, dữ liệu dồn trong bộ nhớ server:
 
@@ -236,14 +236,20 @@ sau 1000 tin 10 KB: bufferedAmount = 7.3 MB chờ gửi trong bộ nhớ server
 ### Bước 1 — Chuẩn bị
 
 ```bash
-cd <workspace>/N09-test-debug-realtime
+cd academy/courses/node-realtime/workspace/N09-test-debug-realtime
 npm test           # 10 fail vì TODO — bình thường
 npm run test:mine  # test của bạn: 5 fail (testkit chưa có, 4 test chưa viết)
 ```
 
+Chạy riêng test của hàm đang làm — cờ `--test-name-pattern` (biểu thức chính quy so với tên test) phải đứng **trước** đường dẫn file; `npm test -- --test-name-pattern=...` không lọc được vì npm nối cờ vào sau đường dẫn. Dùng y hệt trên PowerShell:
+
+```bash
+node --test --test-name-pattern="waitForMessage" "../../curriculum/N09-test-debug-realtime/tests/*.test.js"
+```
+
 ### Bước 2 — Chờ có điều kiện, có giới hạn → `waitForMessage`
 
-Khuôn: một `new Promise`, ba thứ cần dọn (listener `message`, listener `close`, timer), và **một hàm `cleanup`** gọi ở cả ba lối ra (có tin, đóng, hết giờ).
+Đây là `withTimeout` bạn viết ở N01 (một Promise có hạn chờ) cộng thêm hai thứ: **lọc** tin theo `predicate`, và **gỡ listener** khi xong. Khuôn: một `new Promise`, ba thứ cần dọn (listener `message`, listener `close`, timer), và **một hàm `cleanup`** gọi ở cả ba lối ra (có tin, đóng, hết giờ). Starter có khung chú thích đủ các hàm con; bạn điền thân từng hàm theo bảng:
 
 | Lối ra | Việc |
 |---|---|
@@ -254,9 +260,88 @@ Khuôn: một `new Promise`, ba thứ cần dọn (listener `message`, listener 
 
 Listener phải là hàm có **tên** (hoặc biến) để `ws.off('message', onMessage)` gỡ đúng nó (như `stop()` ở N05).
 
+```bash
+node --test --test-name-pattern="waitForMessage" "../../curriculum/N09-test-debug-realtime/tests/*.test.js"
+```
+
 ### Bước 3 — Tự viết test → `chat.test.js`
 
-Đọc test mẫu và hai helper `startServer(t)`, `connect(t, url, name)` đã viết sẵn ở đầu file. Mỗi test theo khuôn **Arrange – Act – Assert**:
+Đọc test mẫu và hai helper `startServer(t)`, `connect(t, url, name)` đã viết sẵn ở đầu file. Mỗi test theo khuôn **Arrange – Act – Assert** (chuẩn bị – hành động – kiểm tra); chú thích trong từng test của starter đã chia sẵn ba phần.
+
+Các lệnh kiểm tra hay dùng (`import assert from 'node:assert/strict'`; tham số cuối luôn là thông báo khi fail):
+
+| Lệnh | Pass khi | Ví dụ |
+|---|---|---|
+| `assert.equal(a, b, msg)` | `a === b` (số, chuỗi, boolean) | `assert.equal(m.from, 'An', 'from phải là An')` |
+| `assert.deepEqual(a, b, msg)` | Object/mảng giống nhau từng trường | `assert.deepEqual(m, { type: 'chat', from: 'An', text: 'hi' })` |
+| `assert.ok(x, msg)` | `x` truthy | `assert.ok(m.id > 0, 'id dương')` |
+| `assert.match(str, /re/, msg)` | Chuỗi khớp biểu thức chính quy | `assert.match(m.text, /^Build/)` |
+| `await assert.rejects(promise, check, msg)` | Promise bị reject (và `check(err)` trả true) | `await assert.rejects(waitForMessage(ws, f, { timeoutMs: 50 }), /timeout/)` |
+| `t.after(fn)` | (không phải assert) Chạy `fn` khi test xong, kể cả khi fail — để đóng client/server | `t.after(() => ws.terminate())` |
+
+Ví dụ thứ hai hoàn chỉnh, khuôn **nhiều client + chờ trước rồi mới gửi**, ở miền khác (bảng giá). Chạy được sau khi xong Bước 2: lưu thành `price.test.js` trong thư mục bài rồi `node --test price.test.js`.
+
+```js
+// price.test.js — ví dụ thứ hai: bảng giá, 3 người xem, chờ TRƯỚC rồi mới gửi.
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { once } from 'node:events';
+import { WebSocketServer, WebSocket } from 'ws';
+import { waitForMessage } from './testkit.js';
+
+/** Server bảng giá tí hon: ai gửi {type: 'price', sku, price} thì MỌI người (kể cả người gửi) nhận 'update'. */
+async function startPriceBoard(t) {
+  const wss = new WebSocketServer({ port: 0, host: '127.0.0.1' });
+  await once(wss, 'listening');
+  wss.on('connection', (ws) => {
+    ws.on('message', (raw) => {
+      const msg = JSON.parse(String(raw));
+      for (const c of wss.clients) c.send(JSON.stringify({ type: 'update', sku: msg.sku, price: msg.price }));
+    });
+  });
+  t.after(() => wss.close());
+  return `ws://127.0.0.1:${wss.address().port}`;
+}
+
+async function viewer(t, url) {
+  const ws = new WebSocket(url);
+  t.after(() => ws.terminate());
+  await once(ws, 'open');
+  return ws;
+}
+
+test('giá mới tới mọi người đang xem', async (t) => {
+  // Arrange: server + 3 người xem
+  const url = await startPriceBoard(t);
+  const lan = await viewer(t, url);
+  const minh = await viewer(t, url);
+  const hoa = await viewer(t, url);
+
+  // Act: TẠO các Promise chờ TRƯỚC, rồi mới gửi
+  const isUpdate = (m) => m.type === 'update';
+  const waits = [waitForMessage(lan, isUpdate), waitForMessage(minh, isUpdate), waitForMessage(hoa, isUpdate)];
+  lan.send(JSON.stringify({ type: 'price', sku: 'CAFE-01', price: 29000 }));
+  const [toLan, toMinh, toHoa] = await Promise.all(waits);   // chờ cả 3 cùng lúc
+
+  // Assert
+  assert.deepEqual(toMinh, { type: 'update', sku: 'CAFE-01', price: 29000 }, 'Minh nhận đúng giá mới');
+  assert.deepEqual(toHoa, toMinh, 'Hoa nhận giống Minh');
+  assert.equal(toLan.price, 29000, 'Người gửi cũng nhận');
+});
+```
+```output
+✔ giá mới tới mọi người đang xem (13.588902ms)
+ℹ tests 1
+ℹ pass 1
+ℹ fail 0
+```
+
+Ba điểm cần chép sang test của bạn: (1) mọi `waitForMessage` được **tạo trước** `send` (không `await` ngay — chỉ giữ Promise); (2) `Promise.all` chờ nhiều người cùng lúc; (3) assert trên **nội dung** tin, không chỉ "có tin". Thử sửa server bảng giá cho sai (`if (c !== ws) c.send(...)` — bỏ người gửi) thì test đỏ, thông báo rõ ràng thay vì treo:
+
+```output
+✖ giá mới tới mọi người đang xem (2015.222177ms)
+  Error: timeout: không có tin phù hợp sau 2000 ms
+```
 
 | Test | Arrange | Act | Assert |
 |---|---|---|---|
@@ -265,9 +350,11 @@ Listener phải là hàm có **tên** (hoặc biến) để `ws.off('message', o
 | JSON hỏng | Server, An | Gửi `'{hỏng'`; rồi gửi một tin hợp lệ | Nhận `bad_json`, rồi vẫn nhận được tin hợp lệ |
 | Một người rời đi | Server, An, Binh, Chi | Binh đóng; An gửi | Chi vẫn nhận |
 
+Test "một người rời đi" cần **ba** người vì mỗi người một vai: Binh rời đi, An gửi, Chi là người nhận **khác** người gửi — Chi vẫn nhận chứng minh broadcast còn tới người khác sau khi có người rời. Thứ tự kết nối không ảnh hưởng tới bài chấm (kết nối lần lượt bằng `await` hay cùng lúc bằng `Promise.all` đều được); nhưng ở code thật, lỗi kiểu `splice(i)` chỉ lộ ra khi người nhận kết nối **sau** người rời, nên kết nối lần lượt An → Binh → Chi là thói quen tốt.
+
 Viết để test **fail khi hành vi sai**, không chỉ "chạy không lỗi". Tự kiểm tra: tạm sửa `chat-server.js` cho sai một chỗ (vd. bỏ qua người gửi trong `broadcast`), chạy `npm run test:mine` → phải có test đỏ; sửa lại.
 
-> 💡 **Mẹo:** test "một người rời đi" là chỗ hiếm hoi cần chờ một chút sau `close`: server không gửi tin báo "đã xử lý xong việc người này rời đi", nên test không có sự kiện nào để chờ. Chờ sự kiện `close` của client rồi thêm một khoảng ngắn (vài chục ms). Nếu server có tin `left` như N04, chờ tin đó — luôn tốt hơn chờ thời gian.
+> 💡 **Mẹo:** test "một người rời đi" là chỗ hiếm hoi cần chờ một chút sau `close`: server không gửi tin báo "đã xử lý xong việc người này rời đi", nên test không có sự kiện nào để chờ. Chờ sự kiện `close` của client (`await once(binh, 'close')` — `once` đã import sẵn ở đầu file) rồi thêm một khoảng ngắn (vài chục ms). Nếu server có tin `left` như N04, chờ tin đó — luôn tốt hơn chờ thời gian.
 
 > ⚠️ **Lỗi hay gặp:** quên đóng server/client cuối test → `node --test` không thoát (handle còn mở) hoặc test sau dùng nhầm kết nối của test trước. `t.after(...)` trong helper đã lo việc này; giữ thói quen đó.
 
@@ -315,14 +402,37 @@ mảng gốc không đổi: 120, 85, 300, 95, 110, 2000, 90
 
 Nearest-rank (công thức trong docstring): phân vị p là phần tử thứ `ceil(p/100 × n)` của mảng đã sắp, đếm từ 1.
 
+```bash
+node --test --test-name-pattern="percentile" "../../curriculum/N09-test-debug-realtime/tests/*.test.js"
+```
+
 ### Bước 5 — Đo tải → `runLoadTest`
 
-Theo đúng 5 bước trong docstring. Độ trễ đo trên tin **của chính client đó** (client biết `sentAt` của nó, cùng một đồng hồ `performance.now()` trong cùng tiến trình). Tin của người khác chỉ đếm vào `received`.
+Đoạn async khó nhất khóa, nên starter đã viết sẵn **bước 1** (mở N kết nối, `Promise.all` chờ tất cả `open`) và **bước 5** (`terminate()` hết) trong khung chú thích — bỏ dấu `//` để dùng. Bạn viết phần giữa, theo thứ tự này:
+
+1. **Gắn listener trước khi gửi** (bước 3 của docstring): vòng `forEach((ws, i) => ...)` qua `sockets`; mỗi tin `{type: 'chat'}` → `received += 1`; nếu ``msg.from === `load${i}` `` (tin của chính client này) → đẩy `performance.now() - msg.sentAt` vào mảng `latencies`; `received === expected` → gọi `finish()`.
+2. **"Báo xong" bằng một Promise mở sẵn**: `let finish; const done = new Promise((r) => { finish = r; });` — gọi `finish()` từ listener ở trên, hoặc từ `setTimeout(finish, timeoutMs)` nếu tin không về đủ. Giống `waitForMessage`: một Promise, hai đường kết thúc (đủ tin / hết giờ), nhớ `clearTimeout`.
+3. **Gửi** (bước 2): `t0 = performance.now()`; hai vòng `for` lồng nhau (`messagesPerClient` lượt × mọi client), mỗi lần `ws.send(JSON.stringify({type: 'chat', text: 'load', sentAt: performance.now()}))` và `sent += 1`.
+4. **Chờ và tính** (bước 4): `await done`; `durationMs = performance.now() - t0`; `max` bằng một vòng `for` tìm giá trị lớn nhất; p50/p95/p99 bằng `percentile` của bạn.
+
+Độ trễ đo trên tin **của chính client đó** (client biết `sentAt` của nó, cùng một đồng hồ `performance.now()` trong cùng tiến trình). Tin của người khác chỉ đếm vào `received`.
+
+```bash
+node --test --test-name-pattern="runLoadTest" "../../curriculum/N09-test-debug-realtime/tests/*.test.js"
+```
+
+Rồi đo thật:
 
 ```bash
 npm run load
 LOAD_CLIENTS=50 npm run load
 LOAD_CLIENTS=100 LOAD_MSGS=10 npm run load
+```
+
+```powershell
+# PowerShell: đặt biến rồi chạy; Remove-Item Env:LOAD_CLIENTS, Env:LOAD_MSGS để trả về mặc định
+$env:LOAD_CLIENTS=50; npm run load
+$env:LOAD_CLIENTS=100; $env:LOAD_MSGS=10; npm run load
 ```
 
 Kết quả thật trên máy soạn bài:
@@ -350,7 +460,7 @@ npm start                                       # terminal 1: server có log
 npm run cli -- "ws://127.0.0.1:3009/ws?name=An"  # terminal 2: gõ JSON rồi Enter
 ```
 
-Log thật (chạy với `PORT=3119`; An dùng `cli.js` gửi một tin và một tin hỏng; Binh là một client bị `terminate()` sau 0,8 giây):
+Log thật (chạy với `PORT=3119 npm start` — PowerShell: `$env:PORT=3119; npm start`; An dùng `cli.js` gửi một tin và một tin hỏng; Binh là một client bị `terminate()` sau 0,8 giây):
 
 ```output
 --- server

@@ -5,6 +5,7 @@
   "description": "TeamPulse — bài N08: nhiều instance server chat với Redis pub/sub",
   "scripts": {
     "start": "node scale.js",
+    "cli": "node cli.js",
     "bench": "node bench.js",
     "test": "node --test \"../../curriculum/N08-scale-redis-pubsub/tests/*.test.js\""
   }

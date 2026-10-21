@@ -2,7 +2,7 @@
   "id": "N01-node-co-ban",
   "title": "Node cơ bản: module, npm, async, event loop",
   "goal": "Viết module đọc log chat từ file bằng async/await, có timeout; qua hết 15 test và chạy được npm start.",
-  "duration_min": 130,
+  "duration_min": 180,
   "concepts": [
     "node-runtime",
     "esm-modules",
@@ -33,7 +33,7 @@
     "package.json và package-lock.json khác nhau thế nào? Có nên commit node_modules không?",
     "Vì sao không nên dùng readFileSync hoặc vòng lặp CPU nặng trong một HTTP/WebSocket handler?"
   ],
-  "tutor_notes": "Học viên biết HTML/CSS, một ít JS trên trình duyệt, đã học xong khóa Python — so sánh với Python khi giúp ích (await ~ chờ nhưng không chặn cả chương trình; reduce ~ vòng for cộng dồn; arrow function ~ lambda). Đây là lần đầu gặp Node, ESM, Promise. Lỗi hay gặp: (1) package.json sai cú pháp JSON (thiếu dấu phẩy) hoặc scripts.start không phải 'node chatlog.js'; (2) parseLine quên typeof null === 'object' nên JSON 'null' làm ném TypeError, quên trim user, trả cả khóa thừa thay vì chỉ {user,text,ts}; (3) loadMessages quên await, dùng readFileSync, không bỏ '\\r' cuối dòng, bắt mọi lỗi thay vì chỉ ENOENT; (4) delay dùng vòng lặp bận chờ (test song song sẽ fail), hoặc quên return Promise; (5) withTimeout tạo lỗi với message khác 'timeout', bọc lại lỗi gốc thay vì reject đúng lỗi đó, quên clearTimeout. Giải thích event loop bằng ví dụ quán cà phê một người pha chế: nhận order rồi để máy chạy, không đứng nhìn máy. Không viết hộ thân hàm.",
+  "tutor_notes": "Học viên biết HTML/CSS, một ít JS trên trình duyệt, đã học xong khóa Python — so sánh với Python khi giúp ích (await ~ chờ nhưng không chặn cả chương trình; reduce ~ vòng for cộng dồn; arrow function ~ lambda). Đã qua N00 (cú pháp JS đối chiếu Python); đây là lần đầu gặp Node, ESM, Promise. Nếu thấy cảnh báo MODULE_TYPELESS_PACKAGE_JSON: package.json thiếu \"type\": \"module\", Node 22.12+ thử đọc file như CommonJS, thất bại rồi đọc lại như ESM (chậm hơn); Node cũ báo SyntaxError: Cannot use import statement outside a module. Lỗi hay gặp: (1) package.json sai cú pháp JSON (thiếu dấu phẩy) hoặc scripts.start không phải 'node chatlog.js'; (2) parseLine quên typeof null === 'object' nên JSON 'null' làm ném TypeError, quên trim user, trả cả khóa thừa thay vì chỉ {user,text,ts}; (3) loadMessages quên await, dùng readFileSync, không bỏ '\\r' cuối dòng, bắt mọi lỗi thay vì chỉ ENOENT; (4) delay dùng vòng lặp bận chờ (test song song sẽ fail), hoặc quên return Promise; (5) withTimeout tạo lỗi với message khác 'timeout', bọc lại lỗi gốc thay vì reject đúng lỗi đó, quên clearTimeout. Giải thích event loop bằng ví dụ quán cà phê một người pha chế: nhận order rồi để máy chạy, không đứng nhìn máy. Không viết hộ thân hàm.",
   "tasks": [
     {
       "fn": "parseLine",

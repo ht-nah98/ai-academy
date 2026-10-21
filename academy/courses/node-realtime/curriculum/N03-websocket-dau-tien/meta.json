@@ -2,7 +2,7 @@
   "id": "N03-websocket-dau-tien",
   "title": "WebSocket đầu tiên: từ polling tới handshake",
   "goal": "Đo polling, tự tính handshake WebSocket, viết echo server bằng ws và xem frame trong DevTools; qua hết 16 test.",
-  "duration_min": 150,
+  "duration_min": 240,
   "concepts": [
     "http-polling",
     "websocket-handshake",
@@ -12,6 +12,7 @@
   ],
   "entry": "echo.js",
   "checklist": [
+    "Giải thích được polling vs WebSocket bằng hình ảnh gửi thư / giữ máy và vẽ được sơ đồ trình tự",
     "Nêu được bằng số: polling 1 giây tốn bao nhiêu request, trễ bao lâu so với WebSocket",
     "Kể đủ 4 header của request handshake và mã 101",
     "Tự tính được Sec-WebSocket-Accept và giải thích nó chứng minh điều gì (không phải bảo mật)",
@@ -19,6 +20,8 @@
     "Phân biệt frame text và binary; biết data trong ws là Buffer",
     "Mở DevTools → Network → WS, chỉ ra frame gửi/nhận và header 101",
     "Giải thích vì sao polling dùng setTimeout sau mỗi lượt thay vì setInterval",
+    "Đọc được client trình duyệt: new WebSocket, addEventListener, readyState, binaryType, ws:// và wss://",
+    "Tra được lỗi kết nối: 400/426, sai đường dẫn, proxy bỏ Upgrade, close 1006, Origin",
     "Qua hết test của bài"
   ],
   "interview_questions": [
@@ -29,9 +32,11 @@
     "Kể 4 sự kiện của một kết nối WebSocket và các giá trị readyState.",
     "Frame text và frame binary khác nhau thế nào? Overhead mỗi frame khoảng bao nhiêu byte so với một HTTP request?",
     "Làm sao debug WebSocket trên trình duyệt?",
-    "Vì sao gửi tin khi readyState chưa OPEN lại lỗi? Xử lý thế nào?"
+    "Vì sao gửi tin khi readyState chưa OPEN lại lỗi? Xử lý thế nào?",
+    "SSE (Server-Sent Events) khác WebSocket thế nào? Khi nào chọn SSE?",
+    "Kết nối WebSocket thất bại trên trình duyệt: bạn kiểm tra những gì, theo thứ tự nào?"
   ],
-  "tutor_notes": "Học viên nói 'phần websocket em không hiểu' — đây là bài then chốt. Đi từ cái đã biết: N02 server biết có tin nhưng không gửi được → polling (đo bằng npm run measure) → WebSocket là 'giữ cuộc gọi' thay vì 'gửi thư hỏi liên tục'. Nhấn mạnh WebSocket bắt đầu bằng HTTP rồi đổi giao thức; Accept chỉ chứng minh server hiểu WebSocket. Lỗi hay gặp: (1) startPolling khai báo async (trả Promise thay vì object), dùng setInterval (request chồng nhau), gán stats = {...} mới, không try/catch nên lỗi mạng làm dừng, quên clearTimeout trong stop, cập nhật lastId sai; (2) computeAccept nối có khoảng trắng hoặc digest('hex'); (3) handshakeResponse gọi .toLowerCase() trên header undefined, so connection === 'upgrade' thay vì tìm token, kiểm tra version trước nên trả 426 cho request thiếu key; không kiểm tra key 16 byte; (4) readyStateName dùng ws.OPEN của thư viện là được nhưng phải trả chuỗi; (5) createEchoServer quên path '/ws', quên readFile theo import.meta.url (đọc theo cwd), gửi data Buffer cho tin text (thành binary) thay vì chuỗi 'echo: ' + data.toString(), quên ws.on('error'). Khi chạy thật: ERR_MODULE_NOT_FOUND 'ws' → workspace phải nằm dưới courses/node-realtime và đã npm install ở đó; EADDRINUSE → PORT=3002 npm start. Không viết hộ thân hàm.",
+  "tutor_notes": "Học viên nói 'phần websocket em không hiểu' — đây là bài then chốt. Đi từ cái đã biết: N02 server biết có tin nhưng không gửi được → polling (đo bằng npm run measure) → WebSocket là 'giữ cuộc gọi' thay vì 'gửi thư hỏi liên tục'. Nhấn mạnh WebSocket bắt đầu bằng HTTP rồi đổi giao thức; Accept chỉ chứng minh server hiểu WebSocket. Lỗi hay gặp: (1) startPolling khai báo async (trả Promise thay vì object), dùng setInterval (request chồng nhau), gán stats = {...} mới, không try/catch nên lỗi mạng làm dừng, quên clearTimeout trong stop, cập nhật lastId sai; (2) computeAccept nối có khoảng trắng hoặc digest('hex'); (3) handshakeResponse gọi .toLowerCase() trên header undefined, so connection === 'upgrade' thay vì tìm token, kiểm tra version trước nên trả 426 cho request thiếu key; không kiểm tra key 16 byte; (4) readyStateName dùng ws.OPEN của thư viện là được nhưng phải trả chuỗi; (5) createEchoServer quên path '/ws', quên readFile theo import.meta.url (đọc theo cwd), gửi data Buffer cho tin text (thành binary) thay vì chuỗi 'echo: ' + data.toString(), quên ws.on('error'). Khi chạy thật: ERR_MODULE_NOT_FOUND 'ws' → workspace phải nằm dưới courses/node-realtime và đã npm install ở đó; EADDRINUSE → PORT=3101 npm start (PowerShell: $env:PORT=3101; npm start). Không viết hộ thân hàm. Đầu bài học viên chạy npm run preview (preview.js viết sẵn, cổng 3003, 'loa phóng thanh': text → chữ hoa, binary → số byte) để thấy WebSocket chạy trước; preview.js cũng là ví dụ mẫu cùng khuôn cho createEchoServer — khác ở 404, welcome, echo text và trả binary. Demo socket thô/hex ở Bước 9 là đọc thêm. startPolling: nhắc closure (biến khai báo trong startPolling sống giữa các lượt), await res.json(), sửa thuộc tính stats chứ không gán object mới.",
   "tasks": [
     {
       "fn": "startPolling",

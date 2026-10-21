@@ -63,15 +63,15 @@
       }
     ],
     "promise": {
-      "headline": "Một server chat realtime bằng Node.js chạy thật trên trình duyệt, và bạn giải thích được từng byte đi qua kết nối WebSocket.",
+      "headline": "Một server chat realtime bằng Node.js chạy thật trên trình duyệt, và bạn giải thích được handshake, frame và mọi sự kiện của một kết nối WebSocket.",
       "outcomes": [
         {
-          "title": "Một project chạy được",
-          "detail": "TeamPulse: REST API tin nhắn + WebSocket gateway + giao diện chat web, heartbeat, room Socket.IO, xác thực token, nhiều instance qua Redis; có test tự động bằng node --test."
+          "title": "Một sản phẩm chạy được, từng phần",
+          "detail": "TeamPulse lõi chạy được: REST API tin nhắn + WebSocket gateway + giao diện chat web (P0–P1). P2 thêm 5 thành phần riêng, mỗi bài một server/module độc lập có test: heartbeat + reconnect, bản Socket.IO có room/ack, xác thực token, nhiều instance qua Redis, bộ test/đo tải — chưa ghép thành một server duy nhất; bạn hiểu đủ để tự ghép."
         },
         {
           "title": "Nền Node.js vững",
-          "detail": "ESM, npm, Promise/async-await, event loop, fs/promises, EventEmitter, module http không dùng framework."
+          "detail": "Cú pháp JavaScript đối chiếu với Python, ESM, npm, Promise/async-await, event loop, fs/promises, EventEmitter, mạng 101 (IP, cổng, TCP), module http không dùng framework."
         },
         {
           "title": "Hiểu WebSocket tận gốc",
@@ -83,12 +83,17 @@
         },
         {
           "title": "Sẵn sàng đi làm và phỏng vấn",
-          "detail": "72 câu hỏi phỏng vấn Node/realtime đã luyện; đọc được code WebSocket/Socket.IO của công ty, tự viết test và debug bằng DevTools, log."
+          "detail": "85 câu hỏi phỏng vấn Node/realtime đã luyện; đọc được code WebSocket/Socket.IO của công ty, tự viết test và debug bằng DevTools, log."
         }
-      ]
+      ],
+      "note": "Dành cho người đã học một khóa Python (biến, hàm, if/for, list/dict, class) và biết chút HTML/CSS. Chưa quen JavaScript: bắt đầu từ N00 — không cần biết trước Node hay mạng máy tính."
     }
   },
   "concept_groups": [
+    {
+      "id": "js",
+      "title": "JavaScript nền"
+    },
     {
       "id": "node",
       "title": "Nền tảng Node.js"
@@ -115,6 +120,41 @@
     }
   ],
   "concepts": [
+    {
+      "id": "js-syntax-basics",
+      "title": "let/const, ===, truthy/falsy",
+      "group": "js"
+    },
+    {
+      "id": "js-objects-arrays",
+      "title": "Object, mảng, for...of",
+      "group": "js"
+    },
+    {
+      "id": "js-functions-callbacks",
+      "title": "Hàm, arrow function, callback",
+      "group": "js"
+    },
+    {
+      "id": "js-destructuring-spread",
+      "title": "Destructuring, spread, mặc định",
+      "group": "js"
+    },
+    {
+      "id": "js-classes",
+      "title": "class, constructor, this, getter",
+      "group": "js"
+    },
+    {
+      "id": "js-closures",
+      "title": "Closure, factory có trạng thái",
+      "group": "js"
+    },
+    {
+      "id": "js-errors-json",
+      "title": "try/catch, JSON.parse/stringify",
+      "group": "js"
+    },
     {
       "id": "node-runtime",
       "title": "Node runtime, chạy file",
@@ -149,6 +189,11 @@
       "id": "fs-promises",
       "title": "Đọc/ghi file với fs/promises",
       "group": "node"
+    },
+    {
+      "id": "net-basics",
+      "title": "Mạng 101: IP, cổng, TCP",
+      "group": "http"
     },
     {
       "id": "event-emitter",
@@ -312,6 +357,70 @@
     }
   ],
   "concept_edges": [
+    [
+      "js-syntax-basics",
+      "js-objects-arrays"
+    ],
+    [
+      "js-syntax-basics",
+      "js-functions-callbacks"
+    ],
+    [
+      "js-objects-arrays",
+      "js-destructuring-spread"
+    ],
+    [
+      "js-functions-callbacks",
+      "js-closures"
+    ],
+    [
+      "js-functions-callbacks",
+      "js-classes"
+    ],
+    [
+      "js-syntax-basics",
+      "js-errors-json"
+    ],
+    [
+      "js-syntax-basics",
+      "node-runtime"
+    ],
+    [
+      "js-objects-arrays",
+      "js-array-methods"
+    ],
+    [
+      "js-functions-callbacks",
+      "promise-async"
+    ],
+    [
+      "js-errors-json",
+      "promise-async"
+    ],
+    [
+      "js-classes",
+      "event-emitter"
+    ],
+    [
+      "js-errors-json",
+      "json-api"
+    ],
+    [
+      "js-closures",
+      "http-polling"
+    ],
+    [
+      "js-destructuring-spread",
+      "esm-modules"
+    ],
+    [
+      "net-basics",
+      "http-server"
+    ],
+    [
+      "net-basics",
+      "websocket-handshake"
+    ],
     [
       "node-runtime",
       "esm-modules"
@@ -649,22 +758,29 @@
       "title": "Node nền tảng",
       "track": "Node",
       "brief": {
-        "goal": "Chạy JavaScript ngoài trình duyệt và hiểu vì sao Node phục vụ được nhiều kết nối cùng lúc.",
-        "deliverable": "Module đọc log chat từ file và REST API tin nhắn viết bằng module http thuần, có test node --test.",
-        "promise": "Sau 2 bài, bạn có một API tin nhắn chạy thật: POST để gửi, GET để đọc, trả đúng mã 201/400/404/405, và giải thích được event loop khi bị hỏi.",
+        "goal": "Viết được JavaScript từ nền Python, chạy nó ngoài trình duyệt và hiểu vì sao Node phục vụ được nhiều kết nối cùng lúc.",
+        "deliverable": "9 hàm luyện cú pháp JS, module đọc log chat từ file và REST API tin nhắn viết bằng module http thuần, có test node --test.",
+        "promise": "Sau 3 bài, bạn đọc và viết được JavaScript mà không phải đoán cú pháp, và có một API tin nhắn chạy thật: POST để gửi, GET để đọc, trả đúng mã 201/400/404/405, giải thích được event loop khi bị hỏi.",
         "can_do": [
+          "Đọc và viết JavaScript từ nền Python: ===, object/mảng, arrow function, callback, destructuring, class, closure, try/catch, JSON, await",
           "Chạy file .js bằng node, tổ chức code bằng import/export, quản lý thư viện bằng npm",
           "Viết async/await, chạy song song bằng Promise.all, đặt timeout cho việc chờ",
           "Đọc/ghi file bằng fs/promises và xử lý file không tồn tại",
-          "Viết HTTP server không framework: route, status code, đọc body JSON, phát sự kiện bằng EventEmitter"
+          "Giải thích IP, cổng, kết nối TCP; viết HTTP server không framework: route, status code, đọc body JSON, phát sự kiện bằng EventEmitter"
         ],
         "showcase": {
-          "caption": "Hai chương trình bạn viết, chạy thật",
-          "markdown": "```output\n$ npm start                       # N01 — chatlog.js\nĐọc 12 dòng, hợp lệ 9 tin\nTheo người gửi: { an: 4, binh: 2, chi: 2, dung: 1 }\n3 lần delay(300) song song: 300 ms\nwithTimeout(delay(1000), 200) → lỗi \"timeout\" sau 201 ms\n\n$ curl -X POST http://127.0.0.1:3000/messages -d '{\"user\":\"an\",\"text\":\"Deploy lúc 10h\"}'\n{\"id\":1,\"user\":\"an\",\"text\":\"Deploy lúc 10h\",\"ts\":\"2026-10-20T06:17:32.494Z\"}\n$ curl -X POST http://127.0.0.1:3000/messages -d '{\"user\":\"an\",\"text\":'\n{\"error\":\"Body không phải JSON hợp lệ\"}\n$ curl -i -X DELETE http://127.0.0.1:3000/messages\nHTTP/1.1 405 Method Not Allowed\nAllow: GET, POST\n{\"error\":\"Method DELETE không được hỗ trợ\"}\n```"
+          "caption": "Ba chương trình bạn viết, chạy thật",
+          "markdown": "```output\n$ npm start                       # N00 — basics.js (trích)\nformatMessage(...)                         → [09:05] an: Deploy lúc 10h\ncreateIdGenerator(\"an\") gọi 2 lần          → [ 'an-1', 'an-2' ]\n\n$ npm start                       # N01 — chatlog.js\nĐọc 12 dòng, hợp lệ 9 tin\nTheo người gửi: { an: 4, binh: 2, chi: 2, dung: 1 }\n3 lần delay(300) song song: 300 ms\nwithTimeout(delay(1000), 200) → lỗi \"timeout\" sau 201 ms\n\n$ curl -X POST http://127.0.0.1:3000/messages -d '{\"user\":\"an\",\"text\":\"Deploy lúc 10h\"}'\n{\"id\":1,\"user\":\"an\",\"text\":\"Deploy lúc 10h\",\"ts\":\"2026-10-20T06:17:32.494Z\"}\n$ curl -X POST http://127.0.0.1:3000/messages -d '{\"user\":\"an\",\"text\":'\n{\"error\":\"Body không phải JSON hợp lệ\"}\n$ curl -i -X DELETE http://127.0.0.1:3000/messages\nHTTP/1.1 405 Method Not Allowed\nAllow: GET, POST\n{\"error\":\"Method DELETE không được hỗ trợ\"}\n```"
         },
         "cv_line": "Xây REST API tin nhắn bằng Node.js (module http, không framework): routing, mã trạng thái, đọc body JSON có giới hạn, EventEmitter; test bằng node:test."
       },
       "lessons": [
+        {
+          "id": "N00-js-cho-nguoi-biet-python",
+          "title": "JavaScript cho người đã biết Python",
+          "goal": "Luyện cú pháp JS nền qua 9 hàm nhỏ, đối chiếu từng mục với Python; qua hết test.",
+          "status": "ready"
+        },
         {
           "id": "N01-node-co-ban",
           "title": "Node cơ bản: module, npm, async, event loop",
@@ -686,7 +802,7 @@
       "brief": {
         "goal": "Cho server chủ động đẩy tin tới trình duyệt ngay khi có, thay vì để trình duyệt hỏi liên tục.",
         "deliverable": "Server chat realtime: echo server, phòng chat nhiều người có tên, vào/ra, danh sách online, giao diện web.",
-        "promise": "Sau 2 bài, bạn mở 2 tab trình duyệt, gõ ở tab này và tin hiện ngay ở tab kia; bạn tự tính được Sec-WebSocket-Accept bằng tay và chỉ ra từng frame trong DevTools.",
+        "promise": "Sau 2 bài, bạn mở 2 tab trình duyệt, gõ ở tab này và tin hiện ngay ở tab kia; bạn tự tính được Sec-WebSocket-Accept bằng tay, chỉ ra từng frame trong DevTools, và đọc được handler connection/message/close cùng giao thức JSON trong code WebSocket của công ty.",
         "can_do": [
           "Đo được polling tốn bao nhiêu request và trễ bao lâu so với WebSocket",
           "Giải thích handshake: Upgrade, 101 Switching Protocols, Sec-WebSocket-Key/Accept",
@@ -720,20 +836,20 @@
       "track": "Vận hành",
       "brief": {
         "goal": "Giữ kết nối sống qua mạng chập chờn, xác thực người dùng, chạy được trên nhiều server, và tự chứng minh bằng test.",
-        "deliverable": "TeamPulse có heartbeat + tự kết nối lại, bản Socket.IO có room và ack, xác thực token trước handshake, nhiều instance đồng bộ qua Redis, và bộ test/đo tải tự viết.",
+        "deliverable": "Năm thành phần production của TeamPulse, mỗi thành phần là một server riêng có test tự động: heartbeat + client tự kết nối lại (ws), phòng chat Socket.IO có room, ack và chống trùng, server xác thực token trước handshake, chat nhiều instance đồng bộ qua broker/Redis, và bộ test/đo tải tự viết. Ghép cả năm vào một server là bước sau, chưa nằm trong P2.",
         "promise": "Sau 5 bài, bạn đọc và sửa được code realtime ở công ty: phát hiện kết nối chết trong vài giây thay vì 2 giờ, nói bằng số Socket.IO tốn thêm gì so với ws, chặn kết nối không có token trước khi nâng cấp, cho 2 server cùng phát một tin qua Redis, và viết test bắt được bug thật.",
         "can_do": [
           "Phát hiện kết nối chết bằng ping/pong, tự kết nối lại có backoff + jitter, gửi bù tin lúc offline",
-          "Dùng Socket.IO (room, ack có timeout và gửi lại) và giải thích khi nào chọn ws thuần",
+          "Dùng Socket.IO (room, ack có timeout, gửi lại và chống trùng bằng clientId) và giải thích khi nào chọn ws thuần",
           "Xác thực token HMAC ngay ở handshake, kiểm tra Origin, phân quyền từng tin, xử lý token hết hạn",
           "Mở rộng ra nhiều instance bằng Redis pub/sub, test offline bằng broker trong bộ nhớ",
           "Tự viết test tích hợp WebSocket không dùng sleep, đo tải p50/p95/p99, debug bằng log có id"
         ],
         "showcase": {
           "caption": "Năm bài, chạy thật",
-          "markdown": "```output\n# N05 — heartbeat 5 s, client bị treo (kill -STOP) ở giây 3,7\n 10.0s server: #1 không trả pong → terminate        ← phát hiện sau 6,3 s\n 17.2s client: mất kết nối, thử lại lần 1 sau 457 ms   ← server tắt\n 20.2s client: mất kết nối, thử lại lần 4 sau 2829 ms\n 23.0s client: đã kết nối → gửi bù 5 tin trong hàng đợi đúng thứ tự\n\n# N06 — npm run compare: 10 tin chat\nA. ws thuần                                   1 request    353 byte bắt tay   1833 byte tổng\nB. Socket.IO mặc định (polling → websocket)   4 request   1625 byte bắt tay   2995 byte tổng\nC. Socket.IO chỉ websocket                    1 request    540 byte bắt tay   1910 byte tổng\n\n# N07 — npm run demo\nKhông token                    → HTTP 401 {\"error\":\"no_token\"}\nOrigin lạ + token An           → HTTP 403 {\"error\":\"bad_origin\"}\nToken sửa rooms                → HTTP 401 {\"error\":\"bad_signature\"}\nBinh gửi vào dev       ← {\"type\":\"error\",\"error\":\"forbidden\"}\n61 giây sau, Binh gửi  ← {\"type\":\"error\",\"error\":\"token_expired\"} | đóng: 4001 token_expired\n\n# N08 — 2 tiến trình, Redis pub/sub; An ở cổng 3108 gửi\nBinh (cổng 3109) ← {\"type\":\"chat\",\"from\":\"An\",\"text\":\"Build #128 xong\",...,\"origin\":\"A\",\"via\":\"B\"}\n\n# N09 — npm run load (runLoadTest + percentile tự viết)\n20 client × 20 tin = 400 tin gửi, mỗi tin tới 20 client\nNhận 8000/8000 trong 38 ms → 209239 tin/giây\nĐộ trễ (ms): p50 33.8  p95 36.5  p99 37.3  max 37.8\n```"
+          "markdown": "```output\n# N05 — heartbeat 5 s, client đóng băng (npm run client:freeze) ở giây 3,7\n 10.0s server: #1 không trả pong → terminate        ← phát hiện sau 6,3 s\n 16.7s client: mất kết nối, thử lại lần 1 sau 293 ms   ← server tắt\n 19.1s client: mất kết nối, thử lại lần 4 sau 2770 ms\n 21.9s client: đã kết nối → gửi bù 6 tin trong hàng đợi đúng thứ tự\n\n# N06 — npm run compare: 10 tin chat\nA. ws thuần                                   1 request    353 byte bắt tay   1833 byte tổng\nB. Socket.IO mặc định (polling → websocket)   4 request   1625 byte bắt tay   2995 byte tổng\nC. Socket.IO chỉ websocket                    1 request    540 byte bắt tay   1910 byte tổng\n\n# N07 — npm run demo\nKhông token                    → HTTP 401 {\"error\":\"no_token\"}\nOrigin lạ + token An           → HTTP 403 {\"error\":\"bad_origin\"}\nToken sửa rooms                → HTTP 401 {\"error\":\"bad_signature\"}\nBinh gửi vào dev       ← {\"type\":\"error\",\"error\":\"forbidden\"}\n61 giây sau, Binh gửi  ← {\"type\":\"error\",\"error\":\"token_expired\"} | đóng: 4001 token_expired\n\n# N08 — 2 tiến trình, Redis pub/sub; An ở cổng 3108 gửi\nBinh (cổng 3109) ← {\"type\":\"chat\",\"from\":\"An\",\"text\":\"Build #128 xong\",...,\"origin\":\"A\",\"via\":\"B\"}\n\n# N09 — npm run load (runLoadTest + percentile tự viết; loopback, client và server chung một tiến trình)\n20 client × 20 tin = 400 tin gửi, mỗi tin tới 20 client\nNhận 8000/8000 trong 38 ms → 209239 tin/giây\nĐộ trễ (ms): p50 33.8  p95 36.5  p99 37.3  max 37.8\n```"
         },
-        "cv_line": "Đưa server chat WebSocket (Node.js) lên mức production: heartbeat ping/pong + reconnect backoff, Socket.IO room/ack, xác thực token HMAC trước handshake (chống CSWSH), scale nhiều instance qua Redis pub/sub; test tích hợp tự viết bắt được 4 lớp bug và load test ~200.000 tin/giây với p99 37 ms."
+        "cv_line": "Đưa server chat WebSocket (Node.js) lên mức production: heartbeat ping/pong + reconnect backoff, Socket.IO room/ack có chống trùng, xác thực token HMAC trước handshake (chống CSWSH), scale nhiều instance qua Redis pub/sub; test tích hợp tự viết bắt được 4 lớp bug, và load test tự động đo throughput và p50/p95/p99 (loopback, 20 client) để so sánh trước/sau khi sửa."
       },
       "lessons": [
         {
@@ -745,7 +861,7 @@
         {
           "id": "N06-socketio-rooms-ack",
           "title": "Socket.IO: room, ack, so với ws thuần",
-          "goal": "Viết lại phòng chat bằng Socket.IO có room, ack, gửi lại; đo chi phí so với ws; qua hết test.",
+          "goal": "Viết lại phòng chat bằng Socket.IO có room, ack, gửi lại, chống trùng theo clientId; đo chi phí so với ws; qua hết test.",
           "status": "ready"
         },
         {
@@ -757,7 +873,7 @@
         {
           "id": "N08-scale-redis-pubsub",
           "title": "Nhiều server với Redis pub/sub",
-          "goal": "Hai instance cùng phát tin cho mọi client qua broker; chạy với Redis thật; qua hết test.",
+          "goal": "Hai instance cùng phát tin cho mọi client qua broker; thử bằng 2 client dòng lệnh, chạy với Redis thật nếu có; qua hết test.",
           "status": "ready"
         },
         {

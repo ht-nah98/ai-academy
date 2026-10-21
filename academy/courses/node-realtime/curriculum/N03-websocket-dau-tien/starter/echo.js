@@ -39,7 +39,12 @@ export const WS_GUID = '258EAFA5-E914-47DA-95CA-C5AB0DC85B11';
  * @returns {{stop: () => void, stats: {requests: number, empty: number, received: number, errors: number}}}
  */
 export function startPolling({ url, intervalMs, onMessage }) {
-  // TODO: tạo stats, viết hàm async pollOnce() { try { fetch... } catch { ... } ; hẹn lượt sau }
+  // TODO: viết theo Bước 2a–2e của bài. Các phần cần có:
+  //   2a. trả về NGAY { stop, stats } — stats có 4 bộ đếm bằng 0
+  //   2b. một lượt hỏi: url?since=<id cuối>, onMessage từng tin, nhớ id cuối, cập nhật bộ đếm; lượt đầu chạy ngay
+  //   2c. lượt xong mới hẹn lượt sau (intervalMs)
+  //   2d. stop(): không gửi thêm request nào
+  //   2e. lượt lỗi: đếm errors, không ném ra ngoài, vẫn hẹn lượt sau
   throw new Error('TODO: viết startPolling');
 }
 
@@ -115,7 +120,14 @@ export function readyStateName(ws) {
  * @returns {http.Server}
  */
 export function createEchoServer() {
-  // TODO: const server = http.createServer(...); const wss = new WebSocketServer(...); wss.on('connection', ...)
+  // TODO: viết theo Bước 6a–6e của bài (ví dụ mẫu cùng khuôn: preview.js). Khung xương:
+  //   const server = http.createServer(async (req, res) => {
+  //     /* GET / → đọc public/index.html, 200 text/html; còn lại → 404 */
+  //   });
+  //   /* 6b: gắn WebSocketServer vào server, chỉ nhận đường dẫn /ws */
+  //   /* 6c: mỗi kết nối: nghe 'error', gửi 'welcome' */
+  //   /* 6d: mỗi tin: text → 'echo: ...', binary → trả đúng byte, vẫn binary */
+  //   return server;           // KHÔNG listen ở đây
   throw new Error('TODO: viết createEchoServer');
 }
 

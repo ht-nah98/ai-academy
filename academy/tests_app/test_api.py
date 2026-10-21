@@ -233,3 +233,9 @@ def test_real_roadmap_product_story():
     assert pr["name"] and pr["tagline"] and pr["problem"] and len(pr["pains"]) >= 2
     assert pr["questions"] and all(q["q"] and q["a"] and q["project"] in pids for q in pr["questions"])
     assert pr["promise"]["headline"] and len(pr["promise"]["outcomes"]) >= 3
+
+
+def test_started_lesson_never_relocks(client, env):
+    # Lộ trình chèn bài mới phía trước: bài đã có workspace vẫn học tiếp được
+    (env / "workspace" / "L02-b").mkdir(parents=True)
+    assert statuses(client)["L02-b"] == "in_progress"

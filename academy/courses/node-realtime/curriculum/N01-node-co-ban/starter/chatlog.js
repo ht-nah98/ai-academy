@@ -95,7 +95,11 @@ export function delay(ms) {
  * @returns {Promise<T>}
  */
 export function withTimeout(promise, ms) {
-  // TODO: tạo Promise mới; setTimeout gọi reject; promise.then(...) gọi resolve / reject
+  // TODO: viết theo Bước 6a–6e của bài (ví dụ mẫu cùng khuôn: firstOrDefault). Các phần cần có:
+  //   6a. trả về một Promise mới
+  //   6b. hết ms → Promise đó thất bại với Error có message 'timeout'
+  //   6c. promise gốc xong trước → xong theo nó (cùng giá trị / đúng lỗi đó)
+  //   6d. promise gốc xong trước → huỷ hẹn giờ
   throw new Error('TODO: viết withTimeout');
 }
 

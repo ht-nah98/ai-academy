@@ -7,7 +7,7 @@
  *   Client → server (kèm ack)                    Server → client
  *   emit('join',  'dev', ack)                    'joined' {room, name}            (người khác trong room)
  *   emit('leave', 'dev', ack)                    'left'   {room, name}            (người còn lại trong room)
- *   emit('chat',  {room, text}, ack)             'chat'   {id, room, from, text, ts} (mọi người trong room, gồm người gửi)
+ *   emit('chat',  {room, text, clientId?}, ack)  'chat'   {id, room, from, text, ts} (mọi người trong room, gồm người gửi)
  *
  *   ack trả về: {ok: true, ...} hoặc {ok: false, error: 'invalid_room' | 'not_in_room' | 'invalid_text'}
  *
@@ -15,7 +15,9 @@
  *
  * Chạy thử:   npm start         → mở http://127.0.0.1:3006 ở 2 tab
  * So sánh:    npm run compare   → byte và request: ws thuần vs Socket.IO
- * Chạy test:  node --test "../../curriculum/N06-socketio-rooms-ack/tests/*.test.js"
+ * Chạy test:  npm test
+ * Chạy riêng một nhóm test (vd. tên chứa "middleware"):
+ *   node --test --test-name-pattern="middleware" "../../curriculum/N06-socketio-rooms-ack/tests/*.test.js"
  */
 import { readFile } from 'node:fs/promises';
 import http from 'node:http';
@@ -65,13 +67,34 @@ export function normalizeRoom(room) {
  *     hợp lệ → `msg = {id, room: r, from: name, text: <đã trim>, ts: new Date().toISOString()}`,
  *     `id` là số tăng dần 1, 2, 3... trên toàn server; gửi `'chat'` msg cho MỌI NGƯỜI trong room (gồm người gửi),
  *     ack `{ok: true, id}`.
+ *     Chống trùng (idempotent): nếu `clientId` là chuỗi không rỗng và server ĐÃ nhận một tin hợp lệ cùng `clientId`
+ *     → KHÔNG phát `'chat'` lần nữa, KHÔNG cấp id mới, ack lại `{ok: true, id: <id của lần đầu>}`.
+ *     Không có `clientId` → mỗi lần gửi là một tin mới.
  * - Ngắt kết nối: ở sự kiện `disconnecting` (lúc `socket.rooms` còn đủ), với mỗi room đã join
  *   (bỏ qua room riêng có tên bằng `socket.id`) gửi những người còn lại `'left'` `{room, name}`.
  *
  * @returns {{server: http.Server, io: import('socket.io').Server}}
  */
 export function createRoomServer() {
-  // TODO: http.createServer(...), new Server(server), io.use(...), io.on('connection', ...)
+  // Khung gợi ý — làm lần lượt Bước 3a → 3e trong bài (xoá dòng throw khi bắt đầu viết):
+  //
+  // const server = http.createServer(async (req, res) => { ... }); // Bước 3a: GET / → public/index.html; khác → 404
+  // const io = new Server(server);     // Socket.IO tự lo mọi đường /socket.io/...
+  // let seq = 0;                       // Bước 3d: id tin chat, tăng dần trên toàn server
+  // const seen = new Map();            // Bước 3d: clientId → id đã cấp (chống trùng khi client gửi lại)
+  //
+  // io.use((socket, next) => { ... }); // Bước 3b: kiểm tra socket.handshake.auth.name;
+  //                                    //          đúng → socket.data.name = ...; next()   sai → next(new Error('invalid_name'))
+  // io.on('connection', (socket) => {
+  //   socket.on('join', (room, ack) => { ... });      // Bước 3c
+  //   socket.on('chat', (data, ack) => { ... });      // Bước 3d
+  //   socket.on('leave', (room, ack) => { ... });     // Bước 3e
+  //   socket.on('disconnecting', () => { ... });      // Bước 3e
+  // });
+  // return { server, io };
+  //
+  // Mỗi chỗ trả lời client: if (typeof ack === 'function') ack({ ... });
+  // TODO: viết theo khung trên
   throw new Error('TODO: viết createRoomServer');
 }
 

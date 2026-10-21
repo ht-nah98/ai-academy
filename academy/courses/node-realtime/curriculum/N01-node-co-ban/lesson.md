@@ -4,7 +4,7 @@
 
 ## 🎯 Mục tiêu
 
-Sau buổi này (khoảng 2 giờ) bạn sẽ:
+Sau buổi này (khoảng 3 giờ) bạn sẽ:
 
 - Chạy file `.js` bằng `node`, chia code thành module bằng **`import` / `export`** (ESM).
 - Dùng **npm** và **`package.json`**: `type`, `scripts`, `dependencies`, `package-lock.json`.
@@ -40,6 +40,8 @@ withTimeout(delay(1000), 200) → lỗi "timeout" sau 201 ms
 ```
 
 ## 🤔 Tại sao? (kiến thức nền)
+
+> 📖 **Cú pháp:** bài này dùng cú pháp đã học ở **N00**: `const`/`let`, `===`, arrow function `(x) => ...` (= `lambda`), template literal `` `${x}` `` (= f-string), object `{}`, `for...of`, `try/catch`. Gặp chỗ lạ, mở lại bảng Python ↔ JS của N00.
 
 ### Node.js là gì
 
@@ -100,7 +102,7 @@ string
 | ESM (chuẩn hiện nay) | `import x from '...'` · `export function f()` | Code mới, khóa này |
 | CommonJS (cũ) | `const x = require('...')` · `module.exports = f` | Code Node cũ, nhiều repo công ty |
 
-> ⚠️ **Lỗi hay gặp:** `package.json` thiếu `"type": "module"`. Node 22 (từ 22.12) vẫn chạy file có `import`, nhưng in cảnh báo `[MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///.../app.js is not specified and it doesn't parse as CommonJS. Reparsing as ES module...` — Node thử đọc kiểu CommonJS trước, thất bại mới đọc lại kiểu ESM (chậm hơn). Node cũ hơn báo thẳng `SyntaxError: Cannot use import statement outside a module`. Thêm `"type": "module"` thì hết cả hai.
+> ⚠️ **Lỗi hay gặp:** `package.json` thiếu `"type": "module"` → Node in cảnh báo `MODULE_TYPELESS_PACKAGE_JSON` (Node cũ báo `Cannot use import statement outside a module`). Starter của khóa đã có sẵn dòng này; project tự tạo thì nhớ thêm.
 
 > ⚠️ **Lỗi hay gặp:** `import { f } from './prices'` (thiếu `.js`) → `ERR_MODULE_NOT_FOUND`. ESM trong Node không tự đoán đuôi file.
 
@@ -175,7 +177,7 @@ flowchart TD
     C -- "Hết việc" --> F["Thoát chương trình"]
 ```
 
-Đoán thứ tự in trước khi xem kết quả:
+Đoán thứ tự in trước khi xem kết quả. Hai cú pháp cần đọc: `() => console.log('...')` là một arrow function **không tham số** — một callback để chạy sau; `Promise.resolve().then(fn)` nghĩa là "khi Promise này xong thì gọi `fn`" (N00 Bước 10).
 
 ```js
 console.log('1. đồng bộ: bắt đầu');
@@ -227,7 +229,7 @@ vòng lặp bận xong
 timer hẹn 10 ms, thực tế chạy sau 500 ms
 ```
 
-> 🎯 **Phỏng vấn hay hỏi:** "Node là đơn luồng, sao phục vụ được nhiều request cùng lúc?" — JavaScript chạy một luồng, nhưng I/O được giao cho hệ điều hành/libuv; trong lúc chờ, event loop xử lý request khác. Vì vậy **đừng** làm việc CPU nặng (vòng lặp lớn, `readFileSync` file to) trong handler: nó chặn mọi kết nối.
+> 🎯 **Phỏng vấn hay hỏi:** "Node là đơn luồng, sao phục vụ được nhiều request cùng lúc?" — JavaScript chạy một luồng, nhưng I/O được giao cho hệ điều hành/libuv; trong lúc chờ, event loop xử lý request khác. Vì vậy **đừng** làm việc **chặn** luồng trong handler — vòng lặp CPU nặng, hoặc I/O đồng bộ như `readFileSync`: cả hai đều chặn mọi kết nối.
 
 > 🧠 **Ghi nhớ:** server WebSocket giữ hàng nghìn kết nối mở, hầu hết thời gian chỉ **chờ**. Mô hình event loop của Node hợp với việc này: kết nối đang chờ gần như không tốn CPU.
 
@@ -237,10 +239,18 @@ timer hẹn 10 ms, thực tế chạy sau 500 ms
 
 ```bash
 node --version          # cần v22 trở lên
-cd <workspace>/N01-node-co-ban
+cd academy/courses/node-realtime/workspace/N01-node-co-ban   # dòng "Mở trong VS Code" trên tab Bài học trỏ tới đây
 node chatlog.js         # chạy được nhưng báo lỗi TODO — bình thường
 npm start               # lỗi "Missing script: start" — bạn sẽ sửa
 ```
+
+Trong lúc làm, chạy riêng test của **một** hàm (thay `parseLine` bằng tên hàm đang viết):
+
+```bash
+node --test --test-name-pattern="parseLine" "../../curriculum/N01-node-co-ban/tests/*.test.js"
+```
+
+> ⚠️ **Lỗi hay gặp:** `npm test -- --test-name-pattern=...` **không** lọc được: npm nối cờ vào **sau** mẫu tên file, và Node 22 bỏ qua cờ đặt sau tên file — mọi test vẫn chạy. Gõ thẳng lệnh `node --test --test-name-pattern="<mẫu>" "<mẫu file>"` như trên.
 
 Mở `package.json`: khối `"scripts"` đã có lệnh `test`. Thêm lệnh `start` chạy `node chatlog.js` vào cùng khối (nhớ dấu phẩy giữa các mục JSON). Chạy lại `npm start`: giờ nó gọi được file, chỉ còn lỗi TODO. `npm test` chạy bộ test của bài.
 
@@ -322,7 +332,7 @@ console.log(counts);
 
 `arr.reduce(fn, start)` chính là vòng `for` của Cách 1: `acc` bắt đầu bằng `start` (`{}`), mỗi phần tử gọi `fn(acc, phần_tử)` và giá trị trả về thành `acc` mới. `a ?? 0` nghĩa là "`a` nếu `a` không phải `null`/`undefined`, ngược lại `0`" — thay cho khối `if (... === undefined)`.
 
-> ⚖️ **So sánh:** cùng O(n) — tra/ghi khóa object gần như O(1) giống dict Python. `reduce` chỉ gọn hơn; nhiều người thấy vòng `for...of` dễ đọc hơn, cứ dùng Cách 1 nếu bạn thấy vậy. Cái cần tránh là đếm bằng `arr.filter(x => x.grade === g).length` cho từng loại: O(n × số loại).
+> ⚖️ **So sánh:** cùng O(n) — tra/ghi khóa object gần như O(1) giống dict Python. `reduce` chỉ gọn hơn; nhiều người thấy vòng `for...of` dễ đọc hơn, cứ dùng Cách 1 nếu bạn thấy vậy.
 
 Lọc và biến đổi mảng cũng đi theo cùng thứ tự:
 
@@ -354,7 +364,7 @@ console.log(scores.filter((s) => s >= 5).map((s) => s * 10));
 
 `filter(fn)` giữ phần tử mà `fn` trả `true` (khối `if`), `map(fn)` biến mỗi phần tử thành `fn(phần_tử)` (dòng `push(s * 10)`). `(s) => s >= 5` là **arrow function**, tương đương `function (s) { return s >= 5; }` — giống `lambda` của Python.
 
-> ⚖️ **So sánh:** cùng O(n). Cách 2 duyệt mảng **2 lần** và tạo một mảng trung gian, Cách 1 duyệt 1 lần — với vài nghìn phần tử khác biệt không đáng kể, chọn cách dễ đọc.
+> ⚖️ **So sánh:** cùng O(n). Cách 2 duyệt mảng **2 lần** và tạo một mảng trung gian, Cách 1 duyệt 1 lần — với vài nghìn phần tử khác biệt không đáng kể, chọn cách dễ đọc. Quay lại phép đếm ở trên: cái cần tránh là đếm từng loại bằng `students.filter((s) => s.grade === g).length` — mỗi loại duyệt lại cả mảng, O(n × số loại), so với O(n) của Cách 1.
 
 ### Bước 4 — `fs/promises` → `loadMessages`
 
@@ -382,7 +392,7 @@ try {
 lỗi: ENOENT
 ```
 
-Dòng ghi bằng Windows kết thúc `\r\n`: tách theo `\n` vẫn còn `\r` dính ở cuối. Bỏ nó bằng `line.replace(/\r$/, '')` hoặc `line.trimEnd()`, hay tách thẳng bằng `content.split(/\r?\n/)`.
+Dòng ghi bằng Windows kết thúc `\r\n`: tách theo `\n` vẫn còn `\r` dính ở cuối. Bỏ nó bằng `line.replace(/\r$/, '')` hoặc `line.trimEnd()`, hay tách thẳng bằng `content.split(/\r?\n/)`. `/.../` là **biểu thức chính quy** (regex, như module `re` của Python): `/\r$/` = "ký tự `\r` ở cuối chuỗi", `/\r?\n/` = "`\n`, có thể có `\r` đứng trước".
 
 **Cách 1 — vòng lặp `for...of`**
 
@@ -445,6 +455,8 @@ type = module
 reject: ENOENT
 ```
 
+Hai chỗ mới: `new URL('./package.json', import.meta.url)` là đường dẫn tới `package.json` **cạnh file đang chạy** (`import.meta.url` = địa chỉ của chính file này), không phụ thuộc bạn đứng ở thư mục nào khi gõ `node`. `p.catch(fn)` = "nếu Promise `p` bị reject thì gọi `fn(lỗi)`" — bắt lỗi của Promise mà không cần `try/catch`.
+
 `setTimeout(callback, ms)` cũng là API kiểu callback: gọi `callback` sau `ms` mili giây. Hàm `delay` của bạn bọc nó theo đúng khuôn trên.
 
 > 💡 **Mẹo:** Node có sẵn bản Promise: `import { setTimeout } from 'node:timers/promises'` (demo ở trên dùng nó). Bài này tự viết `delay` để hiểu `new Promise` — bạn sẽ dùng khuôn này khi bọc sự kiện WebSocket ở N03.
@@ -472,7 +484,52 @@ về trước: xe máy
 race bị reject: thủng lốp
 ```
 
-`withTimeout` cần: một Promise "hẹn giờ" bị reject với `new Error('timeout')` sau `ms`, chạy đua với promise gốc. Bạn có thể dùng `Promise.race`, hoặc tự viết `new Promise` gọi `promise.then(onOk, onFail)`.
+`withTimeout` cần ghép ba thứ: `new Promise` (Bước 5), một hẹn giờ có thể **huỷ** (`clearTimeout`), và cách nghe kết quả của promise gốc. Ví dụ mẫu **cùng khuôn, khác việc**: `firstOrDefault` chờ một promise, quá hạn thì trả giá trị mặc định (không báo lỗi):
+
+```js
+import { setTimeout as sleep } from 'node:timers/promises';
+
+function firstOrDefault(promise, ms, fallback) {
+  return new Promise((resolve) => {
+    // (1) hẹn giờ: hết ms mà promise chưa xong → trả giá trị mặc định
+    const timerId = setTimeout(() => resolve(fallback), ms);
+    // (2) promise gốc xong trước → huỷ hẹn giờ, trả kết quả thật
+    promise.then(
+      (value) => {               // khi promise resolve
+        clearTimeout(timerId);
+        resolve(value);
+      },
+      () => {                    // khi promise reject: ở đây cũng trả mặc định
+        clearTimeout(timerId);
+        resolve(fallback);
+      },
+    );
+  });
+}
+
+let t0 = Date.now();
+const fast = await firstOrDefault(sleep(50, 'giao nhanh'), 300, 'chưa có hàng');
+console.log(fast, '| sau', Math.round((Date.now() - t0) / 50) * 50, 'ms');
+t0 = Date.now();
+const slow = await firstOrDefault(sleep(400, 'giao chậm'), 100, 'chưa có hàng');
+console.log(slow, '| sau', Math.round((Date.now() - t0) / 50) * 50, 'ms');
+```
+```output
+giao nhanh | sau 50 ms
+chưa có hàng | sau 100 ms
+```
+
+`promise.then(onOk, onFail)` với **hai** callback: `onOk(giá_trị)` chạy khi promise resolve, `onFail(lỗi)` khi nó reject — tương đương `try { onOk(await promise) } catch (err) { onFail(err) }`, nhưng không cần hàm `async`. `resolve`/`reject` chỉ có tác dụng ở **lần gọi đầu tiên**, các lần sau bị bỏ qua — nên hẹn giờ và promise gốc "chạy đua" mà không sợ trả kết quả hai lần.
+
+Viết `withTimeout` theo từng bước nhỏ (starter có khung rỗng đánh số bước). Sau mỗi bước chạy `node --test --test-name-pattern="withTimeout" "../../curriculum/N01-node-co-ban/tests/*.test.js"`:
+
+- **Bước 6a** — hàm trả về một Promise **mới** do bạn tự quyết khi nào xong. Khác `firstOrDefault`: lần này kết quả có thể là **lỗi**, nên cần cả hai cách kết thúc Promise. Chưa test nào xanh.
+- **Bước 6b** — hết `ms` mà chưa xong thì Promise của bạn thất bại với lỗi có `message` đúng là `"timeout"`. Test "quá hạn → lỗi timeout" xanh.
+- **Bước 6c** — promise gốc xong trước thì Promise của bạn xong **theo nó**: cùng giá trị nếu nó thành công, **đúng lỗi đó** (không bọc lại) nếu nó thất bại. Test "xong sớm" và "promise lỗi" xanh.
+- **Bước 6d** — promise gốc xong trước thì hẹn giờ không được chạy nữa. Không test nào bắt lỗi này; tự kiểm: trong `main()` tạm đổi thành `await withTimeout(delay(10), 5000)` — script phải thoát ngay, không treo thêm 5 giây.
+- **Bước 6e** — `npm test` → 15 test xanh, `npm start` in đúng dòng `withTimeout` ở mục Đề bài.
+
+Cách khác cũng qua test: `Promise.race([promise, hẹn_giờ_reject])` rồi huỷ hẹn giờ trong `.finally(...)`.
 
 > ⚠️ **Lỗi hay gặp:** không `clearTimeout` khi promise gốc xong sớm → timer vẫn sống, script phải chờ hết `ms` mới thoát. Lưu id trả về từ `setTimeout(...)` để huỷ.
 

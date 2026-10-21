@@ -312,7 +312,7 @@ details.more[open]>:not(summary){animation:reveal .22s ease}
 .step-act{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:18px;padding-top:14px;border-top:1px dashed var(--teal-line)}
 .step-act .next{margin-left:auto}
 .fin{margin-left:auto;font-size:.88rem;color:var(--teal-ink)}
-.concepts{display:grid;gap:12px}
+.concepts{display:grid;grid-template-columns:minmax(0,1fr);gap:12px}
 .ccard{background:var(--surface);border:1px solid var(--teal-line);border-radius:var(--radius);padding:16px 18px}
 .ccard h4{margin:0 0 6px;font-size:1.02rem;font-weight:800;color:var(--ink);display:flex;gap:10px;align-items:baseline}
 .ccard h4::before{content:"";flex:none;width:10px;height:10px;border-radius:3px;background:var(--teal);transform:translateY(-1px) rotate(45deg)}

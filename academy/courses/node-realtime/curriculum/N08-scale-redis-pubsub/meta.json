@@ -2,7 +2,7 @@
   "id": "N08-scale-redis-pubsub",
   "title": "Nhiều server với Redis pub/sub",
   "goal": "Nối nhiều instance chat bằng pub/sub: broker trong bộ nhớ để test offline, Redis thật để chạy nhiều tiến trình; qua hết 8 test.",
-  "duration_min": 150,
+  "duration_min": 210,
   "concepts": [
     "horizontal-scaling",
     "pubsub-broker",
@@ -14,10 +14,12 @@
     "Giải thích vì sao broadcast trong một tiến trình không tới client ở instance khác",
     "Vẽ lại đường đi của một tin: client → node → Redis → mọi node → client",
     "Biết vì sao node gửi cũng nhận tin qua kênh thay vì gửi thẳng",
+    "Giải thích vì sao 2 node trong một tiến trình chưa chứng minh được gì, còn 2 tiến trình thì cần Redis",
     "Giải thích subscriber mode và vì sao cần 2 kết nối Redis",
     "Biết Redis pub/sub không lưu tin và hệ quả khi node khởi động lại",
     "Tính được chi phí fan-out: Redis giao/giây và ws.send/giây theo số node",
     "Biết khi nào cần sticky session và Socket.IO redis-adapter làm gì",
+    "Chạy npm start + 2 client npm run cli ở cổng 3008/3009 và thấy tin của nhau (via khác nhau)",
     "Qua hết test của bài"
   ],
   "interview_questions": [
@@ -30,7 +32,7 @@
     "Làm sao biết 'ai đang online' trên toàn hệ thống khi mỗi node chỉ biết client của nó?",
     "Socket.IO giải bài toán nhiều server bằng cách nào?"
   ],
-  "tutor_notes": "Học viên đã có chat (N04), room (N06), auth (N07). Bài này chỉ dạy chiều 'tin đi qua nhiều tiến trình'; tên lấy từ ?name= cho gọn (production dùng token của N07). Nhấn mạnh interface broker: chat node không biết broker là bộ nhớ hay Redis → test offline. Lỗi hay gặp: (1) createMemoryBroker: emit đồng bộ (test bắt lỗi), không kiểm tra kiểu chuỗi, đếm subscriber sau khi emit, unsubscribe gỡ bằng handler gốc (gỡ nhầm khi subscribe 2 lần) hoặc gỡ mọi listener (removeAllListeners), quên trả hàm unsubscribe; (2) createRedisBroker: publish bằng sub (subscriber mode lỗi), quên await sub.subscribe, unsubscribe không truyền listener (gỡ hết); (3) createChatNode: không async/không await subscribe, gửi thẳng cho client local và publish (người cùng node nhận 2 lần), lọc origin === nodeId (người cùng node không nhận), publish object thay vì JSON string, JSON.parse tin kênh không try (một tin hỏng làm sập mọi node), không đếm stats đúng chỗ, quên unsubscribe khi server close. Khi chạy thật: Docker không có thì vẫn học được bằng test và npm start (memory broker); Redis lỗi ECONNREFUSED → chưa chạy docker run. Không viết hộ thân hàm.",
+  "tutor_notes": "Học viên đã có chat (N04), room (N06), auth (N07). Bài này chỉ dạy chiều 'tin đi qua nhiều tiến trình'; tên lấy từ ?name= cho gọn (production dùng token của N07). Nhấn mạnh interface broker: chat node không biết broker là bộ nhớ hay Redis → test offline. Lỗi hay gặp: (1) createMemoryBroker: emit đồng bộ (test bắt lỗi), không kiểm tra kiểu chuỗi, đếm subscriber sau khi emit, unsubscribe gỡ bằng handler gốc (gỡ nhầm khi subscribe 2 lần) hoặc gỡ mọi listener (removeAllListeners), quên trả hàm unsubscribe; (2) createRedisBroker: publish bằng sub (subscriber mode lỗi), quên await sub.subscribe, unsubscribe không truyền listener (gỡ hết); (3) createChatNode: không async/không await subscribe, gửi thẳng cho client local và publish (người cùng node nhận 2 lần), lọc origin === nodeId (người cùng node không nhận), publish object thay vì JSON string, JSON.parse tin kênh không try (một tin hỏng làm sập mọi node), không đếm stats đúng chỗ, quên unsubscribe khi server close. Khi chạy thật: không có Docker thì cài Redis thẳng (WSL `sudo apt install redis-server`, macOS `brew install redis`) hoặc bỏ qua phần 2 tiến trình — test và `npm start` + `npm run cli` (memory broker, một tiến trình) đủ để qua bài. Redis lỗi ECONNREFUSED → Redis chưa chạy (`redis-cli ping` phải trả PONG). Biến môi trường: bash `REDIS_URL=... NODES=A PORT=3108 npm start` (đặt ở MỖI terminal, `export` ở terminal 1 không sang terminal 2), PowerShell `$env:REDIS_URL=\"redis://127.0.0.1:6379\"; $env:NODES=\"A\"; $env:PORT=\"3108\"; npm start`. Gợi ý chạy riêng test: `node --test --test-name-pattern=\"createChatNode\" \"../../curriculum/N08-scale-redis-pubsub/tests/*.test.js\"`. Không viết hộ thân hàm.",
   "tasks": [
     {
       "fn": "createMemoryBroker",
@@ -71,7 +73,7 @@
         "purpose": "Một instance chat giao tin qua broker cho client local."
       }
     ],
-    "deliverable": "scale.js qua 8/8 test không cần Redis; với Redis, hai tiến trình ở hai cổng thấy tin của nhau; số liệu fan-out từ npm run bench.",
+    "deliverable": "scale.js qua 8/8 test không cần Redis; npm start + 2 client dòng lệnh ở cổng 3008/3009 thấy tin của nhau; có Redis thì hai tiến trình ở hai cổng thấy tin của nhau; số liệu fan-out từ npm run bench.",
     "constraints": [
       "Mọi tin đi qua broker, kể cả cho client cùng node.",
       "Broker chỉ chở chuỗi JSON.",

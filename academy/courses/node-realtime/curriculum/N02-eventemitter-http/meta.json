@@ -2,8 +2,9 @@
   "id": "N02-eventemitter-http",
   "title": "EventEmitter & HTTP server: mô hình hỏi–đáp",
   "goal": "Viết REST API tin nhắn bằng module http thuần, đúng route và mã trạng thái, phát sự kiện khi có tin; qua hết 15 test.",
-  "duration_min": 150,
+  "duration_min": 210,
   "concepts": [
+    "net-basics",
     "event-emitter",
     "http-server",
     "http-routing-status",
@@ -11,6 +12,7 @@
   ],
   "entry": "api.js",
   "checklist": [
+    "Giải thích được IP, 127.0.0.1/localhost, cổng, kết nối TCP và lỗi EADDRINUSE",
     "Giải thích được on/once/emit và vì sao emit chạy listener đồng bộ",
     "Biết vì sao luôn phải lắng nghe sự kiện 'error'",
     "Đọc được req.method, req.url, req.headers và tách query bằng new URL",
@@ -28,9 +30,10 @@
     "Body của request đến dưới dạng stream nghĩa là gì? Vì sao cần giới hạn kích thước body?",
     "Vì sao không nên giải mã từng chunk Buffer thành chuỗi rồi nối lại?",
     "Express/Fastify làm giúp bạn những gì so với module http thuần?",
-    "Vì sao HTTP request/response không đủ cho ứng dụng chat realtime?"
+    "Vì sao HTTP request/response không đủ cho ứng dụng chat realtime?",
+    "localhost, 127.0.0.1 và cổng là gì? Lỗi EADDRINUSE nghĩa là gì và xử lý thế nào?"
   ],
-  "tutor_notes": "Học viên vừa học N01 (ESM, async/await, event loop). Lần đầu viết class kế thừa và server HTTP. Liên hệ Python: http.server/Flask route ~ nhánh if theo method+path; EventEmitter ~ danh sách callback. Lỗi hay gặp: (1) post tăng nextId trước khi kiểm tra dữ liệu, kiểm tra text chưa trim theo MAX_TEXT, emit trước khi push hoặc quên emit; ném Error thường thay vì httpError(400) nên thiếu status; (2) history trả thẳng this.messages; (3) sendJson thiếu charset=utf-8 hoặc quên res.end; (4) readJsonBody toString từng chunk, quên kiểm tra mảng/null/số, kiểm tra limit sau khi gom xong (vẫn qua test nhưng nên dừng sớm), dùng req.on('data') mà quên trả Promise; (5) createApp so req.url thay vì pathname, quên return sau sendJson (ERR_HTTP_HEADERS_SENT), quên header Allow cho 405, try/catch không bọc await nên lỗi thành unhandled rejection, tự gọi listen() trong createApp. Khi chạy thật: EADDRINUSE → cổng 3000 bận, chạy PORT=3001 npm start. Không viết hộ thân hàm.",
+  "tutor_notes": "Học viên đã qua N00 (cú pháp JS) và N01 (ESM, async/await, event loop). Lần đầu viết class kế thừa và server HTTP. Liên hệ Python: http.server/Flask route ~ nhánh if theo method+path; EventEmitter ~ danh sách callback. Lỗi hay gặp: (1) post tăng nextId trước khi kiểm tra dữ liệu, kiểm tra text chưa trim theo MAX_TEXT, emit trước khi push hoặc quên emit; ném Error thường thay vì httpError(400) nên thiếu status; (2) history trả thẳng this.messages; (3) sendJson thiếu charset=utf-8 hoặc quên res.end; (4) readJsonBody toString từng chunk, quên kiểm tra mảng/null/số, kiểm tra limit sau khi gom xong (vẫn qua test nhưng nên dừng sớm), dùng req.on('data') mà quên trả Promise; (5) createApp so req.url thay vì pathname, quên return sau sendJson (ERR_HTTP_HEADERS_SENT), quên header Allow cho 405, try/catch không bọc await nên lỗi thành unhandled rejection, tự gọi listen() trong createApp. Khi chạy thật: EADDRINUSE → cổng 3000 bận, chạy PORT=3100 npm start (PowerShell: $env:PORT=3100; npm start). Không viết hộ thân hàm. Header Allow cho 405: res.setHeader('Allow', 'GET, POST') trước rồi sendJson — writeHead gộp header đã setHeader, không cần đổi chữ ký sendJson.",
   "tasks": [
     {
       "fn": "ChatRoom.post",

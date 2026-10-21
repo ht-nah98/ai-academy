@@ -20,7 +20,7 @@ const BROKEN = [
   ['only-sender', 'server chỉ gửi lại cho người gửi, người khác không nhận'],
   ['skip-sender', 'server gửi cho mọi người TRỪ người gửi'],
   ['close-on-bad-json', 'server đóng kết nối khi nhận JSON hỏng, không gửi error'],
-  ['splice-rest', 'khi một người rời đi, server xoá nhầm cả những người kết nối sau họ'],
+  ['drop-others', 'khi một người rời đi, server xoá nhầm cả những người còn lại khỏi danh sách'],
 ];
 
 // ---------- Chép server ra file tạm tên trung tính ----------
