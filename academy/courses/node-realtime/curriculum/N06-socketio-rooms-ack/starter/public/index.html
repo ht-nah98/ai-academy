@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TeamPulse Rooms</title>
+  <style>
+    :root { --bg: #f5f6f8; --card: #fff; --line: #dde1e6; --text: #1d2228; --muted: #6b7480; --me: #0b5cad; --accent: #127a3a; }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); }
+    header { padding: 12px 16px; border-bottom: 1px solid var(--line); background: var(--card); display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+    header h1 { font-size: 18px; margin: 0; }
+    #status { font-size: 13px; color: var(--muted); }
+    main { display: grid; grid-template-columns: 180px 1fr; gap: 12px; padding: 12px 16px; max-width: 960px; margin: 0 auto; }
+    @media (max-width: 640px) { main { grid-template-columns: 1fr; } }
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; }
+    aside { padding: 10px; } aside h2 { font-size: 14px; margin: 0 0 8px; }
+    .room { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; gap: 6px; }
+    .room button { padding: 4px 8px; font-size: 13px; }
+    #log { height: 60vh; overflow-y: auto; padding: 10px; }
+    .msg { margin: 4px 0; line-height: 1.45; word-wrap: break-word; }
+    .msg .from { font-weight: 600; } .msg.me .from { color: var(--me); }
+    .msg .tag { color: var(--accent); font-size: 12px; margin-right: 6px; }
+    .notice { color: var(--muted); font-style: italic; font-size: 14px; margin: 4px 0; }
+    .err { color: #b42318; font-size: 14px; margin: 4px 0; }
+    form { display: flex; gap: 8px; padding: 10px; border-top: 1px solid var(--line); flex-wrap: wrap; }
+    input, select { flex: 1; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-size: 15px; min-width: 0; }
+    select { flex: 0 0 auto; }
+    button { padding: 8px 14px; border: 0; border-radius: 6px; background: var(--me); color: #fff; font-size: 15px; cursor: pointer; }
+  </style>
+  <script src="/socket.io/socket.io.js"></script>
+</head>
+<body>
+  <header><h1>TeamPulse Rooms</h1><span id="status">Chưa kết nối</span></header>
+  <main>
+    <aside class="card"><h2>Room</h2><div id="rooms"></div></aside>
+    <section class="card">
+      <form id="login"><input id="name" placeholder="Tên của bạn" maxlength="40" autocomplete="off"><button>Kết nối</button></form>
+      <div id="log"></div>
+      <form id="say" hidden><select id="target"></select><input id="text" placeholder="Nhập tin rồi Enter" autocomplete="off"><button>Gửi</button></form>
+    </section>
+  </main>
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const ROOMS = ['general', 'dev', 'random'];
+    const joined = new Set();
+    let socket = null;
+    let myName = null;
+
+    function add(cls, parts) {
+      const div = document.createElement('div');
+      div.className = cls;
+      for (const [c, t] of parts) {
+        const span = document.createElement('span');
+        if (c) span.className = c;
+        span.textContent = t;          // textContent, không innerHTML
+        div.appendChild(span);
+      }
+      $('log').appendChild(div);
+      $('log').scrollTop = $('log').scrollHeight;
+    }
+    function renderRooms() {
+      $('rooms').replaceChildren(...ROOMS.map((r) => {
+        const row = document.createElement('div');
+        row.className = 'room';
+        const label = Object.assign(document.createElement('span'), { textContent: '#' + r });
+        const btn = Object.assign(document.createElement('button'), { textContent: joined.has(r) ? 'Rời' : 'Vào', disabled: !socket });
+        btn.onclick = () => toggle(r);
+        row.append(label, btn);
+        return row;
+      }));
+      $('target').replaceChildren(...[...joined].map((r) => Object.assign(document.createElement('option'), { value: r, textContent: '#' + r })));
+      $('say').hidden = joined.size === 0;
+    }
+    async function toggle(room) {
+      const event = joined.has(room) ? 'leave' : 'join';
+      try {
+        const res = await socket.timeout(3000).emitWithAck(event, room);
+        if (!res.ok) return add('err', [[null, '⚠ ' + res.error]]);
+        if (event === 'join') { joined.add(res.room); add('notice', [[null, `Đã vào #${res.room} (${res.members} người)`]]); }
+        else { joined.delete(res.room); add('notice', [[null, `Đã rời #${res.room}`]]); }
+        renderRooms();
+      } catch {
+        add('err', [[null, '⚠ Server không xác nhận sau 3 giây']]);
+      }
+    }
+
+    $('login').addEventListener('submit', (e) => {
+      e.preventDefault();
+      myName = $('name').value.trim();
+      socket = io({ auth: { name: myName } });
+      socket.on('connect', async () => {
+        $('status').textContent = `Bạn là ${myName} · id ${socket.id} · ${socket.io.engine.transport.name}`;
+        $('login').hidden = true;
+        // Socket.IO tự kết nối lại nhưng với socket MỚI: room cũ mất, phải vào lại
+        for (const r of [...joined]) await socket.emitWithAck('join', r);
+        renderRooms();
+      });
+      socket.io.engine.on('upgrade', (t) => { $('status').textContent = `Bạn là ${myName} · id ${socket.id} · ${t.name}`; });
+      socket.on('connect_error', (err) => { $('status').textContent = `Lỗi kết nối: ${err.message}`; socket.disconnect(); socket = null; $('login').hidden = false; renderRooms(); });
+      socket.on('disconnect', (reason) => { $('status').textContent = `Mất kết nối (${reason}) — Socket.IO đang tự kết nối lại…`; });
+      socket.on('joined', (m) => add('notice', [[null, `${m.name} vừa vào #${m.room}`]]));
+      socket.on('left', (m) => add('notice', [[null, `${m.name} đã rời #${m.room}`]]));
+      socket.on('chat', (m) => add(m.from === myName ? 'msg me' : 'msg', [['tag', '#' + m.room], ['from', m.from + ': '], [null, m.text]]));
+    });
+    $('say').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const text = $('text').value;
+      if (!text.trim()) return;
+      $('text').value = '';
+      const res = await socket.timeout(3000).emitWithAck('chat', { room: $('target').value, text }).catch(() => ({ ok: false, error: 'không có ack sau 3 giây' }));
+      if (!res.ok) add('err', [[null, '⚠ ' + res.error]]);
+    });
+    renderRooms();
+  </script>
+</body>
+</html>

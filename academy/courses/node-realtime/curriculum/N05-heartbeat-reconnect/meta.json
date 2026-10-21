@@ -1,0 +1,127 @@
+{
+  "id": "N05-heartbeat-reconnect",
+  "title": "Heartbeat ping/pong & tự kết nối lại",
+  "goal": "Phát hiện kết nối chết bằng ping/pong, tự kết nối lại có backoff + jitter, gửi bù tin lúc offline; qua hết 9 test.",
+  "duration_min": 140,
+  "concepts": [
+    "half-open-connection",
+    "heartbeat-ping-pong",
+    "reconnect-backoff",
+    "offline-queue"
+  ],
+  "entry": "heartbeat.js",
+  "checklist": [
+    "Kể được 3 cách một kết nối chết mà server không nhận được close",
+    "Giải thích vì sao send không lỗi chưa có nghĩa là bên kia đã nhận",
+    "Vẽ lại vòng isAlive → ping → pong → isAlive và nói thời gian phát hiện tối đa",
+    "Biết khi nào dùng terminate() thay vì close()",
+    "Giải thích exponential backoff và vì sao cần jitter (thundering herd)",
+    "Biết vì sao hàng đợi offline phải có giới hạn và vẫn có thể mất tin đang bay",
+    "Chạy server + client, tắt/bật server và thấy client tự nối lại, gửi bù tin",
+    "Qua hết test của bài"
+  ],
+  "interview_questions": [
+    "Client WebSocket mất mạng đột ngột thì server biết khi nào? Vì sao có thể rất lâu?",
+    "Half-open connection là gì? Kể vài nguyên nhân thực tế.",
+    "Bạn cài heartbeat cho server WebSocket thế nào? Chọn chu kỳ ping bao nhiêu và dựa vào đâu?",
+    "Ping/pong của giao thức WebSocket khác ping ở tầng ứng dụng {type: 'ping'} thế nào? Trình duyệt có gửi ping được không?",
+    "close() và terminate() khác nhau thế nào? Khi nào dùng cái nào?",
+    "Exponential backoff là gì? Vì sao phải thêm jitter?",
+    "Client mất kết nối trong lúc người dùng đang gửi tin: bạn xử lý thế nào để không mất tin?",
+    "TCP keepalive có thay được heartbeat ở tầng WebSocket không?"
+  ],
+  "tutor_notes": "Học viên đã có phòng chat (N04) và đã nghe 'close luôn đến' — bài này chỉ ra close có thể đến rất muộn (half-open). Dẫn bằng demo _socket.pause(): readyState vẫn OPEN, send không lỗi, không có pong. Lỗi hay gặp: (1) startHeartbeat: đặt isAlive trong sweep thay vì ở connection, kiểm tra !ws.isAlive (undefined cũng bị coi là chết) thay vì === false, dùng close() thay terminate(), quên onDead, không trả số đã terminate, stop() gỡ listener bằng arrow function mới (không gỡ được), quên clearInterval; (2) backoffDelay: quên Math.min với maxMs, quên Math.round, dùng random() * cap (full jitter) thay vì cap/2 + random()*cap/2, tính 2 * attempt thay vì 2 ** attempt; (3) createReconnectingClient: dùng lại object WebSocket cũ, attempt tăng trước khi tính delay (lần đầu phải là attempt 0), không reset attempt khi open, gửi bù khi readyState chưa OPEN, close() không clearTimeout nên vẫn nối lại, gọi onRetry khi chính mình close(), hàng đợi không giới hạn hoặc bỏ tin mới thay vì tin cũ, quên lắng nghe error (ECONNREFUSED làm sập). Khi chạy thật: EADDRINUSE → PORT=3006 npm start và PORT=3006 npm run client. MockTimers ExperimentalWarning là bình thường. Không viết hộ thân hàm.",
+  "tasks": [
+    {
+      "fn": "startHeartbeat",
+      "signature": "startHeartbeat(wss, { intervalMs, onDead }) → { sweep, stop }",
+      "summary": "Ping định kỳ, không có pong ở lượt sau → terminate",
+      "example": "2 kết nối, 1 không trả pong → sweep() lượt 2 trả 1",
+      "test_prefix": "startHeartbeat"
+    },
+    {
+      "fn": "backoffDelay",
+      "signature": "backoffDelay(attempt, { baseMs, maxMs, random })",
+      "summary": "min(maxMs, baseMs·2^attempt), jitter trong [cap/2, cap]",
+      "example": "backoffDelay(3, { random: () => 1 }) → 4000",
+      "test_prefix": "backoffDelay"
+    },
+    {
+      "fn": "createReconnectingClient",
+      "signature": "createReconnectingClient(url, options) → { send, close, readyState, queued }",
+      "summary": "Tự nối lại theo backoff, xếp hàng tin lúc offline",
+      "example": "server từ chối 3 lần → onRetry delay 10, 20, 40 rồi mở",
+      "test_prefix": "createReconnectingClient"
+    }
+  ],
+  "brief": {
+    "context": "TeamPulse đã có phòng chat realtime (N04). Người dùng thật dùng Wi-Fi văn phòng, 4G, laptop gập máy, và đi qua proxy công ty.",
+    "problem": "Kết nối có thể chết mà không gửi frame close: server giữ tên 'ma' trong danh sách online hàng giờ (Linux chỉ thăm dò TCP keepalive sau 2 giờ), còn client mất mạng thì đứng im tới khi người dùng tải lại trang. Cần phát hiện kết nối chết trong vài chục giây, và client tự nối lại mà không làm server vừa khởi động lại bị cả nghìn kết nối ập vào cùng lúc.",
+    "requirements": [
+      {
+        "task": "startHeartbeat",
+        "purpose": "Server tự dọn kết nối chết trong tối đa 2 chu kỳ ping."
+      },
+      {
+        "task": "backoffDelay",
+        "purpose": "Lịch chờ kết nối lại tăng dần, trải đều giữa các client."
+      },
+      {
+        "task": "createReconnectingClient",
+        "purpose": "Client tự nối lại và gửi bù tin gửi lúc offline."
+      }
+    ],
+    "deliverable": "heartbeat.js qua 9/9 test; chạy server + client, treo client thì server terminate nó sau 1–2 chu kỳ, tắt server thì client thử lại theo backoff và gửi bù tin khi server lên lại.",
+    "constraints": [
+      "Kết nối chết dùng terminate(), không dùng close().",
+      "Chờ kết nối lại có trần và có jitter.",
+      "Hàng đợi offline có giới hạn, bỏ tin cũ nhất.",
+      "close() chủ động thì không kết nối lại."
+    ],
+    "product_nodes": [
+      "ws-gateway",
+      "heartbeat"
+    ],
+    "workflow": {
+      "flow": "parallel",
+      "inputs": [
+        {
+          "label": "Kết nối WebSocket đang mở",
+          "detail": "Có thể đã chết im lặng"
+        },
+        {
+          "label": "Sự kiện close phía client",
+          "detail": "Server tắt, mạng rớt"
+        }
+      ],
+      "steps": [
+        {
+          "task": "startHeartbeat",
+          "label": "Ping, dọn kết nối chết"
+        },
+        {
+          "task": "backoffDelay",
+          "label": "Tính thời gian chờ"
+        },
+        {
+          "task": "createReconnectingClient",
+          "label": "Nối lại, gửi bù"
+        }
+      ],
+      "outputs": [
+        {
+          "label": "Danh sách kết nối sạch",
+          "detail": "Không còn kết nối 'ma'"
+        },
+        {
+          "label": "Client tự hồi phục",
+          "detail": "Thử lại 0,5 s, 1 s, 2 s..."
+        },
+        {
+          "label": "Tin lúc offline được gửi bù",
+          "detail": "Đúng thứ tự, có giới hạn"
+        }
+      ]
+    }
+  }
+}

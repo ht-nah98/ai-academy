@@ -1,0 +1,128 @@
+{
+  "id": "N06-socketio-rooms-ack",
+  "title": "Socket.IO: room, ack, so với ws thuần",
+  "goal": "Viết lại phòng chat bằng Socket.IO: middleware, room, ack có timeout và gửi lại; đo chi phí so với ws; qua hết 10 test.",
+  "duration_min": 150,
+  "concepts": [
+    "socketio-events",
+    "socketio-rooms-ack",
+    "ack-retry-idempotency",
+    "ws-vs-socketio"
+  ],
+  "entry": "rooms.js",
+  "checklist": [
+    "Phân biệt socket.emit, socket.to(room).emit, io.to(room).emit, io.emit",
+    "Giải thích ack giải quyết tin 'đang bay' bị mất ở N05 thế nào",
+    "Biết vì sao gửi lại theo ack có thể tạo bản trùng và cách chống (id phía client)",
+    "Biết vì sao phải join lại room sau khi Socket.IO tự kết nối lại",
+    "Dùng disconnecting (không phải disconnect) để báo rời room",
+    "Nói được bằng số Socket.IO tốn thêm gì so với ws và vì sao client ws không vào được server Socket.IO",
+    "Mở DevTools thấy request polling, 101 websocket và frame 2/3/42/43",
+    "Qua hết test của bài"
+  ],
+  "interview_questions": [
+    "Socket.IO có phải là WebSocket không? Một client WebSocket chuẩn có kết nối được tới server Socket.IO không?",
+    "Room trong Socket.IO là gì? socket.to(room).emit và io.to(room).emit khác nhau thế nào?",
+    "Acknowledgement (ack) là gì? Bạn đặt timeout và gửi lại thế nào, và rủi ro của việc gửi lại?",
+    "Client Socket.IO tự kết nối lại thì room và trạng thái của nó ra sao?",
+    "Middleware io.use dùng để làm gì? Lỗi trong middleware đến client dưới dạng nào?",
+    "Socket.IO tốn thêm chi phí gì so với ws thuần (bắt tay, mỗi tin, phụ thuộc)?",
+    "Khi nào bạn chọn ws thuần, khi nào chọn Socket.IO?",
+    "Namespace và room khác nhau thế nào?"
+  ],
+  "tutor_notes": "Học viên đã tự làm giao thức {type}, broadcast, heartbeat, reconnect bằng ws (N03–N05); bài này cho thấy Socket.IO làm sẵn những thứ đó nhưng là giao thức riêng. Nhấn mạnh ack nối tiếp vấn đề tin 'đang bay' bị mất ở cuối N05. Lỗi hay gặp: (1) normalizeRoom: kiểm tra độ dài trước khi trim, quên toLowerCase, regex thiếu ^ $, không trả null với non-string (gọi .trim trên số); (2) createRoomServer: new Server() không truyền http server, middleware quên gọi next() (client treo) hoặc next('chuỗi') thay vì next(new Error(...)), gọi ack khi client không truyền callback (TypeError làm sập cả tiến trình), dùng io.to khi phải là socket.to (người vào nhận joined của chính mình), members tính trước khi join, gửi joined lần nữa khi join lại, gửi left ở 'disconnect' (rooms đã rỗng) thay vì 'disconnecting', quên bỏ room trùng socket.id, id không tăng toàn server; (3) sendWithRetry: dùng socket.emit thường không có timeout (chờ mãi), bắt lỗi nhưng không thử lại, đếm attempts sai (retries=2 nghĩa là 3 lần gửi), reject với message khác 'ack_timeout'. Khi chạy thật: client trình duyệt lấy /socket.io/socket.io.js do server tự phục vụ; EADDRINUSE → PORT=3007 npm start. Không viết hộ thân hàm.",
+  "tasks": [
+    {
+      "fn": "normalizeRoom",
+      "signature": "normalizeRoom(room) → string | null",
+      "summary": "Trim, chữ thường, chỉ a-z 0-9 -, 1–30 ký tự",
+      "example": "'  Dev ' → 'dev';  'phòng 1' → null",
+      "test_prefix": "normalizeRoom"
+    },
+    {
+      "fn": "createRoomServer",
+      "signature": "createRoomServer() → { server, io }",
+      "summary": "Middleware tên, join/leave/chat có ack, left khi ngắt",
+      "example": "join ' DEV ' → ack {ok: true, room: 'dev', members: 2}",
+      "test_prefix": "createRoomServer"
+    },
+    {
+      "fn": "sendWithRetry",
+      "signature": "sendWithRetry(socket, event, payload, { timeoutMs, retries })",
+      "summary": "Chờ ack có hạn, gửi lại; hết lượt → ack_timeout",
+      "example": "server bỏ qua 2 lần → { response, attempts: 3 }",
+      "test_prefix": "sendWithRetry"
+    }
+  ],
+  "brief": {
+    "context": "TeamPulse có chat một phòng bằng ws thuần (N04) và heartbeat + tự kết nối lại tự viết (N05). Nhiều dự án Node trong công ty dùng Socket.IO.",
+    "problem": "Đội cần nhiều phòng (#general, #dev, #ops) và cần biết chắc tin đã tới server: ở N05 tin gửi đúng lúc mạng rớt bị mất mà client không hay. Trước khi chuyển sang Socket.IO, đội cũng cần số liệu: Socket.IO tốn thêm bao nhiêu và có tương thích với client WebSocket chuẩn không.",
+    "requirements": [
+      {
+        "task": "normalizeRoom",
+        "purpose": "Tên room thống nhất, chặn tên lạ trước khi join."
+      },
+      {
+        "task": "createRoomServer",
+        "purpose": "Chat nhiều room, mọi thao tác có ack trả kết quả."
+      },
+      {
+        "task": "sendWithRetry",
+        "purpose": "Client biết chắc tin tới nơi, hoặc báo lỗi rõ."
+      }
+    ],
+    "deliverable": "rooms.js qua 10/10 test; hai tab chat theo room; bảng so sánh byte/request ws vs Socket.IO từ npm run compare.",
+    "constraints": [
+      "Mọi sự kiện client gửi đều trả ack {ok, ...}.",
+      "Client không gửi ack thì server không được sập.",
+      "Báo rời room ở disconnecting, không ở disconnect.",
+      "Gửi lại có giới hạn, hết lượt báo ack_timeout."
+    ],
+    "product_nodes": [
+      "ws-gateway",
+      "chat-protocol",
+      "rooms"
+    ],
+    "workflow": {
+      "flow": "chain",
+      "inputs": [
+        {
+          "label": "Kết nối có auth.name",
+          "detail": "io(url, { auth: { name } })"
+        },
+        {
+          "label": "Sự kiện join, leave, chat",
+          "detail": "Kèm callback ack"
+        }
+      ],
+      "steps": [
+        {
+          "task": "normalizeRoom",
+          "label": "Chuẩn hoá tên room"
+        },
+        {
+          "task": "createRoomServer",
+          "label": "Room, chat, ack"
+        },
+        {
+          "task": "sendWithRetry",
+          "label": "Chờ ack, gửi lại"
+        }
+      ],
+      "outputs": [
+        {
+          "label": "Tin chat theo room",
+          "detail": "id, room, from, text, ts"
+        },
+        {
+          "label": "Ack cho từng thao tác",
+          "detail": "{ok: true} hoặc mã lỗi"
+        },
+        {
+          "label": "Số liệu ws vs Socket.IO",
+          "detail": "Byte bắt tay, byte mỗi tin"
+        }
+      ]
+    }
+  }
+}

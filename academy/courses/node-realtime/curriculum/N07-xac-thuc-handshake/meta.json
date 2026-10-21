@@ -1,0 +1,143 @@
+{
+  "id": "N07-xac-thuc-handshake",
+  "title": "Xác thực token khi handshake",
+  "goal": "Ký và kiểm token HMAC, từ chối 401/403 trước khi nâng cấp, chặn Origin lạ, phân quyền từng tin, xử lý token hết hạn; qua hết 9 test.",
+  "duration_min": 150,
+  "concepts": [
+    "hmac-token",
+    "ws-auth-token",
+    "origin-cswsh",
+    "per-message-authz"
+  ],
+  "entry": "auth.js",
+  "checklist": [
+    "Giải thích vì sao xác thực phải xong trước 101",
+    "So sánh 4 nơi đặt token (header, cookie, query, subprotocol) và rủi ro của query string",
+    "Giải thích CSWSH và vì sao kiểm tra Origin chặn được",
+    "Biết token base64url đọc được bởi bất kỳ ai; chữ ký chỉ chống sửa",
+    "Giải thích vì sao so chữ ký bằng timingSafeEqual, và phải kiểm chữ ký trước khi đọc nội dung",
+    "Biết vì sao vẫn phải phân quyền từng tin sau khi đã xác thực",
+    "Chạy npm run demo, đọc được từng dòng 401/403/forbidden/4001",
+    "Qua hết test của bài"
+  ],
+  "interview_questions": [
+    "Bạn xác thực một kết nối WebSocket thế nào? Kiểm tra ở bước nào?",
+    "Trình duyệt không cho đặt header khi mở WebSocket. Vậy bạn gửi token bằng cách nào, mỗi cách có rủi ro gì?",
+    "Cross-Site WebSocket Hijacking là gì? Vì sao CORS không bảo vệ WebSocket?",
+    "Token HMAC/JWT hoạt động thế nào? Nội dung token có bí mật không?",
+    "Vì sao so sánh chữ ký nên dùng timingSafeEqual thay vì ===?",
+    "Token hết hạn khi kết nối WebSocket vẫn đang mở thì xử lý thế nào?",
+    "Đã xác thực ở handshake rồi, còn cần kiểm tra quyền ở từng tin không? Vì sao?",
+    "Mã đóng 1006, 1008 và 4001 khác nhau thế nào?"
+  ],
+  "tutor_notes": "Học viên đã có server ws (N03–N05) và middleware io.use của Socket.IO (N06). Nhấn mạnh: sau 101 không còn HTTP, nên xác thực phải xong trước; base64url không phải mã hoá bí mật; chữ ký chỉ chống sửa. Lỗi hay gặp: (1) signToken: sửa thẳng payload truyền vào, exp tính bằng mili giây, ký trên JSON gốc thay vì chuỗi body base64url, dùng digest('hex'); (2) verifyToken: JSON.parse trước khi kiểm chữ ký, timingSafeEqual ném lỗi khi khác độ dài (phải kiểm độ dài trước), không bắt lỗi parse, coi mảng là object, so now() với exp không nhân 1000, dùng > thay vì >= (đúng bằng exp là hết hạn); (3) authenticateUpgrade: đọc req.headers.Authorization (Node đưa về chữ thường), split cookie theo '=' làm mất phần sau dấu '=' của giá trị, đọc token từ query, kiểm Origin sau token (phải trả 403 kể cả khi token đúng), chặn cả request không có Origin; (4) createAuthServer: dùng WebSocketServer({server}) nên ws tự nâng cấp trước khi kiểm tra, ghi response thiếu \\r\\n\\r\\n, write rồi destroy() ngay (client không nhận được 401) hoặc không đóng socket, lấy from từ tin client thay vì ws.user.sub, chỉ kiểm quyền lúc handshake, quên kiểm hết hạn mỗi tin, đóng code 1000 thay vì 4001. Khi chạy thật: EADDRINUSE → PORT=3008 npm start. Không viết hộ thân hàm.",
+  "tasks": [
+    {
+      "fn": "signToken",
+      "signature": "signToken(payload, secret, { ttlSec, now })",
+      "summary": "base64url(JSON + exp) + '.' + HMAC-SHA256",
+      "example": "{ sub: 'an', rooms: ['dev'] } → 'eyJzdWIi...J9.Hxy...'",
+      "test_prefix": "signToken"
+    },
+    {
+      "fn": "verifyToken",
+      "signature": "verifyToken(token, secret, { now })",
+      "summary": "{ok, user} hoặc malformed / bad_signature / expired",
+      "example": "body sửa rooms, giữ chữ ký → bad_signature",
+      "test_prefix": "verifyToken"
+    },
+    {
+      "fn": "authenticateUpgrade",
+      "signature": "authenticateUpgrade(req, { secret, allowedOrigins, now })",
+      "summary": "Origin lạ → 403; token Bearer/cookie sai → 401",
+      "example": "cookie 'a=1; tp_token=...' → { ok: true, user }",
+      "test_prefix": "authenticateUpgrade"
+    },
+    {
+      "fn": "createAuthServer",
+      "signature": "createAuthServer({ secret, allowedOrigins, now }) → http.Server",
+      "summary": "Từ chối trước 101, quyền theo room, hết hạn → 4001",
+      "example": "Binh gửi vào dev → {type: 'error', error: 'forbidden'}",
+      "test_prefix": "createAuthServer"
+    }
+  ],
+  "brief": {
+    "context": "TeamPulse có chat nhiều room (N06). Hiện ai mở được kết nối cũng chat được, tên do client tự khai.",
+    "problem": "TeamPulse sắp mở cho cả công ty: kênh #dev chỉ dành cho kỹ sư, tên người gửi phải là thật, và một trang web lạ không được dùng cookie đăng nhập của nhân viên để đọc chat (CSWSH). Token đăng nhập có hạn dùng, kể cả khi kết nối đang mở. Không thêm thư viện xác thực: dùng node:crypto.",
+    "requirements": [
+      {
+        "task": "signToken",
+        "purpose": "Cấp token có hạn dùng, không sửa được nội dung."
+      },
+      {
+        "task": "verifyToken",
+        "purpose": "Kiểm token an toàn, mã lỗi rõ, không ném lỗi."
+      },
+      {
+        "task": "authenticateUpgrade",
+        "purpose": "Quyết định 401/403 hay cho qua, từ header request."
+      },
+      {
+        "task": "createAuthServer",
+        "purpose": "Chặn trước 101, phân quyền từng tin, xử lý hết hạn."
+      }
+    ],
+    "deliverable": "auth.js qua 9/9 test; npm run demo cho thấy 401 khi thiếu/sai token, 403 khi Origin lạ, forbidden khi sai room, đóng 4001 khi token hết hạn.",
+    "constraints": [
+      "Từ chối bằng HTTP 401/403, không bao giờ trả 101.",
+      "Không đọc token từ query string.",
+      "So chữ ký bằng timingSafeEqual.",
+      "Người gửi lấy từ token, không từ tin client."
+    ],
+    "product_nodes": [
+      "auth",
+      "ws-gateway",
+      "rooms"
+    ],
+    "workflow": {
+      "flow": "chain",
+      "inputs": [
+        {
+          "label": "Request nâng cấp WebSocket",
+          "detail": "Origin, Authorization hoặc Cookie"
+        },
+        {
+          "label": "Tin chat theo room",
+          "detail": "{type, room, text}"
+        }
+      ],
+      "steps": [
+        {
+          "task": "signToken",
+          "label": "Ký token có hạn"
+        },
+        {
+          "task": "verifyToken",
+          "label": "Kiểm chữ ký, hạn dùng"
+        },
+        {
+          "task": "authenticateUpgrade",
+          "label": "Kiểm Origin, tìm token"
+        },
+        {
+          "task": "createAuthServer",
+          "label": "Chặn trước 101, phân quyền"
+        }
+      ],
+      "outputs": [
+        {
+          "label": "101 hoặc 401/403",
+          "detail": "Kèm mã lỗi JSON"
+        },
+        {
+          "label": "Chat đúng người có quyền",
+          "detail": "from lấy từ token"
+        },
+        {
+          "label": "Đóng 4001 khi hết hạn",
+          "detail": "Client biết xin token mới"
+        }
+      ]
+    }
+  }
+}

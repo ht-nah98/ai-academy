@@ -1,0 +1,13 @@
+{
+  "name": "teampulse-n09",
+  "private": true,
+  "type": "module",
+  "description": "TeamPulse — bài N09: test & debug ứng dụng realtime",
+  "scripts": {
+    "start": "node chat-server.js",
+    "cli": "node cli.js",
+    "load": "node load.js",
+    "test:mine": "node --test chat.test.js",
+    "test": "node --test \"../../curriculum/N09-test-debug-realtime/tests/*.test.js\""
+  }
+}

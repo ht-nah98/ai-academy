@@ -1,0 +1,11 @@
+{
+  "name": "teampulse-n07",
+  "private": true,
+  "type": "module",
+  "description": "TeamPulse — bài N07: xác thực token khi handshake WebSocket",
+  "scripts": {
+    "start": "node auth.js",
+    "demo": "node demo.js",
+    "test": "node --test \"../../curriculum/N07-xac-thuc-handshake/tests/*.test.js\""
+  }
+}

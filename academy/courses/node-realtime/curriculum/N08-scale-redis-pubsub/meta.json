@@ -1,0 +1,123 @@
+{
+  "id": "N08-scale-redis-pubsub",
+  "title": "Nhiều server với Redis pub/sub",
+  "goal": "Nối nhiều instance chat bằng pub/sub: broker trong bộ nhớ để test offline, Redis thật để chạy nhiều tiến trình; qua hết 8 test.",
+  "duration_min": 150,
+  "concepts": [
+    "horizontal-scaling",
+    "pubsub-broker",
+    "redis-pubsub-scaling",
+    "fanout-cost"
+  ],
+  "entry": "scale.js",
+  "checklist": [
+    "Giải thích vì sao broadcast trong một tiến trình không tới client ở instance khác",
+    "Vẽ lại đường đi của một tin: client → node → Redis → mọi node → client",
+    "Biết vì sao node gửi cũng nhận tin qua kênh thay vì gửi thẳng",
+    "Giải thích subscriber mode và vì sao cần 2 kết nối Redis",
+    "Biết Redis pub/sub không lưu tin và hệ quả khi node khởi động lại",
+    "Tính được chi phí fan-out: Redis giao/giây và ws.send/giây theo số node",
+    "Biết khi nào cần sticky session và Socket.IO redis-adapter làm gì",
+    "Qua hết test của bài"
+  ],
+  "interview_questions": [
+    "Chạy 2 instance server WebSocket sau load balancer thì người ở hai instance có thấy tin của nhau không? Giải quyết thế nào?",
+    "Redis pub/sub hoạt động thế nào? Vì sao cần hai kết nối Redis?",
+    "Redis pub/sub có đảm bảo giao tin không? Nếu cần lịch sử hoặc giao chắc chắn thì dùng gì?",
+    "Sticky session là gì? Ứng dụng WebSocket có cần không? Socket.IO thì sao?",
+    "Chi phí fan-out của một tin chat khi có N node và M client mỗi node là bao nhiêu?",
+    "Bạn test code dùng Redis thế nào mà không cần Redis chạy trong CI?",
+    "Làm sao biết 'ai đang online' trên toàn hệ thống khi mỗi node chỉ biết client của nó?",
+    "Socket.IO giải bài toán nhiều server bằng cách nào?"
+  ],
+  "tutor_notes": "Học viên đã có chat (N04), room (N06), auth (N07). Bài này chỉ dạy chiều 'tin đi qua nhiều tiến trình'; tên lấy từ ?name= cho gọn (production dùng token của N07). Nhấn mạnh interface broker: chat node không biết broker là bộ nhớ hay Redis → test offline. Lỗi hay gặp: (1) createMemoryBroker: emit đồng bộ (test bắt lỗi), không kiểm tra kiểu chuỗi, đếm subscriber sau khi emit, unsubscribe gỡ bằng handler gốc (gỡ nhầm khi subscribe 2 lần) hoặc gỡ mọi listener (removeAllListeners), quên trả hàm unsubscribe; (2) createRedisBroker: publish bằng sub (subscriber mode lỗi), quên await sub.subscribe, unsubscribe không truyền listener (gỡ hết); (3) createChatNode: không async/không await subscribe, gửi thẳng cho client local và publish (người cùng node nhận 2 lần), lọc origin === nodeId (người cùng node không nhận), publish object thay vì JSON string, JSON.parse tin kênh không try (một tin hỏng làm sập mọi node), không đếm stats đúng chỗ, quên unsubscribe khi server close. Khi chạy thật: Docker không có thì vẫn học được bằng test và npm start (memory broker); Redis lỗi ECONNREFUSED → chưa chạy docker run. Không viết hộ thân hàm.",
+  "tasks": [
+    {
+      "fn": "createMemoryBroker",
+      "signature": "createMemoryBroker() → { publish, subscribe }",
+      "summary": "Pub/sub trong bộ nhớ: chuỗi, bất đồng bộ, trả số subscriber",
+      "example": "2 handler trên kênh → publish resolve 2",
+      "test_prefix": "createMemoryBroker"
+    },
+    {
+      "fn": "createRedisBroker",
+      "signature": "createRedisBroker({ pub, sub }) → { publish, subscribe }",
+      "summary": "Cùng interface, publish qua pub, subscribe qua sub",
+      "example": "unsubscribe() → sub.unsubscribe(channel, listener)",
+      "test_prefix": "createRedisBroker"
+    },
+    {
+      "fn": "createChatNode",
+      "signature": "async createChatNode({ broker, nodeId }) → http.Server",
+      "summary": "Tin client → publish; tin kênh → mọi client local",
+      "example": "An ở A gửi → Binh ở B nhận {..., origin: 'A', via: 'B'}",
+      "test_prefix": "createChatNode"
+    }
+  ],
+  "brief": {
+    "context": "TeamPulse có chat, room và xác thực trên một tiến trình Node. Lượng người dùng tăng; đội vận hành muốn chạy nhiều instance sau load balancer để chịu tải và cập nhật không gián đoạn.",
+    "problem": "Chạy 2 instance là người ở instance A không thấy tin của người ở instance B: mỗi instance chỉ giữ kết nối của nó. Cần một kênh chung giữa các instance (Redis pub/sub), nhưng test và máy dev không phải lúc nào cũng có Redis, nên code phải chạy được với broker trong bộ nhớ cùng interface.",
+    "requirements": [
+      {
+        "task": "createMemoryBroker",
+        "purpose": "Broker giả cho test, cùng hành vi quan trọng với Redis."
+      },
+      {
+        "task": "createRedisBroker",
+        "purpose": "Broker thật cho production, nhiều tiến trình/máy."
+      },
+      {
+        "task": "createChatNode",
+        "purpose": "Một instance chat giao tin qua broker cho client local."
+      }
+    ],
+    "deliverable": "scale.js qua 8/8 test không cần Redis; với Redis, hai tiến trình ở hai cổng thấy tin của nhau; số liệu fan-out từ npm run bench.",
+    "constraints": [
+      "Mọi tin đi qua broker, kể cả cho client cùng node.",
+      "Broker chỉ chở chuỗi JSON.",
+      "Tin hỏng trên kênh không làm sập node.",
+      "Test không được cần Redis."
+    ],
+    "product_nodes": [
+      "ws-gateway",
+      "scaling"
+    ],
+    "workflow": {
+      "flow": "chain",
+      "inputs": [
+        {
+          "label": "Tin chat từ client",
+          "detail": "Ở bất kỳ instance nào"
+        },
+        {
+          "label": "Redis hoặc broker bộ nhớ",
+          "detail": "Cùng interface publish/subscribe"
+        }
+      ],
+      "steps": [
+        {
+          "task": "createMemoryBroker",
+          "label": "Broker trong bộ nhớ"
+        },
+        {
+          "task": "createRedisBroker",
+          "label": "Broker Redis thật"
+        },
+        {
+          "task": "createChatNode",
+          "label": "Publish, nhận, giao local"
+        }
+      ],
+      "outputs": [
+        {
+          "label": "Tin tới client mọi instance",
+          "detail": "origin, via cho biết đường đi"
+        },
+        {
+          "label": "Bộ đếm fan-out",
+          "detail": "published, received, sent"
+        }
+      ]
+    }
+  }
+}

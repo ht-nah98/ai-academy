@@ -1,0 +1,11 @@
+{
+  "name": "teampulse-n06",
+  "private": true,
+  "type": "module",
+  "description": "TeamPulse — bài N06: Socket.IO, room, ack, so với ws thuần",
+  "scripts": {
+    "start": "node rooms.js",
+    "compare": "node compare.js",
+    "test": "node --test \"../../curriculum/N06-socketio-rooms-ack/tests/*.test.js\""
+  }
+}

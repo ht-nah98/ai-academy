@@ -48,7 +48,17 @@
       },
       {
         "q": "Mất mạng thì sao? Chạy nhiều server thì sao?",
-        "a": "Heartbeat, tự kết nối lại, xác thực token, Redis pub/sub",
+        "a": "Heartbeat 5 s phát hiện client treo sau 6,3 s; client tự nối lại theo backoff; 2 tiến trình thấy tin nhau qua Redis",
+        "project": "P2"
+      },
+      {
+        "q": "Socket.IO có phải WebSocket không?",
+        "a": "Không: giao thức riêng; 10 tin tốn 2.995 byte (mặc định, 4 request) so với 1.833 byte của ws",
+        "project": "P2"
+      },
+      {
+        "q": "Chặn người lạ kết nối WebSocket thế nào?",
+        "a": "Kiểm token HMAC + Origin trong upgrade: thiếu token → 401, trang lạ → 403, trước khi có 101",
         "project": "P2"
       }
     ],
@@ -57,7 +67,7 @@
       "outcomes": [
         {
           "title": "Một project chạy được",
-          "detail": "TeamPulse: REST API tin nhắn + WebSocket gateway + giao diện chat web, có test tự động bằng node --test."
+          "detail": "TeamPulse: REST API tin nhắn + WebSocket gateway + giao diện chat web, heartbeat, room Socket.IO, xác thực token, nhiều instance qua Redis; có test tự động bằng node --test."
         },
         {
           "title": "Nền Node.js vững",
@@ -68,11 +78,14 @@
           "detail": "Polling vs push đo bằng số, handshake 101 tự tính, sự kiện open/message/close/error, frame text/binary, readyState, broadcast."
         },
         {
+          "title": "Realtime cho production",
+          "detail": "Kết nối chết im lặng, reconnect có jitter, ack, xác thực trước handshake, Redis pub/sub, đo p99 — kèm số liệu đo thật."
+        },
+        {
           "title": "Sẵn sàng đi làm và phỏng vấn",
-          "detail": "32 câu hỏi phỏng vấn Node intern đã luyện; đọc được code WebSocket của công ty và debug bằng DevTools."
+          "detail": "72 câu hỏi phỏng vấn Node/realtime đã luyện; đọc được code WebSocket/Socket.IO của công ty, tự viết test và debug bằng DevTools, log."
         }
-      ],
-      "note": "P0–P1 đã có bài; P2 (heartbeat, Socket.IO, auth, Redis, test) đang soạn."
+      ]
     }
   },
   "concept_groups": [
@@ -91,6 +104,14 @@
     {
       "id": "ops",
       "title": "Vận hành & mở rộng"
+    },
+    {
+      "id": "security",
+      "title": "Bảo mật realtime"
+    },
+    {
+      "id": "quality",
+      "title": "Test & debug"
     }
   ],
   "concepts": [
@@ -207,7 +228,7 @@
     {
       "id": "ws-auth-token",
       "title": "Xác thực token khi handshake",
-      "group": "ops"
+      "group": "security"
     },
     {
       "id": "redis-pubsub-scaling",
@@ -217,7 +238,77 @@
     {
       "id": "ws-testing-debugging",
       "title": "Test & debug realtime",
+      "group": "quality"
+    },
+    {
+      "id": "half-open-connection",
+      "title": "Kết nối chết im lặng (half-open)",
       "group": "ops"
+    },
+    {
+      "id": "offline-queue",
+      "title": "Hàng đợi tin lúc offline",
+      "group": "ops"
+    },
+    {
+      "id": "socketio-events",
+      "title": "Socket.IO: sự kiện, middleware",
+      "group": "ops"
+    },
+    {
+      "id": "ack-retry-idempotency",
+      "title": "Ack, gửi lại, chống trùng",
+      "group": "ops"
+    },
+    {
+      "id": "ws-vs-socketio",
+      "title": "So sánh ws thuần và Socket.IO",
+      "group": "ops"
+    },
+    {
+      "id": "hmac-token",
+      "title": "Token ký HMAC (như JWT)",
+      "group": "security"
+    },
+    {
+      "id": "origin-cswsh",
+      "title": "Kiểm tra Origin, chống CSWSH",
+      "group": "security"
+    },
+    {
+      "id": "per-message-authz",
+      "title": "Phân quyền theo từng tin",
+      "group": "security"
+    },
+    {
+      "id": "horizontal-scaling",
+      "title": "Nhiều instance sau load balancer",
+      "group": "ops"
+    },
+    {
+      "id": "pubsub-broker",
+      "title": "Interface broker pub/sub",
+      "group": "ops"
+    },
+    {
+      "id": "fanout-cost",
+      "title": "Chi phí fan-out",
+      "group": "ops"
+    },
+    {
+      "id": "deterministic-waits",
+      "title": "Chờ sự kiện thay cho sleep",
+      "group": "quality"
+    },
+    {
+      "id": "load-test-percentiles",
+      "title": "Đo tải, p50/p95/p99",
+      "group": "quality"
+    },
+    {
+      "id": "realtime-common-bugs",
+      "title": "Lỗi realtime hay gặp",
+      "group": "quality"
     }
   ],
   "concept_edges": [
@@ -332,6 +423,106 @@
     [
       "ws-events",
       "ws-testing-debugging"
+    ],
+    [
+      "ws-events",
+      "half-open-connection"
+    ],
+    [
+      "half-open-connection",
+      "heartbeat-ping-pong"
+    ],
+    [
+      "reconnect-backoff",
+      "offline-queue"
+    ],
+    [
+      "ready-state",
+      "offline-queue"
+    ],
+    [
+      "message-protocol",
+      "socketio-events"
+    ],
+    [
+      "socketio-events",
+      "socketio-rooms-ack"
+    ],
+    [
+      "offline-queue",
+      "ack-retry-idempotency"
+    ],
+    [
+      "socketio-rooms-ack",
+      "ack-retry-idempotency"
+    ],
+    [
+      "socketio-events",
+      "ws-vs-socketio"
+    ],
+    [
+      "ws-frames",
+      "ws-vs-socketio"
+    ],
+    [
+      "hmac-token",
+      "ws-auth-token"
+    ],
+    [
+      "ws-auth-token",
+      "origin-cswsh"
+    ],
+    [
+      "ws-auth-token",
+      "per-message-authz"
+    ],
+    [
+      "socketio-rooms-ack",
+      "per-message-authz"
+    ],
+    [
+      "broadcast",
+      "horizontal-scaling"
+    ],
+    [
+      "horizontal-scaling",
+      "pubsub-broker"
+    ],
+    [
+      "event-emitter",
+      "pubsub-broker"
+    ],
+    [
+      "pubsub-broker",
+      "redis-pubsub-scaling"
+    ],
+    [
+      "redis-pubsub-scaling",
+      "fanout-cost"
+    ],
+    [
+      "promise-async",
+      "deterministic-waits"
+    ],
+    [
+      "deterministic-waits",
+      "ws-testing-debugging"
+    ],
+    [
+      "ws-testing-debugging",
+      "load-test-percentiles"
+    ],
+    [
+      "js-array-methods",
+      "load-test-percentiles"
+    ],
+    [
+      "fanout-cost",
+      "load-test-percentiles"
+    ],
+    [
+      "ws-testing-debugging",
+      "realtime-common-bugs"
     ]
   ],
   "product_map": {
@@ -379,6 +570,14 @@
       {
         "id": "scaling",
         "title": "Nhiều server, Redis pub/sub"
+      },
+      {
+        "id": "rooms",
+        "title": "Room & ack (Socket.IO)"
+      },
+      {
+        "id": "testing",
+        "title": "Test & đo tải"
       }
     ],
     "edges": [
@@ -429,6 +628,18 @@
       [
         "ws-gateway",
         "scaling"
+      ],
+      [
+        "chat-protocol",
+        "rooms"
+      ],
+      [
+        "auth",
+        "rooms"
+      ],
+      [
+        "ws-gateway",
+        "testing"
       ]
     ]
   },
@@ -508,66 +719,52 @@
       "title": "Realtime cho production",
       "track": "Vận hành",
       "brief": {
-        "goal": "Giữ kết nối sống qua mạng chập chờn, xác thực người dùng và chạy được trên nhiều server.",
-        "deliverable": "TeamPulse có heartbeat, tự kết nối lại, xác thực token, room, và nhiều instance đồng bộ qua Redis.",
-        "promise": "Sau phần này, bạn đọc và sửa được code realtime ở công ty: biết vì sao kết nối chết im lặng, khi nào dùng Socket.IO, và làm sao 2 server cùng phát một tin.",
+        "goal": "Giữ kết nối sống qua mạng chập chờn, xác thực người dùng, chạy được trên nhiều server, và tự chứng minh bằng test.",
+        "deliverable": "TeamPulse có heartbeat + tự kết nối lại, bản Socket.IO có room và ack, xác thực token trước handshake, nhiều instance đồng bộ qua Redis, và bộ test/đo tải tự viết.",
+        "promise": "Sau 5 bài, bạn đọc và sửa được code realtime ở công ty: phát hiện kết nối chết trong vài giây thay vì 2 giờ, nói bằng số Socket.IO tốn thêm gì so với ws, chặn kết nối không có token trước khi nâng cấp, cho 2 server cùng phát một tin qua Redis, và viết test bắt được bug thật.",
         "can_do": [
-          "Phát hiện kết nối chết bằng ping/pong và tự kết nối lại có backoff",
-          "So sánh ws thuần với Socket.IO (room, ack, fallback)",
-          "Xác thực token ngay ở bước handshake",
-          "Mở rộng ra nhiều server bằng Redis pub/sub; test và debug realtime"
+          "Phát hiện kết nối chết bằng ping/pong, tự kết nối lại có backoff + jitter, gửi bù tin lúc offline",
+          "Dùng Socket.IO (room, ack có timeout và gửi lại) và giải thích khi nào chọn ws thuần",
+          "Xác thực token HMAC ngay ở handshake, kiểm tra Origin, phân quyền từng tin, xử lý token hết hạn",
+          "Mở rộng ra nhiều instance bằng Redis pub/sub, test offline bằng broker trong bộ nhớ",
+          "Tự viết test tích hợp WebSocket không dùng sleep, đo tải p50/p95/p99, debug bằng log có id"
         ],
         "showcase": {
-          "caption": "Đang soạn",
-          "markdown": "```output\n(đang soạn — batch 2)\n```"
-        }
+          "caption": "Năm bài, chạy thật",
+          "markdown": "```output\n# N05 — heartbeat 5 s, client bị treo (kill -STOP) ở giây 3,7\n 10.0s server: #1 không trả pong → terminate        ← phát hiện sau 6,3 s\n 17.2s client: mất kết nối, thử lại lần 1 sau 457 ms   ← server tắt\n 20.2s client: mất kết nối, thử lại lần 4 sau 2829 ms\n 23.0s client: đã kết nối → gửi bù 5 tin trong hàng đợi đúng thứ tự\n\n# N06 — npm run compare: 10 tin chat\nA. ws thuần                                   1 request    353 byte bắt tay   1833 byte tổng\nB. Socket.IO mặc định (polling → websocket)   4 request   1625 byte bắt tay   2995 byte tổng\nC. Socket.IO chỉ websocket                    1 request    540 byte bắt tay   1910 byte tổng\n\n# N07 — npm run demo\nKhông token                    → HTTP 401 {\"error\":\"no_token\"}\nOrigin lạ + token An           → HTTP 403 {\"error\":\"bad_origin\"}\nToken sửa rooms                → HTTP 401 {\"error\":\"bad_signature\"}\nBinh gửi vào dev       ← {\"type\":\"error\",\"error\":\"forbidden\"}\n61 giây sau, Binh gửi  ← {\"type\":\"error\",\"error\":\"token_expired\"} | đóng: 4001 token_expired\n\n# N08 — 2 tiến trình, Redis pub/sub; An ở cổng 3108 gửi\nBinh (cổng 3109) ← {\"type\":\"chat\",\"from\":\"An\",\"text\":\"Build #128 xong\",...,\"origin\":\"A\",\"via\":\"B\"}\n\n# N09 — npm run load (runLoadTest + percentile tự viết)\n20 client × 20 tin = 400 tin gửi, mỗi tin tới 20 client\nNhận 8000/8000 trong 38 ms → 209239 tin/giây\nĐộ trễ (ms): p50 33.8  p95 36.5  p99 37.3  max 37.8\n```"
+        },
+        "cv_line": "Đưa server chat WebSocket (Node.js) lên mức production: heartbeat ping/pong + reconnect backoff, Socket.IO room/ack, xác thực token HMAC trước handshake (chống CSWSH), scale nhiều instance qua Redis pub/sub; test tích hợp tự viết bắt được 4 lớp bug và load test ~200.000 tin/giây với p99 37 ms."
       },
       "lessons": [
         {
           "id": "N05-heartbeat-reconnect",
           "title": "Heartbeat ping/pong & tự kết nối lại",
-          "goal": "Phát hiện kết nối chết trong 30 giây và tự kết nối lại có backoff.",
-          "status": "planned",
-          "concepts": [
-            "heartbeat-ping-pong",
-            "reconnect-backoff"
-          ]
+          "goal": "Phát hiện kết nối chết bằng ping/pong, tự kết nối lại có backoff + jitter; qua hết test.",
+          "status": "ready"
         },
         {
           "id": "N06-socketio-rooms-ack",
           "title": "Socket.IO: room, ack, so với ws thuần",
-          "goal": "Viết lại phòng chat bằng Socket.IO và so sánh với ws.",
-          "status": "planned",
-          "concepts": [
-            "socketio-rooms-ack"
-          ]
+          "goal": "Viết lại phòng chat bằng Socket.IO có room, ack, gửi lại; đo chi phí so với ws; qua hết test.",
+          "status": "ready"
         },
         {
           "id": "N07-xac-thuc-handshake",
           "title": "Xác thực token khi handshake",
-          "goal": "Từ chối kết nối không có token hợp lệ trước khi nâng cấp.",
-          "status": "planned",
-          "concepts": [
-            "ws-auth-token"
-          ]
+          "goal": "Ký token HMAC, từ chối 401/403 trước khi nâng cấp, phân quyền từng tin; qua hết test.",
+          "status": "ready"
         },
         {
           "id": "N08-scale-redis-pubsub",
           "title": "Nhiều server với Redis pub/sub",
-          "goal": "Hai instance cùng phát tin cho mọi client qua Redis.",
-          "status": "planned",
-          "concepts": [
-            "redis-pubsub-scaling"
-          ]
+          "goal": "Hai instance cùng phát tin cho mọi client qua broker; chạy với Redis thật; qua hết test.",
+          "status": "ready"
         },
         {
           "id": "N09-test-debug-realtime",
           "title": "Test & debug ứng dụng realtime",
-          "goal": "Viết test tích hợp WebSocket và debug bằng DevTools, log.",
-          "status": "planned",
-          "concepts": [
-            "ws-testing-debugging"
-          ]
+          "goal": "Tự viết test bắt được 4 bug, đo tải p50/p95/p99, debug bằng log; qua hết test.",
+          "status": "ready"
         }
       ]
     }

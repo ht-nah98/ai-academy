@@ -1,0 +1,11 @@
+{
+  "name": "teampulse-n05",
+  "private": true,
+  "type": "module",
+  "description": "TeamPulse — bài N05: heartbeat ping/pong và tự kết nối lại",
+  "scripts": {
+    "start": "node heartbeat.js server",
+    "client": "node heartbeat.js client",
+    "test": "node --test \"../../curriculum/N05-heartbeat-reconnect/tests/*.test.js\""
+  }
+}

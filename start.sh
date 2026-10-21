@@ -8,11 +8,11 @@ if [ ! -x .venv/bin/python ]; then
   exit 1
 fi
 [ -n "${1:-}" ] && echo "Lưu ý: không cần tham số khóa nữa (\"$1\" bị bỏ qua) — mọi khóa chạy chung một server, chọn ở trang Thư viện khóa học."
-# Khóa Node (academy/courses/<id>/package.json) chưa có node_modules → npm install
+# Khóa Node (academy/courses/<id>/package.json): chưa có node_modules, hoặc package-lock.json mới hơn bản đã cài (vừa git pull) → npm install
 for pkg in academy/courses/*/package.json; do
   [ -f "$pkg" ] || continue
   C="$(dirname "$pkg")"
-  [ -d "$C/node_modules" ] && continue
+  [ -d "$C/node_modules" ] && [ ! "$C/package-lock.json" -nt "$C/node_modules/.package-lock.json" ] && continue
   if ! command -v npm >/dev/null 2>&1; then
     echo "Khóa $(basename "$C") cần Node.js 22 trở lên (https://nodejs.org) — các khóa khác vẫn dùng được."
     continue

@@ -98,7 +98,7 @@ Mở trình duyệt tại **http://127.0.0.1:8100**. Dừng app: `Ctrl+C`.
 
 ### Khóa Node.js & WebSocket
 
-Khóa **Node.js & WebSocket** nằm chung trong app (chọn ở trang Thư viện khóa học), chấm bài bằng `node --test`. Để học khóa này cần cài thêm **Node.js 22 trở lên** (https://nodejs.org; WSL: cài trong Ubuntu, vd. qua `nvm`) — kiểm tra bằng `node --version`. Lần đầu, `./start.sh` / `.\start.ps1` tự chạy `npm install` cho mọi khóa có `package.json` mà chưa có `node_modules/`. Bài làm và tiến độ của khóa này nằm riêng trong `academy/courses/node-realtime/workspace/` và `data/`.
+Khóa **Node.js & WebSocket** nằm chung trong app (chọn ở trang Thư viện khóa học), chấm bài bằng `node --test`. Để học khóa này cần cài thêm **Node.js 22 trở lên** (https://nodejs.org; WSL: cài trong Ubuntu, vd. qua `nvm`) — kiểm tra bằng `node --version`. Lần đầu, `./start.sh` / `.\start.ps1` tự chạy `npm install` cho mọi khóa có `package.json` mà chưa có `node_modules/`. Project P2 (N05–N09) dùng thêm `socket.io`, `socket.io-client`, `redis`: nếu đã cài từ trước, chạy lại `npm install` trong `academy/courses/node-realtime/` một lần; Redis thật chỉ cần cho phần chạy thử của N08 (`docker run --rm -d -p 127.0.0.1:6379:6379 redis:7-alpine`), test không cần. Bài làm và tiến độ của khóa này nằm riêng trong `academy/courses/node-realtime/workspace/` và `data/`.
 
 ### Điền API key
 

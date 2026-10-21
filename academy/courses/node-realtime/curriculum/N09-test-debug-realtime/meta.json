@@ -1,0 +1,138 @@
+{
+  "id": "N09-test-debug-realtime",
+  "title": "Test & debug ứng dụng realtime",
+  "goal": "Tự viết test tích hợp cho server WebSocket bắt được 4 bug, chờ tin không dùng sleep, đo tải p50/p95/p99, debug bằng log có id; qua hết 10 test.",
+  "duration_min": 150,
+  "concepts": [
+    "deterministic-waits",
+    "ws-testing-debugging",
+    "load-test-percentiles",
+    "realtime-common-bugs"
+  ],
+  "entry": "load.js",
+  "checklist": [
+    "Giải thích vì sao sleep làm test realtime chập chờn và waitForMessage sửa thế nào",
+    "Biết phải tạo Promise chờ TRƯỚC khi gửi tin",
+    "Viết được test tích hợp: server cổng 0, nhiều client, đóng hết trong after",
+    "Test của mình bắt được cả 4 server lỗi của bài chấm",
+    "Giải thích vì sao đo p50/p95/p99 thay vì trung bình; tính được nearest-rank",
+    "Đọc được kết quả load test và biết giới hạn của việc đo trong một tiến trình",
+    "Kể 5 lỗi realtime hay gặp và triệu chứng của từng lỗi",
+    "Debug được bằng log có id, cli.js và DevTools WS"
+  ],
+  "interview_questions": [
+    "Bạn viết test cho một server WebSocket thế nào? Chạy server ở đâu, client là gì, dọn dẹp ra sao?",
+    "Vì sao dùng sleep trong test realtime là ý tưởng tồi? Thay bằng gì?",
+    "Làm sao biết test của mình thực sự bắt được lỗi, không chỉ chạy qua?",
+    "Bạn đo hiệu năng một server WebSocket thế nào? Vì sao dùng p95/p99 thay vì trung bình?",
+    "MaxListenersExceededWarning nghĩa là gì? Thường do đâu?",
+    "Backpressure trong WebSocket là gì? bufferedAmount cho bạn biết điều gì?",
+    "Người dùng báo 'thỉnh thoảng không nhận được tin'. Bạn debug từ đâu?",
+    "Bạn ghi log gì cho một kết nối WebSocket để debug được sự cố production?"
+  ],
+  "tutor_notes": "Bài cuối P2, lần đầu học viên tự viết test. Nhấn mạnh: test phải fail khi hành vi sai (bài chấm chạy test của họ với 4 server lỗi: chỉ gửi lại người gửi, bỏ qua người gửi, đóng kết nối khi JSON hỏng, splice(i) xoá nhầm người phía sau). Lỗi hay gặp: (1) waitForMessage: dùng ws.once (không lọc được predicate), không gỡ listener ở nhánh timeout/close, quên clearTimeout (test không thoát), reject khi gặp tin không phải JSON, gỡ bằng arrow function mới; (2) chat.test.js: gửi trước rồi mới waitForMessage (lỡ tin), chỉ kiểm tra 'không lỗi' mà không assert from/text, test 'rời đi' chỉ có 2 người (không bắt được splice(i)), không chờ server xử lý close, sửa dòng import CHAT_SERVER, quên t.after đóng client; (3) percentile: sort không có hàm so sánh, sort tại chỗ làm đổi mảng gốc, dùng Math.floor/round thay vì ceil, rank 0 khi p = 0; (4) runLoadTest: gửi trước khi mọi client mở, đo độ trễ cả tin của người khác, không có timeout, quên terminate. Khi chạy thật: npm run test:mine để xem test của mình; EADDRINUSE → PORT=3010 npm start. Không viết hộ thân hàm hay test.",
+  "tasks": [
+    {
+      "fn": "waitForMessage",
+      "signature": "waitForMessage(ws, predicate, { timeoutMs }) → Promise<msg>",
+      "summary": "Chờ tin JSON thoả điều kiện; timeout/closed; gỡ listener",
+      "example": "waitForMessage(ws, (m) => m.type === 'chat') → { type: 'chat', ... }",
+      "test_prefix": "waitForMessage"
+    },
+    {
+      "fn": "percentile",
+      "signature": "percentile(values, p) → number | null",
+      "summary": "Nearest-rank trên bản sao đã sắp theo số",
+      "example": "percentile([15, 20, 35, 40, 50], 30) → 20",
+      "test_prefix": "percentile"
+    },
+    {
+      "fn": "runLoadTest",
+      "signature": "runLoadTest({ url, clients, messagesPerClient }) → Promise<stats>",
+      "summary": "N client gửi, đếm, đo tin/giây và p50/p95/p99",
+      "example": "5 client × 10 tin → received 250/250",
+      "test_prefix": "runLoadTest"
+    },
+    {
+      "fn": "chat.test.js",
+      "signature": "chat.test.js: 4 test bạn viết (npm run test:mine)",
+      "summary": "Bắt 4 bug: không broadcast, bỏ người gửi, JSON hỏng, xoá nhầm",
+      "example": "server splice(i) → test 'một người rời đi' fail",
+      "test_prefix": "chat.test.js"
+    }
+  ],
+  "brief": {
+    "context": "TeamPulse đã có heartbeat, Socket.IO, xác thực và nhiều instance (N05–N08). Mọi test trước đó do người khác viết sẵn.",
+    "problem": "Trước khi phát hành cho cả công ty, đội cần bộ test tích hợp tự viết để mỗi lần sửa code biết ngay có làm hỏng chat không, một bài đo tải cho ra số tin/giây và độ trễ p99, và cách debug khi người dùng báo 'thỉnh thoảng mất tin'. Test cũ dùng sleep nên lúc qua lúc trượt trên máy CI.",
+    "requirements": [
+      {
+        "task": "waitForMessage",
+        "purpose": "Chờ tin xác định, không sleep, không rò listener."
+      },
+      {
+        "task": "percentile",
+        "purpose": "Tính p50/p95/p99 độ trễ cho báo cáo tải."
+      },
+      {
+        "task": "runLoadTest",
+        "purpose": "Đo tin/giây và độ trễ với N client."
+      },
+      {
+        "task": "chat.test.js",
+        "purpose": "Test tích hợp bắt được bug thật của server chat."
+      }
+    ],
+    "deliverable": "testkit.js và chat.test.js qua 10/10 test chấm (test của bạn pass với server đúng, fail với cả 4 server lỗi); số liệu npm run load.",
+    "constraints": [
+      "Không dùng sleep để chờ tin (trừ chờ server xử lý close).",
+      "Mọi server/client trong test được đóng.",
+      "Không sửa dòng import CHAT_SERVER trong chat.test.js.",
+      "percentile không sửa mảng truyền vào."
+    ],
+    "product_nodes": [
+      "ws-gateway",
+      "testing"
+    ],
+    "workflow": {
+      "flow": "chain",
+      "inputs": [
+        {
+          "label": "Server chat cần kiểm tra",
+          "detail": "chat-server.js và 4 bản lỗi"
+        },
+        {
+          "label": "Tham số tải",
+          "detail": "Số client, số tin mỗi client"
+        }
+      ],
+      "steps": [
+        {
+          "task": "waitForMessage",
+          "label": "Chờ tin có điều kiện"
+        },
+        {
+          "task": "chat.test.js",
+          "label": "Viết test tích hợp"
+        },
+        {
+          "task": "percentile",
+          "label": "Tính phân vị độ trễ"
+        },
+        {
+          "task": "runLoadTest",
+          "label": "Đo tải N client"
+        }
+      ],
+      "outputs": [
+        {
+          "label": "Bộ test bắt được bug",
+          "detail": "Pass đúng, fail 4 bản lỗi"
+        },
+        {
+          "label": "Báo cáo tải",
+          "detail": "tin/giây, p50, p95, p99, max"
+        }
+      ]
+    }
+  }
+}
