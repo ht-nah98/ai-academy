@@ -6,17 +6,17 @@
 
 Sau buổi này (khoảng 3,5 giờ) bạn sẽ:
 
-- Tạo và dùng **venv** (hộp thư viện riêng cho project), cài thư viện bằng **pip**.
-- Cất **API key** trong file **`.env`**, không bao giờ để trong code.
-- Hiểu **HTTP API** (request, response, status code) và đọc được **JSON**.
+- Tạo và dùng **venv** (hộp thư viện riêng cho project), cài thư viện bằng **pip** (công cụ cài thư viện).
+- Cất **API key** (mật khẩu riêng để gọi dịch vụ) trong file **`.env`**, không bao giờ để trong code.
+- Hiểu **HTTP API** (cách hai chương trình hỏi–đáp qua mạng) và đọc được **JSON** (dữ liệu dạng văn bản).
 - Viết code **test được mà không cần mạng** nhờ truyền hàm làm tham số.
-- **Kết quả đo được:** `models.py` qua hết **15 test** offline và chạy thật in ra danh sách model NVIDIA.
+- **Kết quả đo được:** `models.py` qua hết **15 test** offline (không cần mạng) và chạy thật in ra danh sách model NVIDIA.
 
 ## 📋 Đề bài
 
 **Mở file:** `academy/workspace/L02-http-json-venv-env/models.py`.
 
-Hàm `http_get_json(url)` đã viết sẵn. Bạn viết 6 hàm (thay chỗ `raise NotImplementedError`); docstring ghi rõ yêu cầu. Endpoint công khai, không cần key: `https://integrate.api.nvidia.com/v1/models` — mở bằng trình duyệt trước để xem JSON thật.
+Hàm `http_get_json(url)` đã viết sẵn. Bạn viết 6 hàm (thay chỗ `raise NotImplementedError`); docstring ghi rõ yêu cầu. Địa chỉ API (endpoint) công khai, không cần key: `https://integrate.api.nvidia.com/v1/models` — mở bằng trình duyệt trước để xem JSON thật.
 
 | Hàm | Trả về |
 |---|---|
@@ -30,6 +30,70 @@ Hàm `http_get_json(url)` đã viết sẵn. Bạn viết 6 hàm (thay chỗ `ra
 **Xong khi:** bấm **Chạy test** thấy `15 passed`, và `python models.py nemotron` in ra danh sách model.
 
 ## 🤔 Tại sao? (kiến thức nền)
+
+### Hiểu trước khi làm
+
+**Bối cảnh.** Chương trình của bạn cần dữ liệu nằm trên máy của người khác — ở bài này là danh sách model AI của NVIDIA. Hai máy cần một cách hỏi–đáp chung qua mạng (**HTTP API**) và một kiểu viết dữ liệu mà bên nào cũng đọc được (**JSON**). Dịch vụ tính tiền thì phải biết ai đang gọi, nên bạn gửi kèm một mật khẩu riêng (**API key**) — thứ tuyệt đối không được lộ. Cuối cùng, mỗi project cần bộ thư viện riêng để không giẫm chân nhau (**venv**).
+
+**Ví dụ đời thường.**
+- **HTTP API** giống gọi món ở quầy: bạn đưa phiếu order (request), quầy trả khay đồ ăn (response) kèm câu trả lời ngắn — "có ngay" (200), "không có món này" (404), "đông quá, đợi chút" (429).
+- **JSON** là phiếu order in sẵn theo mẫu: ô nào ghi gì đều cố định, ai cầm cũng đọc được.
+- **API key** giống thẻ thành viên quẹt khi gọi món: rơi thẻ là người khác tiêu tiền của bạn. File **`.env`** là ngăn kéo có khóa ở nhà để cất thẻ — bạn chia sẻ code, không chia sẻ ngăn kéo.
+- **venv** là hộp dụng cụ riêng cho từng công trình: thay ốc vít hộp này không ảnh hưởng hộp kia.
+
+**Bạn đã gặp nó ở đâu.**
+- App thời tiết trên điện thoại hỏi một API để lấy nhiệt độ hôm nay.
+- Grab, Be hiện bản đồ nhờ gọi API bản đồ, kèm API key của công ty.
+- Shop online nhận thanh toán MoMo, VNPay: cửa hàng được cấp mã bí mật để gọi API thanh toán.
+- Mở trình duyệt, bấm F12 → tab Network trên Shopee: mỗi dòng là một request, bấm vào thấy response JSON.
+
+| | HTTP API và JSON | API key, `.env`, venv |
+|---|---|---|
+| **What** — là gì? | HTTP API: server trả dữ liệu thay vì trang web. JSON: văn bản có dạng giống dict/list. | API key: chuỗi bí mật định danh người gọi. `.env`: file chứa secret, nằm ngoài git. venv: thư mục chứa Python và thư viện riêng của một project. |
+| **Why** — vì sao cần? | Gần như mọi dịch vụ AI, thanh toán, bản đồ đều mở cửa qua HTTP API và trả JSON. | Key lộ là mất tiền, bị lạm dụng. Thư viện cài chung dễ xung đột phiên bản. |
+| **When** — khi nào dùng? | Khi cần dữ liệu hoặc tính năng từ hệ thống khác. | Mọi project có secret hoặc cài thư viện ngoài. |
+| **When not** — khi nào không? | Dữ liệu đã có sẵn trên máy (file, DB) thì đọc thẳng, khỏi gọi mạng. Test không nên gọi API thật. | Không dán key vào code, chat, ảnh chụp. Không `pip install` thẳng vào Python hệ thống. |
+| **Where** — ở đâu? | `models.py` gọi `https://integrate.api.nvidia.com/v1/models`. | Key trong `.env` ở gốc repo; venv chung ở `.venv` gốc repo. |
+| **How** — chạy thế nào? | Gửi request (method, URL, header) → nhận response (status code + body) → `json.loads` thành dict. | Code đọc key từ biến môi trường hoặc `.env` lúc chạy; kích hoạt venv thì `python`, `pip` trỏ vào hộp riêng. |
+
+**Từ mới trong bài**
+
+| Thuật ngữ | Nghĩa đời thường |
+|---|---|
+| HTTP | Bộ quy tắc trình duyệt và server dùng để hỏi–đáp qua mạng |
+| API, endpoint | Cửa giao tiếp giữa hai chương trình; endpoint là một địa chỉ cụ thể của cửa đó |
+| server | Máy (hoặc chương trình) nhận request và trả kết quả |
+| URL | Địa chỉ đầy đủ, vd. `https://.../v1/models` |
+| request / response | Lượt hỏi đi / lượt trả lời về |
+| method GET / POST | GET = xin dữ liệu; POST = gửi dữ liệu lên |
+| header | Dòng thông tin kèm request, vd. `Authorization: Bearer <key>` |
+| body | Phần nội dung chính của request/response |
+| status code | Mã 3 chữ số báo kết quả: 200 ổn, 4xx lỗi phía bạn, 5xx lỗi phía server |
+| JSON, parse | Văn bản dạng dict/list; parse = đọc văn bản đó thành dict Python (`json.loads`) |
+| bytes | Dữ liệu thô từ mạng, chưa phải chuỗi chữ |
+| thư viện (package), pip | Code người khác viết sẵn; pip là công cụ tải và cài thư viện |
+| venv, kích hoạt (activate) | Hộp Python riêng của project; kích hoạt = bắt đầu dùng hộp đó |
+| `requirements.txt` | Danh sách thư viện project cần |
+| interpreter | Chương trình Python thực sự chạy code; VS Code cần biết dùng bản nào |
+| API key, secret | Mật khẩu riêng để gọi dịch vụ; secret = mọi thông tin phải giấu |
+| biến môi trường | Giá trị hệ điều hành cấp cho chương trình lúc chạy, không nằm trong code |
+| git, commit, `.gitignore` | git lưu lịch sử code; commit = một lần lưu; `.gitignore` = danh sách file git bỏ qua |
+| offline | Chạy không cần mạng |
+| dependency injection | Truyền "cách làm" (vd. hàm gọi mạng) vào hàm làm tham số, để test thay bằng bản giả |
+| `ValueError`, `RuntimeError` | Hai loại lỗi có sẵn: giá trị sai / không thể chạy tiếp |
+| `isinstance(x, list)` | Hỏi "x có phải list không?" |
+| generator expression | Vòng lặp viết trong `( )`, đưa từng giá trị cho hàm khác mà không dựng list |
+| `tmp_path` | Thư mục tạm pytest tạo cho mỗi test |
+
+```mermaid
+flowchart TD
+    E[".env ở gốc repo: NVIDIA_API_KEY"] --> K["get_api_key"]
+    K --> R["Request GET /v1/models"]
+    R --> S["Server NVIDIA"]
+    S --> P["Response: status 200 + body JSON"]
+    P --> J["json.loads → dict"]
+    J --> L["parse_model_ids → list id"]
+```
 
 ### Virtual environment (venv)
 
@@ -63,8 +127,6 @@ flowchart TD
 
 ### HTTP API
 
-Một **API** qua HTTP là server trả về dữ liệu (thường là JSON) thay vì trang web. Mỗi lần gọi gồm một **request** đi và một **response** về, kèm **status code**.
-
 Request gồm **method** (GET = lấy, POST = gửi), **URL**, **headers** (ví dụ `Authorization: Bearer <key>`) và **body** (với POST).
 
 ```mermaid
@@ -87,8 +149,6 @@ sequenceDiagram
 | 500 / 503 | Lỗi phía server | Thử lại sau |
 
 ### JSON ↔ dict
-
-**JSON** là **chuỗi văn bản** có cú pháp giống dict — ngôn ngữ chung để các chương trình trao đổi dữ liệu.
 
 - `json.loads(chuỗi)` → dict/list Python; `json.dumps(dict)` → chuỗi.
 - `ensure_ascii=False` giữ tiếng Việt có dấu.

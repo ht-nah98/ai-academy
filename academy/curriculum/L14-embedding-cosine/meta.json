@@ -2,7 +2,7 @@
   "id": "L14-embedding-cosine",
   "title": "Embedding & cosine",
   "goal": "Tìm tin tuyển dụng theo nghĩa: embedding qua API, cosine similarity viết tay rồi bằng numpy, top-k, so với tìm theo từ khóa — 4 hàm trong semantic.py qua hết 11 test; câu \"làm pipeline dữ liệu cho ngân hàng\" trả về 5/5 tin ngân hàng/fintech.",
-  "duration_min": 180,
+  "duration_min": 200,
   "concepts": [
     "embeddings",
     "cosine-similarity",

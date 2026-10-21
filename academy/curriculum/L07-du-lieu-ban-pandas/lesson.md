@@ -1,14 +1,14 @@
 # L07 — Dữ liệu bẩn & pandas
 
-> Làm sạch ~300 tin tuyển dụng giả lập (mô phỏng dữ liệu crawl từ nhiều nguồn) bằng pandas — **làm sạch trước khi tin con số.**
+> Làm sạch ~300 tin tuyển dụng giả lập (mô phỏng dữ liệu crawl — thu thập tự động — từ nhiều trang web) bằng pandas — **làm sạch trước khi tin con số.**
 
 ## 🎯 Mục tiêu
 
 Sau buổi này (khoảng 3,5 giờ) bạn sẽ:
 
-- Đọc CSV vào **DataFrame** và khám phá nhanh: `shape`, `dtypes`, `isna()`, `value_counts()`.
+- Đọc CSV (file bảng dạng chữ) vào **DataFrame** (bảng của pandas) và khám phá nhanh kích thước, kiểu cột, ô trống, tần suất: `shape`, `dtypes`, `isna()`, `value_counts()`.
 - Chuẩn hóa chuỗi bẩn: thành phố, công ty, kỹ năng.
-- Đọc lương dạng chữ (`"15-25 triệu"`, `"$1000-1500"`) bằng **regex**.
+- Đọc lương dạng chữ (`"15-25 triệu"`, `"$1000-1500"`) bằng **regex** (mẫu tìm chữ).
 - Đọc ngày nhiều định dạng, khử bản trùng.
 - **Kết quả đo được:** 5 hàm trong `cleaning.py` qua hết **18 test**; 302 dòng thô → 268 tin sạch.
 
@@ -34,11 +34,68 @@ Docstring dưới mỗi `def` ghi đủ quy tắc. Bảng `CITY_ALIASES`, `DATE_
 
 ## 🤔 Tại sao? (kiến thức nền)
 
+### Hiểu trước khi làm
+
+**Bối cảnh.** JobRadar gom tin tuyển dụng từ nhiều trang, mỗi trang ghi một kiểu: cùng một thành phố mà chỗ ghi `HCM`, chỗ ghi `Sài Gòn`; lương lúc là `"15-25 triệu"`, lúc là `"$1000"`; một tin bị lấy về hai lần. Đếm thẳng trên dữ liệu đó thì con số nào cũng sai. Trước khi tính toán phải **làm sạch**: thống nhất cách ghi, đổi chữ thành số, bỏ bản trùng. Dữ liệu này có dạng **bảng** (hàng × cột) như Excel, và **pandas** là thư viện Python để xử lý bảng bằng code.
+
+**Ví dụ đời thường.**
+- **Làm sạch dữ liệu** giống nhặt rau trước khi nấu: bỏ lá hỏng, rửa đất, cắt đều — nấu ngay thì món hỏng.
+- **DataFrame** của pandas giống một sheet Excel mà bạn điều khiển bằng lệnh thay vì bằng chuột.
+- **Chuẩn hóa** giống thống nhất tên trong sổ điểm danh: "Ng. Văn A", "nguyễn văn a", "Nguyễn Văn A" đều là một người.
+
+**Bạn đã gặp nó ở đâu.**
+- Google Sheets, Excel: danh sách lớp, bảng lương, bảng chi tiêu — đều là dữ liệu bảng.
+- Google Forms xuất kết quả khảo sát ra file CSV; mỗi người gõ câu trả lời một kiểu.
+- Danh bạ điện thoại gợi ý "gộp liên hệ trùng".
+- Bộ lọc tỉnh thành trên Shopee, Chợ Tốt: phía sau phải gộp `TP.HCM`, `Hồ Chí Minh` về một tên.
+
+| | Dữ liệu bảng và pandas | Làm sạch dữ liệu |
+|---|---|---|
+| **What** — là gì? | Dữ liệu xếp thành hàng (mỗi tin) và cột (mỗi thuộc tính). pandas đọc nó thành **DataFrame**. | Biến dữ liệu thô lộn xộn thành dữ liệu cùng quy ước, đúng kiểu, không trùng. |
+| **Why** — vì sao cần? | Lọc, đếm, tính trên cả cột bằng vài lệnh, nhanh hơn vòng lặp tay. | "Garbage in, garbage out": dữ liệu bẩn cho ra kết quả sai. |
+| **When** — khi nào dùng? | File CSV/Excel từ vài trăm tới vài triệu dòng vừa bộ nhớ máy. | Ngay sau khi lấy dữ liệu về, trước mọi phân tích hay đưa vào AI. |
+| **When not** — khi nào không? | Dữ liệu lớn hơn RAM hoặc nhiều người cùng ghi: dùng cơ sở dữ liệu (L08). | Không sửa thẳng file gốc; không "sửa" bằng cách đoán khi không có căn cứ — để trống và đánh dấu. |
+| **Where** — ở đâu? | `pd.read_csv(DATA_PATH)` đọc `datasets/jobs_raw.csv`. | Các hàm trong `cleaning.py`, gom lại ở `clean_jobs`. |
+| **How** — chạy thế nào? | Mỗi cột là một **Series**; phép toán trên cột chạy cho mọi hàng một lúc. | Khám phá → chuẩn hóa từng cột → đổi kiểu → khử trùng → kiểm tra lại. |
+
+**Từ mới trong bài**
+
+| Thuật ngữ | Nghĩa đời thường |
+|---|---|
+| dữ liệu bảng, hàng, cột | Dữ liệu dạng Excel; hàng = một bản ghi, cột = một thuộc tính |
+| CSV | File chữ chứa bảng: mỗi dòng một hàng, các cột cách nhau dấu phẩy |
+| crawl, crawler | Tự động thu thập dữ liệu từ trang web / chương trình làm việc đó |
+| pandas, `pd` | Thư viện xử lý bảng; `pd` là tên viết tắt quen dùng khi import |
+| DataFrame, Series | Cả bảng / một cột của bảng |
+| index | Nhãn của từng hàng (mặc định 0, 1, 2…) |
+| dtype | Kiểu dữ liệu của một cột: số, chữ, ngày… |
+| `shape`, `isna()`, `value_counts()` | Kích thước bảng / ô nào trống / mỗi giá trị xuất hiện bao nhiêu lần |
+| NaN | Dấu "ô trống" của pandas |
+| mask | Cột True/False dùng để lọc hàng |
+| chuẩn hóa (normalize), alias | Đưa về một cách ghi chuẩn; alias = các tên gọi khác của cùng một thứ |
+| regex | Mẫu để tìm chữ, vd. `\d+` = một dãy chữ số |
+| raw string `r"..."` | Chuỗi mà Python không xử lý dấu `\` |
+| khử trùng (deduplicate) | Bỏ các hàng lặp lại, vd. `drop_duplicates` |
+| `strptime`, `strftime` | Đọc chữ thành ngày giờ / viết ngày giờ thành chữ theo mẫu |
+| ISO date `YYYY-MM-DD` | Cách ghi ngày chuẩn quốc tế, vd. `2026-09-15` |
+| `.apply(hàm)` | Chạy một hàm Python trên từng ô |
+| vectorized, `.str` | Phép toán trên cả cột, chạy bằng code C bên trong pandas; `.str` = các phép chữ cho cả cột |
+| `groupby`, `agg`, `.map` | Gom nhóm theo cột / tính một giá trị mỗi nhóm / gán giá trị theo bảng tra |
+| `copy()` | Tạo bản sao để không sửa dữ liệu gốc |
+
+```mermaid
+flowchart TD
+    A["jobs_raw.csv: 302 dòng thô"] --> B["pd.read_csv → DataFrame"]
+    B --> C["Khám phá: shape, isna, value_counts"]
+    C --> D["Chuẩn hóa: thành phố, lương, ngày, kỹ năng"]
+    D --> E["Khử bản trùng"]
+    E --> F["DataFrame sạch: 268 tin"]
+    F --> G["Phân tích, nạp DB ở L08"]
+```
+
 ### Dữ liệu bẩn đến từ đâu
 
 Dữ liệu bẩn sinh ra khi **nhiều người, nhiều nguồn** cùng ghi một thứ mà không có quy ước chung.
-
-Mỗi nhà tuyển dụng gõ tay: người viết `HCM`, người viết `Sài Gòn`. Crawler lấy một tin 2 lần. Trang A ghi ngày `15/09/2026`, trang B ghi `2026-09-15`. Nếu đếm thẳng, `HCM` và `TP.HCM` thành 2 thành phố khác nhau.
 
 | Loại bẩn | Ví dụ trong JobRadar |
 |---|---|
@@ -52,7 +109,7 @@ Mỗi nhà tuyển dụng gõ tay: người viết `HCM`, người viết `Sài 
 
 **DataFrame** là bảng (hàng × cột) trong bộ nhớ; mỗi cột là một **Series** — một dãy giá trị cùng kiểu, có nhãn (index).
 
-Nghĩ DataFrame như một sheet Excel mà bạn điều khiển bằng code. `df["city"]` lấy một cột (Series), `df[df["price"] > 10]` lọc hàng bằng **mask** (Series True/False).
+`df["city"]` lấy một cột (Series), `df[df["price"] > 10]` lọc hàng bằng **mask** (Series True/False).
 
 ```mermaid
 flowchart TD

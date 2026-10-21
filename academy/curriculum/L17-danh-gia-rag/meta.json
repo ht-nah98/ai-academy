@@ -2,7 +2,7 @@
   "id": "L17-danh-gia-rag",
   "title": "Đánh giá RAG",
   "goal": "Đo RAG trên 20 câu hỏi gán nhãn (16 có đáp án, 4 không): recall@k, MRR cho truy hồi; từ chối đúng, trích dẫn hợp lệ, citation precision/recall cho câu trả lời; so hai cấu hình chunk — 4 hàm trong eval_rag.py qua hết 8 test.",
-  "duration_min": 180,
+  "duration_min": 195,
   "concepts": [
     "rag-eval",
     "labeled-eval-set",

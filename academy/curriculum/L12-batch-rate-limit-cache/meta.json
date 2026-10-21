@@ -2,7 +2,7 @@
   "id": "L12-batch-rate-limit-cache",
   "title": "Batch: rate limit, cache, retry, chi phí",
   "goal": "Chạy trích xuất cho cả bộ 264 tin với cache đĩa, giới hạn RPM, retry (từ L06) và ước tính chi phí — 4 phần trong batch.py qua hết 13 test; chạy lại lần 2 không tốn lần gọi API nào.",
-  "duration_min": 210,
+  "duration_min": 225,
   "concepts": [
     "rate-limit",
     "caching",

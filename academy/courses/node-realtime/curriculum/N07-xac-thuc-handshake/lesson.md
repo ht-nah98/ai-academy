@@ -4,7 +4,7 @@
 
 ## 🎯 Mục tiêu
 
-Sau buổi này (khoảng 3,5 giờ với người mới) bạn sẽ:
+Sau buổi này (khoảng 4 giờ với người mới) bạn sẽ:
 
 - Ký và kiểm tra **token HMAC-SHA256** bằng `node:crypto` (cùng ý tưởng với JWT), so chữ ký bằng `timingSafeEqual`.
 - Chọn **nơi đặt token** khi mở WebSocket (header, cookie, query, subprotocol) và biết vì sao query string bị ghi vào log.
@@ -13,7 +13,7 @@ Sau buổi này (khoảng 3,5 giờ với người mới) bạn sẽ:
 - **Phân quyền theo từng tin** (người này có được gửi vào room này không) và xử lý **token hết hạn** khi kết nối đang mở.
 - **Kết quả đo được:** `auth.js` qua hết **9 test**; `npm run demo` cho thấy 4 kiểu bị từ chối (401 ×3, 403 ×1) và token 60 giây hết hạn giữa chừng → đóng code 4001.
 
-> 🧠 **Ghi nhớ:** handshake là **request HTTP cuối cùng** của kết nối. Sau 101, không còn header, không còn status code, không còn middleware HTTP. Mọi thứ cần kiểm tra một lần (ai là ai, từ trang nào) phải làm **trước** 101.
+> 📖 Từ lạ ở trên và trong Đề bài (token, HMAC, JWT, handshake, Origin, 401/403, base64url…) được giải nghĩa ở mục *Hiểu trước khi làm*, ngay đầu phần kiến thức nền.
 
 ## 📋 Đề bài
 
@@ -31,6 +31,81 @@ Sau buổi này (khoảng 3,5 giờ với người mới) bạn sẽ:
 **Xong khi:** `# pass 9` và `npm run demo` in đúng các dòng ở Bước 6.
 
 ## 🤔 Tại sao? (kiến thức nền)
+
+### Hiểu trước khi làm
+
+**Bối cảnh.** Tới N06, ai mở được kết nối tới TeamPulse cũng chat được, và tự khai tên gì cũng được — một người lạ có thể xưng "Giám đốc" rồi đọc hết phòng `ops`. Server cần trả lời hai câu: **bạn là ai** (xác thực) và **bạn được làm gì** (phân quyền — vào phòng nào). Bằng chứng danh tính là một **token**: chuỗi server cấp sau khi đăng nhập, có **chữ ký** để không ai sửa được, có **hạn dùng**. Việc kiểm tra phải làm ngay lúc mở kết nối, vì sau bước đó không còn cách trả mã lỗi HTTP.
+
+**Ví dụ đời thường.** Tòa nhà công ty. **Bảo vệ ở cổng** kiểm thẻ nhân viên trước khi cho bạn vào thang máy — đó là xác thực lúc handshake, trước 101. Thẻ có **mộc đỏ** của công ty; tự in thẻ giả thì mộc không khớp — đó là chữ ký HMAC. Thẻ ghi **ngày hết hạn** — `exp`. Vào trong rồi, mỗi cửa phòng có đầu đọc thẻ: thẻ của bạn mở được phòng nào — phân quyền theo từng tin. Thẻ hết hạn giữa ngày thì được mời ra — đóng kết nối code 4001. Bảo vệ còn xem bạn **đi vào từ cổng nào**: người đến từ tòa nhà lạ cầm thẻ "mượn" thì không cho vào — kiểm tra `Origin`.
+
+**Bạn đã gặp nó ở đâu.**
+- Đăng nhập Gmail một lần, mở tab mới vẫn đang đăng nhập: trình duyệt tự gửi cookie chứa token.
+- App ngân hàng tự đăng xuất sau vài phút không dùng: token hết hạn.
+- Google Drive báo "Bạn cần quyền truy cập": đã biết bạn là ai, nhưng bạn không có quyền — mã 403.
+- Nút "Đăng nhập bằng Google" trên các trang khác: một dịch vụ đăng nhập riêng cấp token (SSO).
+- Zalo Web quét mã QR xong là vào được: điện thoại xác nhận, trình duyệt nhận token.
+
+| Câu hỏi | Trả lời |
+|---|---|
+| **What** — là gì | Xác thực: kiểm token để biết người kết nối là ai. Phân quyền: kiểm người đó được làm việc này không. Token HMAC: nội dung đọc được + chữ ký chỉ server tạo được. |
+| **Why** — vì sao cần | Không có nó, ai cũng giả danh được người khác và đọc được mọi phòng. |
+| **When** — khi nào dùng | Mọi kết nối mang dữ liệu riêng tư; kiểm **một lần** lúc handshake và kiểm **quyền ở từng tin**. |
+| **When not** — khi nào không | Dữ liệu công khai cho mọi người (tỷ số bóng đá, giá vàng) có thể không cần xác thực; cần thuật toán khóa công khai (RS256) thì dùng thư viện JWT, không tự viết. |
+| **Where** — ở đâu | Trong sự kiện `upgrade` của HTTP server, **trước** khi trả `101`; và trong listener `message` cho từng tin. |
+| **How** — chạy thế nào | Đọc `Origin` → đọc token (header `Authorization` hoặc cookie) → tính lại chữ ký, so → xem hạn → được thì nâng cấp lên WebSocket, sai thì trả 401/403 bằng HTTP rồi đóng. |
+
+> 🧠 **Ghi nhớ:** handshake là **request HTTP cuối cùng** của kết nối. Sau 101, không còn header, không còn status code, không còn middleware HTTP. Mọi thứ cần kiểm tra một lần (ai là ai, từ trang nào) phải làm **trước** 101.
+
+```mermaid
+sequenceDiagram
+    participant B as Trình duyệt
+    participant S as Server TeamPulse
+    B->>S: POST /login, tên và mật khẩu
+    S-->>B: Set-Cookie tp_token, có chữ ký và hạn dùng
+    B->>S: GET /ws, Upgrade websocket, kèm Cookie và Origin
+    Note over S: Kiểm Origin, chữ ký, hạn dùng
+    S-->>B: 101 Switching Protocols, kết nối WebSocket mở
+    B->>S: chat vào room ops
+    Note over S: Token không có quyền ở ops
+    S-->>B: error forbidden
+    Note over S: Token hết hạn
+    S-->>B: error token_expired, đóng code 4001
+```
+
+**Từ mới trong bài**
+
+| Từ | Nghĩa đời thường |
+|---|---|
+| **Xác thực** (authentication) · **phân quyền** (authorization) | Bạn là ai · bạn được làm gì |
+| **Token** | Chuỗi "thẻ ra vào" server cấp, client gửi kèm để chứng minh danh tính |
+| **Payload**, `sub`, `rooms`, `exp` | Nội dung trong token · mã người dùng · các phòng được vào · thời điểm hết hạn |
+| **TTL**, **giây Unix** | Thời gian sống của token · số giây tính từ 1/1/1970 (`Date.now()` trả **mili giây**) |
+| **Chữ ký**, **`secret`** | Chuỗi tính từ nội dung + khóa bí mật; sửa nội dung là chữ ký không khớp · khóa chỉ server biết |
+| **Hash**, **SHA-256**, **HMAC** | Hàm "nghiền" dữ liệu ra dấu vân tay cố định · một hàm hash phổ biến · cách ký bằng hash + secret |
+| **JWT** | Chuẩn token phổ biến (`header.body.sig`); cùng ý tưởng với token bài này |
+| **RS256 / ES256**, **khóa công khai** | Thuật toán ký bằng cặp khóa: khóa bí mật để ký, khóa công khai để ai cũng kiểm được |
+| **SSO**, **Auth0**, **Keycloak** | Đăng nhập một chỗ dùng nhiều nơi · hai dịch vụ cấp token phổ biến |
+| **base64url** | Cách viết byte thành chữ an toàn trong URL — chỉ **đổi cách viết** (encoding), ai cũng đọc ngược được |
+| **Encoding** · **encryption** | Đổi cách viết, không bí mật · mật mã, cần khóa mới đọc được |
+| **`timingSafeEqual`** | So hai chuỗi byte luôn hết độ dài, để kẻ gian không đo thời gian mà đoán dần chữ ký |
+| **Handshake**, sự kiện **`upgrade`** | Request HTTP xin chuyển sang WebSocket · sự kiện Node phát khi nhận request đó |
+| **101 Switching Protocols** | Mã "đồng ý chuyển sang WebSocket" — sau mã này là hết HTTP |
+| **401** · **403** · **404** | Chưa chứng minh được bạn là ai · biết bạn là ai nhưng không cho · không có đường dẫn này |
+| **Header `Authorization: Bearer ...`** | Cách gửi token trong header; "Bearer" = "người cầm thẻ này" |
+| **Cookie** | Mẩu dữ liệu server nhờ trình duyệt giữ (`Set-Cookie`), trình duyệt **tự gửi kèm** mọi request sau tới server đó, kể cả request mở WebSocket |
+| **`HttpOnly`**, **`Secure`**, **`SameSite`** | JavaScript trên trang không đọc được cookie · chỉ gửi qua HTTPS/WSS · có gửi kèm khi request xuất phát từ trang khác site không |
+| **HTTPS**, **WSS** | HTTP và WebSocket có mã hoá đường truyền |
+| **Origin**, **same-origin** | `giao thức://tên miền:cổng` của trang, vd. `https://teampulse.cty.vn` · cả ba phần giống nhau |
+| **Site**, **subdomain** | Cùng giao thức + tên miền đăng ký: `chat.cty.vn` và `blog.cty.vn` cùng site `cty.vn` · tên miền con như `chat.` |
+| **Header `Origin`** | Trình duyệt tự ghi origin của trang mở kết nối; JavaScript không sửa được |
+| **CORS** | Luật trình duyệt cho `fetch`: chỉ đọc response từ origin khác nếu server cho phép — WebSocket **không** áp luật này |
+| **CSWSH** | Trang lạ mở WebSocket tới server của bạn, mượn cookie của nạn nhân để đọc chat |
+| **Query string**, **access log**, **Referer** | Phần `?token=...` của URL · nhật ký ghi mọi request · header ghi trang dẫn tới request — ba đường làm lộ token trong URL |
+| **Subprotocol** (`Sec-WebSocket-Protocol`) | Tên định dạng tin nhắn client đề xuất khi mở WebSocket |
+| **`noServer`**, **`handleUpgrade`** | `ws` không tự nhận nâng cấp · bạn tự gọi để hoàn tất nâng cấp sau khi kiểm xong |
+| **Close code 4001** | Mã đóng tự đặt (dải 4000–4999 dành cho ứng dụng); bài này dùng cho "token hết hạn" |
+| **Middleware**, **`connect_error`** | Hàm chạy trước khi nhận kết nối (Socket.IO `io.use`) · sự kiện client nhận khi bị từ chối |
+| **Đồng hồ giả** (`now`) | Hàm giờ truyền vào để test "tua" thời gian, không chờ thật |
 
 ### Xác thực ở đâu: trước 101
 
@@ -93,13 +168,7 @@ client (kho-123): connect
 
 ### Đặt token ở đâu khi mở WebSocket
 
-> 🧠 **Ghi nhớ — cookie và Origin trong 6 dòng:**
-> - **Cookie**: server trả header `Set-Cookie: tp_token=abc` một lần; từ đó trình duyệt **tự đính** `Cookie: tp_token=abc` vào request sau tới server đó — kể cả request mở WebSocket — miễn là luật `SameSite` cho phép (mục CSWSH bên dưới). Code JavaScript của trang không phải làm gì.
-> - Thuộc tính cookie: `HttpOnly` = JavaScript trên trang không đọc được (script lạ chèn vào trang không lấy trộm được token); `Secure` = chỉ gửi qua HTTPS/WSS; `SameSite` = có gửi kèm khi request xuất phát từ trang **khác site** hay không.
-> - **Origin** của trang = `giao thức://tên miền:cổng`, vd. `https://teampulse.cty.vn`. **Same-origin** = cả ba giống nhau. **Site** rộng hơn: cùng giao thức và cùng tên miền đăng ký — `chat.cty.vn` và `blog.cty.vn` cùng site `cty.vn` nhưng khác origin.
-> - Trình duyệt tự đặt header `Origin` (origin của trang đang mở kết nối) vào request WebSocket; JavaScript trên trang không sửa được nó.
-> - **CORS** là luật trình duyệt áp cho `fetch`/XHR: trang chỉ đọc được response từ origin khác nếu server cho phép. WebSocket **không** áp CORS.
-> - **Referer**: header trình duyệt ghi URL của trang (hoặc link) dẫn tới request — URL có `?token=` có thể lọt ra theo đường này.
+Cookie, `SameSite`, Origin, CORS, Referer: xem bảng **Từ mới** ở đầu phần này.
 
 `new WebSocket(url)` của trình duyệt **không cho đặt header** tuỳ ý. Bốn lựa chọn thường gặp:
 
@@ -161,7 +230,7 @@ Khi cookie đi kèm mà server chỉ nhìn cookie, trang lạ mở được kế
 
 ### Token có chữ ký: HMAC
 
-Token mang thông tin (`sub`, `rooms`, `exp`) ở dạng **đọc được** (base64url chỉ là **đổi cách viết** — encoding — ai cũng giải ngược được; không phải **mật mã** — encryption — cần khoá mới đọc được), kèm **chữ ký** HMAC tính từ nội dung + `secret` chỉ server biết. Ai sửa nội dung mà không có `secret` thì chữ ký không khớp. Ví dụ phiếu giảm giá:
+Token mang thông tin (`sub`, `rooms`, `exp`) ở dạng **đọc được** (base64url là encoding, không phải encryption), kèm **chữ ký** HMAC tính từ nội dung + `secret` chỉ server biết. Ai sửa nội dung mà không có `secret` thì chữ ký không khớp. Ví dụ phiếu giảm giá:
 
 ```js
 import { createHmac } from 'node:crypto';

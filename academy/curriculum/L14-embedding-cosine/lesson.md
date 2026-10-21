@@ -4,13 +4,13 @@
 
 ## 🎯 Mục tiêu
 
-Sau buổi này (khoảng 3 giờ) bạn sẽ:
+Sau buổi này (khoảng 3 giờ 20 phút) bạn sẽ:
 
-- Hiểu **embedding**: văn bản → vector số, văn bản gần nghĩa → vector gần nhau.
-- Tự viết **cosine similarity** bằng vòng lặp, rồi bằng numpy, và biết vì sao numpy nhanh hơn dù cùng Big-O.
-- Viết **top-k** và chọn cách lấy k phần tử lớn nhất hợp lý: sắp xếp hết O(n log n), heap O(n log k), `argpartition` O(n).
-- Gọi API embedding theo lô, phân biệt `input_type` **query** và **passage**.
-- So **tìm theo nghĩa** với **tìm theo từ khóa** trên một câu hỏi thật.
+- Hiểu **embedding**: biến văn bản thành một dãy số (**vector**) sao cho văn bản gần nghĩa → dãy số gần nhau.
+- Tự viết **cosine similarity** (điểm đo hai vector "chỉ cùng hướng" tới mức nào) bằng vòng lặp, rồi bằng numpy, và biết vì sao numpy nhanh hơn dù cùng Big-O.
+- Viết **top-k** (lấy k kết quả điểm cao nhất) và chọn cách làm hợp lý: sắp xếp hết O(n log n), heap O(n log k), `argpartition` O(n).
+- Gọi API embedding theo lô, phân biệt `input_type` **query** (câu hỏi) và **passage** (tài liệu để tìm).
+- So **tìm theo nghĩa** (semantic search) với **tìm theo từ khóa** trên một câu hỏi thật.
 - **Kết quả đo được:** 4 hàm trong `semantic.py` qua hết **11 test**; `python semantic.py "làm pipeline dữ liệu cho ngân hàng"` trả về 5/5 tin của ngân hàng/fintech, còn tìm theo từ khóa trả về 0/5 tin liên quan.
 
 > 🧠 **Ghi nhớ:** Tìm theo từ khóa hỏi "tài liệu có **chữ** này không?". Tìm theo nghĩa hỏi "tài liệu có **nói về** điều này không?".
@@ -23,7 +23,7 @@ Sau buổi này (khoảng 3 giờ) bạn sẽ:
 |---|---|
 | `cosine_similarity(a, b)` | cosine của 2 vector, xử lý vector 0 và khác độ dài |
 | `top_k(query_vec, doc_vecs, k)` | k tài liệu có cosine cao nhất, `(chỉ_số, điểm)` |
-| `keyword_search(query, docs, k)` | mốc so sánh: đếm từ khác nhau của query có trong tài liệu |
+| `keyword_search(query, docs, k)` | mốc so sánh (baseline): đếm từ khác nhau của query có trong tài liệu |
 | `embed_texts(client, texts, input_type, ...)` | gọi API embedding theo lô, giữ đúng thứ tự |
 
 Đã viết sẵn: `tokenize`, `job_header`, `job_to_text` (văn bản đại diện một tin = tiêu đề — công ty (thành phố) + mô tả), `load_jobs` (đọc CSDL L10, chỉ đọc), `load_api_key`, `make_client`, `load_or_embed_docs` (lưu vector ra `doc_vectors.npy`, chạy lại không gọi API).
@@ -31,6 +31,58 @@ Sau buổi này (khoảng 3 giờ) bạn sẽ:
 **Xong khi:** bấm **Chạy test** thấy `11 passed`, và chạy thật được câu truy vấn ở Bước 6.
 
 ## 🤔 Tại sao? (kiến thức nền)
+
+### Hiểu trước khi làm
+
+**Bối cảnh.** Ứng viên gõ "làm pipeline dữ liệu cho ngân hàng". Không tin nào chứa đúng mấy chữ đó, nhưng có tin "Data Engineer — Trúc Xanh Bank" rất hợp. Tìm theo chữ thì trượt; cần cách tìm hiểu được rằng "ngân hàng" gần "Bank", "pipeline dữ liệu" gần "Data Engineer". Máy tính không hiểu nghĩa, nhưng tính toán trên số rất giỏi — nên ta đổi nghĩa của câu thành số.
+
+**Ví dụ đời thường.** Thư viện xếp sách theo chủ đề: sách nấu ăn một kệ, sách lập trình một kệ khác, hai cuốn cùng chủ đề đứng sát nhau. Mỗi cuốn có một "tọa độ" trong thư viện. Embedding làm điều đó cho mọi đoạn văn: gán cho nó tọa độ trong một "thư viện nghĩa" có 2048 chiều thay vì 2 chiều (dãy, kệ). Tìm sách = lấy tọa độ của câu hỏi rồi chọn những cuốn đứng gần nhất. Cosine đo "gần" bằng góc: đứng ở cửa, hai cuốn nằm cùng một hướng nhìn thì điểm cao, dù một cuốn ở xa hơn.
+
+**Bạn đã gặp nó ở đâu.**
+- Google tìm ra trang đúng ý dù bạn gõ khác chữ, sai chính tả.
+- Spotify, YouTube gợi ý bài hát / video "giống cái bạn vừa nghe".
+- Shopee "sản phẩm tương tự", Google Photos gõ "biển" ra mọi ảnh chụp biển.
+- Hệ thống trả lời tự động của ngân hàng hiểu "quên mật khẩu" và "không đăng nhập được" là một việc.
+
+| Câu hỏi | Trả lời |
+|---|---|
+| **What** — là gì? | **Embedding**: dãy số cố định độ dài đại diện cho nghĩa của một đoạn văn. **Cosine similarity**: điểm đo hai dãy số "chỉ cùng hướng" tới đâu. **Semantic search**: tìm theo nghĩa bằng cách xếp tài liệu theo cosine với câu hỏi. |
+| **Why** — vì sao cần? | Người dùng diễn đạt khác tài liệu: đồng nghĩa, viết tắt, tiếng Anh lẫn tiếng Việt. Tìm theo chữ bỏ lỡ những tài liệu đúng nghĩa. |
+| **When** — khi nào dùng? | Câu hỏi tự nhiên, mô tả bằng lời; gợi ý "nội dung tương tự"; bước "tìm tài liệu" của RAG (L16). |
+| **When not** — khi nào không? | Tìm mã, tên riêng hiếm ("JR-10015", số hóa đơn): tìm theo chữ chính xác hơn và miễn phí. |
+| **Where** — nằm ở đâu? | Lúc nạp dữ liệu: embed mọi tài liệu một lần, lưu lại. Lúc người dùng hỏi: embed câu hỏi, so với vector đã lưu. |
+| **How** — chạy thế nào? | Gọi model embedding → nhận vector → tính cosine giữa câu hỏi và từng tài liệu → lấy k điểm cao nhất. |
+
+**Từ mới trong bài**
+
+| Từ | Nghĩa đời thường |
+|---|---|
+| embedding | "tọa độ nghĩa" của một đoạn văn, do một model AI tính ra |
+| vector | dãy số có thứ tự, vd. `[0.12, -0.5, 0.33]`; hình dung là một mũi tên đi từ gốc tọa độ |
+| chiều (dimension) | số lượng con số trong vector; bài này dùng vector 2048 chiều |
+| tích vô hướng (dot product) | nhân từng cặp số rồi cộng lại — như tính tổng tiền giỏ hàng = số lượng × đơn giá |
+| độ dài vector, chuẩn hóa | độ dài mũi tên; chuẩn hóa = co giãn để độ dài bằng 1, chỉ giữ hướng |
+| cosine similarity | điểm từ -1 đến 1: 1 là cùng hướng, 0 là không liên quan |
+| semantic search | tìm theo nghĩa thay vì theo chữ |
+| keyword search, baseline | tìm theo chữ trùng; baseline là cách đơn giản làm mốc để so |
+| top-k | k kết quả điểm cao nhất (bài dùng k = 5) |
+| heap | cấu trúc dữ liệu luôn biết ngay phần tử nhỏ nhất — giữ "k ứng viên tốt nhất" rất rẻ |
+| `argsort`, `argpartition`, `argmax` | hàm numpy trả về **vị trí** (chỉ số) thay vì giá trị: vị trí sau khi sắp xếp / vị trí k phần tử lớn nhất / vị trí phần tử lớn nhất |
+| numpy, BLAS | thư viện tính toán số; BLAS là phần lõi viết bằng C mà numpy gọi để nhân ma trận cực nhanh |
+| ma trận | bảng số nhiều hàng; 264 vector 2048 chiều xếp chồng = ma trận 264 × 2048 |
+| `input_type`: query / passage | báo cho model văn bản là câu hỏi hay là tài liệu, vì model mã hóa hai loại hơi khác nhau |
+| hybrid search | kết hợp tìm theo chữ và theo nghĩa |
+| âm tiết | tiếng Việt tách theo khoảng trắng ra từng âm tiết ("ngân", "hàng"), không phải từng từ |
+
+```mermaid
+flowchart TD
+    D["264 tin tuyển dụng"] --> ED["Model embedding<br/>mỗi tin → 2048 số"]
+    ED --> S["Lưu vector ra đĩa<br/>một lần"]
+    Q["Câu hỏi người dùng"] --> EQ["Model embedding<br/>câu hỏi → 2048 số"]
+    EQ --> C["Cosine với từng tin"]
+    S --> C
+    C --> K["Lấy 5 tin điểm cao nhất"]
+```
 
 ### Từ khóa thất bại ở đâu
 
@@ -45,7 +97,7 @@ Không tin nào chứa chữ "pipeline" hay "ngân hàng". Tiếng Việt còn k
 
 ### Embedding là gì
 
-Model embedding biến một đoạn văn bản thành một vector cố định độ dài. Model dùng trong bài, `nvidia/nemotron-3-embed-1b`, trả vector **2048 chiều**, đã chuẩn hóa độ dài 1. Model được huấn luyện để hai văn bản gần nghĩa có vector chỉ về gần cùng một hướng.
+Model dùng trong bài, `nvidia/nemotron-3-embed-1b`, trả vector **2048 chiều**, đã chuẩn hóa độ dài 1. Model được huấn luyện để hai văn bản gần nghĩa có vector chỉ về gần cùng một hướng.
 
 | | Từ khóa | Embedding |
 |---|---|---|
@@ -158,7 +210,7 @@ Cách 3: 94
 
 > ⚖️ **So sánh:** cả ba cùng O(d) với d = số phần tử. Cách 2 chỉ gọn hơn. Cách 3 chạy vòng lặp trong C nên nhanh hơn nhiều khi d = 2048 — xem Bước 3.
 
-Phần còn lại của `cosine_similarity` bạn tự ghép theo công thức ở phần Kiến thức nền: độ dài `|a|` = căn bậc hai của tích vô hướng `a · a` (`math.sqrt`), rồi chia. Docstring còn hai trường hợp: vector toàn 0 và hai vector khác độ dài.
+Phần còn lại của `cosine_similarity` bạn tự ghép theo công thức ở mục "Cosine similarity" (① Hiểu trước): độ dài `|a|` = căn bậc hai của tích vô hướng `a · a` (`math.sqrt`), rồi chia. Docstring còn hai trường hợp: vector toàn 0 và hai vector khác độ dài.
 
 ### Bước 3 — Xếp hạng → `top_k`
 

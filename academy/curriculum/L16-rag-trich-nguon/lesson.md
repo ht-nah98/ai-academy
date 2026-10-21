@@ -4,12 +4,12 @@
 
 ## 🎯 Mục tiêu
 
-Sau buổi này (khoảng 3 giờ) bạn sẽ:
+Sau buổi này (khoảng 3 giờ 15 phút) bạn sẽ:
 
-- Hiểu **RAG** (Retrieval-Augmented Generation): truy hồi → đưa nguồn vào prompt → sinh câu trả lời.
-- Viết prompt **có nguồn đánh số theo id**, quy tắc trích dẫn và câu **từ chối** chuẩn.
-- Tách id được trích bằng regex và **kiểm tra** id đó có thật sự nằm trong nguồn đã truy hồi.
-- Chặn gọi LLM khi truy hồi không có gì đủ tốt (tiết kiệm tiền, giảm bịa).
+- Hiểu **RAG** (Retrieval-Augmented Generation): tìm tài liệu liên quan (truy hồi) → đưa chúng vào prompt làm nguồn → model viết câu trả lời từ nguồn đó.
+- Viết prompt **có nguồn đánh số theo id**, quy tắc trích dẫn (ghi id nguồn sau mỗi ý) và câu **từ chối** chuẩn khi nguồn không có đáp án.
+- Tách id được trích bằng regex (mẫu tìm chuỗi) và **kiểm tra** id đó có thật sự nằm trong nguồn đã truy hồi.
+- Chặn gọi LLM khi truy hồi không có gì đủ tốt (tiết kiệm tiền, giảm bịa — hallucination).
 - **Kết quả đo được:** 4 hàm trong `rag.py` qua hết **8 test**; chạy thật 3 câu hỏi: 1 câu trả lời có nguồn hợp lệ, 2 câu không có đáp án → model từ chối đúng; đầu-cuối (embedding câu hỏi + search + LLM, chưa cache) trung vị **1,8 giây** mỗi câu trên 20 câu của L17.
 
 > 🧠 **Ghi nhớ:** LLM không "biết" dữ liệu của bạn. RAG đưa dữ liệu vào prompt mỗi lần hỏi; trích nguồn để người dùng — và code — kiểm chứng được câu trả lời.
@@ -22,7 +22,7 @@ Sau buổi này (khoảng 3 giờ) bạn sẽ:
 
 | Hàm | Việc |
 |---|---|
-| `format_sources(hits)` | các chunk → khối `[JR-xxxxx] text`, gộp chunk cùng tin |
+| `format_sources(hits)` | các chunk tìm được (hit) → khối `[JR-xxxxx] text`, gộp chunk cùng tin |
 | `build_rag_messages(question, hits)` | system = `RAG_RULES`, user = NGUỒN + CÂU HỎI |
 | `extract_citations(answer)` | id trong ngoặc vuông, không trùng, theo thứ tự |
 | `answer_question(question, search_fn, chat_fn, k, min_score)` | truy hồi → (chặn) → gọi model → kiểm trích dẫn |
@@ -32,6 +32,55 @@ Sau buổi này (khoảng 3 giờ) bạn sẽ:
 **Xong khi:** bấm **Chạy test** thấy `8 passed`, và `python rag.py` in được 3 câu trả lời ở Bước 6.
 
 ## 🤔 Tại sao? (kiến thức nền)
+
+### Hiểu trước khi làm
+
+**Bối cảnh.** Hỏi một chatbot thông thường "Ngân hàng nào đang tuyển kỹ sư dữ liệu?", nó không biết 264 tin của JobRadar — nó chỉ học từ dữ liệu trên Internet tới một ngày nào đó. Tệ hơn, nó vẫn trả lời trôi chảy, kể tên công ty nghe rất thật nhưng do nó tự bịa. Muốn chatbot trả lời đúng về dữ liệu của mình, ta tìm các tin liên quan (L14, L15), đưa cho model đọc ngay trong câu hỏi, và bắt nó ghi rõ tin nào là căn cứ để kiểm tra được.
+
+**Ví dụ đời thường.** Thi **mở tài liệu**: thí sinh không cần thuộc lòng, nhưng chỉ được viết từ tài liệu mang vào và phải ghi "theo trang 12". Giám khảo lật trang 12 để kiểm. Không có trong tài liệu thì ghi "không có thông tin", không bịa. RAG đặt LLM vào đúng phòng thi đó; code của bạn là giám khảo kiểm số trang.
+
+**Bạn đã gặp nó ở đâu.**
+- Perplexity, Google AI Overviews: câu trả lời kèm số [1] [2] dẫn tới trang nguồn.
+- ChatGPT / Claude khi bạn tải file PDF lên rồi hỏi về nội dung file.
+- Chatbot chăm sóc khách hàng của ngân hàng, nhà mạng trả lời dựa trên trang câu hỏi thường gặp của chính họ.
+- Notion AI, Microsoft Copilot trả lời từ tài liệu nội bộ công ty.
+
+| Câu hỏi | Trả lời |
+|---|---|
+| **What** — là gì? | **RAG**: tìm tài liệu liên quan → đưa vào prompt → model trả lời chỉ từ đó. **Citation**: id nguồn ghi sau mỗi ý, vd. `[JR-10108]`. **Hallucination**: model viết thông tin nghe hợp lý nhưng không có căn cứ. |
+| **Why** — vì sao cần? | Model không biết dữ liệu riêng và mới của bạn; có trích nguồn thì người dùng và code kiểm chứng được, bịa nguồn thì bị bắt. |
+| **When** — khi nào dùng? | Hỏi đáp trên tài liệu riêng, thay đổi thường xuyên, cần chỉ ra căn cứ: tin tuyển dụng, quy định nội bộ, tài liệu sản phẩm. |
+| **When not** — khi nào không? | Câu hỏi kiến thức chung, viết sáng tạo; hoặc cần con số tổng hợp chính xác ("có bao nhiêu tin lương trên 30 triệu") — truy vấn SQL (L09) đúng hơn. |
+| **Where** — nằm ở đâu? | Lớp cuối của hệ thống tìm kiếm: sau truy hồi (L14–L15), trước khi hiện câu trả lời cho người dùng. |
+| **How** — chạy thế nào? | Truy hồi top-k → không có gì đủ tốt thì từ chối luôn → ghép NGUỒN + CÂU HỎI vào prompt → gọi model → tách id trích dẫn → kiểm id có nằm trong nguồn đã đưa. |
+
+**Từ mới trong bài**
+
+| Từ | Nghĩa đời thường |
+|---|---|
+| RAG | Retrieval-Augmented Generation: "viết câu trả lời có tra cứu tài liệu trước" |
+| truy hồi (retrieval), hit | bước tìm tài liệu liên quan; mỗi chunk tìm được là một hit |
+| nguồn (sources) | các tin đã đưa vào prompt cho model đọc |
+| citation (trích dẫn) | id nguồn trong ngoặc vuông sau mỗi ý, vd. `[JR-10108]` |
+| hallucination (bịa) | model nói điều không có trong nguồn hay sự thật, giọng vẫn rất tự tin |
+| câu từ chối (`REFUSAL`) | câu cố định model phải trả khi nguồn không có đáp án; cố định để code nhận ra bằng phép `in` |
+| `min_score` | ngưỡng điểm truy hồi; dưới ngưỡng thì từ chối luôn, không tốn lời gọi model |
+| fine-tune | huấn luyện thêm model trên dữ liệu của bạn — tốn kém, phải làm lại khi dữ liệu đổi |
+| regex (biểu thức chính quy) | mẫu để tìm chuỗi, vd. `JR-\d{5}` = "JR-" + 5 chữ số |
+| `⊆` (tập con) | mọi phần tử của tập này đều nằm trong tập kia: mọi id trích phải nằm trong nguồn |
+| `invalid_citations` | các id model trích nhưng **không** có trong nguồn đã đưa — dấu hiệu bịa nguồn |
+| citation recall | trong các tin đúng, câu trả lời trích được bao nhiêu (đo ở L17) |
+| LLM-as-judge | dùng một LLM khác chấm câu trả lời có khớp nguồn không |
+
+```mermaid
+flowchart TD
+    Q["Câu hỏi"] --> R["Truy hồi<br/>5 tin gần nghĩa nhất"]
+    R --> P["Prompt = quy tắc + NGUỒN + câu hỏi"]
+    P --> M["LLM viết câu trả lời<br/>kèm id nguồn"]
+    M --> K{"Code kiểm:<br/>id có trong NGUỒN?"}
+    K -- "Có" --> OK["Hiện cho người dùng"]
+    K -- "Không" --> X["Đánh dấu nguồn bịa"]
+```
 
 ### Ba cách để model trả lời về dữ liệu riêng
 

@@ -12,7 +12,7 @@ Sau buổi này (khoảng 4–5 giờ với người mới — bài dài nhất 
 - Debug bằng **log vòng đời kết nối có id**, client dòng lệnh, DevTools; nhận ra **5 lỗi realtime hay gặp**.
 - **Kết quả đo được:** chấm bài qua hết **10 test** (5 cho testkit, 5 chạy chính `chat.test.js` của bạn với 1 server đúng + 4 server lỗi); `npm run load`: 20 client × 20 tin → 8.000 tin giao trong 38 ms (~209.000 tin/giây), p50 33,8 ms, p99 37,3 ms — đo trên loopback, client và server chung một tiến trình: là mốc để so sánh trước/sau khi sửa code, không phải năng lực của server thật (Bước 5).
 
-> 🧠 **Ghi nhớ:** test realtime khó vì **thời gian**: tin đến "lúc nào đó". Test tốt không bao giờ đoán thời gian (`sleep(100)` rồi hy vọng), mà **chờ sự kiện cụ thể** với giới hạn tối đa — nhanh khi máy nhanh, vẫn đúng khi máy chậm, và báo lỗi rõ khi tin không bao giờ đến.
+> 📖 Từ lạ ở trên và trong Đề bài (test tích hợp, flaky, load test, p50/p95/p99, nearest-rank, loopback…) được giải nghĩa ở mục *Hiểu trước khi làm*, ngay đầu phần kiến thức nền.
 
 ## 📋 Đề bài
 
@@ -38,9 +38,72 @@ Chấm `chat.test.js`: bài chấm chạy file của bạn với server đúng (
 
 ## 🤔 Tại sao? (kiến thức nền)
 
+### Hiểu trước khi làm
+
+**Bối cảnh.** Tới giờ bạn kiểm tra code bằng cách chạy thử rồi nhìn bằng mắt, hoặc chạy test người khác viết sẵn. Ở công ty, code thay đổi hằng ngày bởi nhiều người; không ai mở hai tab chat để thử lại mọi tính năng sau mỗi lần sửa. **Test tự động** làm việc đó trong vài giây, mỗi lần có người đẩy code lên. Với realtime còn khó hơn: tin đến "lúc nào đó" chứ không đến ngay, và nhiều lỗi chỉ lộ ra khi có rất nhiều người cùng lúc — nên cần thêm **load test** và cách đo "người chậm nhất phải chờ bao lâu".
+
+**Ví dụ đời thường.** Test giống **danh sách kiểm tra trước khi xe khách xuất bến**: đèn, phanh, lốp — làm mỗi chuyến, cùng một quy trình, ai làm cũng ra cùng kết quả. Chờ tin bằng `sleep` giống hẹn "5 phút nữa ra xem bưu tá tới chưa": hôm bưu tá tới muộn, bạn kết luận nhầm "không có thư". `waitForMessage` giống ngồi cạnh hòm thư: thư tới là biết ngay, quá một giờ thì báo rõ "không tới". **Load test** giống cho 1.000 người cùng vào quán ăn thử trước ngày khai trương. Còn **phân vị**: thời gian chờ món trung bình 5 phút, nhưng cứ 100 khách có 1 người chờ 40 phút — người đó viết đánh giá 1 sao. **p99** trả lời "99% khách chờ không quá bao lâu".
+
+**Bạn đã gặp nó ở đâu.**
+- Trên GitHub, mỗi lần đẩy code có dấu tick xanh hoặc dấu x đỏ: máy CI vừa chạy hết bộ test.
+- Trang bán vé concert sập đúng giờ mở bán: hệ thống chưa được load test với từng ấy người.
+- Ứng dụng Speedtest đo "ping" — chính là độ trễ, đơn vị mili giây.
+- Báo cáo kỹ thuật của các công ty lớn ghi "p99 latency" thay vì "độ trễ trung bình".
+
+| Câu hỏi | Trả lời |
+|---|---|
+| **What** — là gì | Test tích hợp: dựng server thật, mở client thật, kiểm tra ai nhận gì. Load test: nhiều client gửi cùng lúc, đo tin/giây và độ trễ theo phân vị. |
+| **Why** — vì sao cần | Bắt lỗi trước người dùng, sau **mỗi** lần sửa; biết server chịu được bao nhiêu và đuôi chậm dài cỡ nào. |
+| **When** — khi nào dùng | Test: mọi hành vi quan trọng (ai nhận tin, tin hỏng, người rời đi). Load test: trước khi ra mắt, trước và sau khi sửa code ảnh hưởng tốc độ. |
+| **When not** — khi nào không | Không dùng load test trên loopback để hứa "server chịu được X người" — số đó chỉ để so trước/sau. Không dùng `sleep` cố định để chờ tin. |
+| **Where** — ở đâu | File `*.test.js` chạy bằng `node --test`, ở máy bạn và máy CI; load test chạy riêng (`npm run load`). |
+| **How** — chạy thế nào | Chuẩn bị (server cổng 0, client) → tạo lời chờ tin → gửi → kiểm kết quả → dọn dẹp. Load test: ghi giờ gửi từng tin, đo lúc nhận, sắp xếp rồi lấy p50/p95/p99. |
+
+> 🧠 **Ghi nhớ:** test realtime khó vì **thời gian**: tin đến "lúc nào đó". Test tốt không bao giờ đoán thời gian (`sleep(100)` rồi hy vọng), mà **chờ sự kiện cụ thể** với giới hạn tối đa — nhanh khi máy nhanh, vẫn đúng khi máy chậm, và báo lỗi rõ khi tin không bao giờ đến.
+
+```mermaid
+flowchart TD
+    A["Bạn sửa code, đẩy lên"] --> CI["Máy CI chạy node --test"]
+    CI --> T{"Mọi test pass?"}
+    T -- "có: tick xanh" --> L["Trước khi ra mắt: load test<br/>N client, đo tin/giây, p50 p95 p99"]
+    T -- "không: x đỏ" --> D["Debug: đọc log có id kết nối,<br/>thử bằng client dòng lệnh, DevTools"]
+    D --> A
+```
+
+**Từ mới trong bài**
+
+| Từ | Nghĩa đời thường |
+|---|---|
+| **Test tự động** | Code gọi code của bạn rồi so kết quả với mong đợi; chạy lại bao nhiêu lần cũng được |
+| **Test đơn vị** · **test tích hợp** | Kiểm một hàm riêng lẻ · kiểm nhiều phần chạy cùng nhau (server thật + client thật) |
+| **Bug** | Lỗi trong code làm chương trình chạy sai |
+| **Flaky** (chập chờn) | Test lúc pass lúc fail dù code không đổi — thường do đoán thời gian |
+| **`sleep`** | Dừng chờ một khoảng cố định |
+| **CI** | Máy chạy test tự động mỗi lần đẩy code lên; thường dùng chung, chậm hơn máy bạn |
+| **Assert** | Lệnh "khẳng định": sai thì test fail kèm thông báo |
+| **Arrange – Act – Assert** | Khuôn test: chuẩn bị – hành động – kiểm tra |
+| **Predicate** | Hàm trả đúng/sai, dùng để lọc ("tin này có phải tin `chat` không?") |
+| **Helper** | Hàm phụ viết sẵn để test gọn hơn (`startServer`, `connect`) |
+| **`t.after`**, **handle còn mở** | Dọn dẹp khi test xong · kết nối/timer chưa đóng làm tiến trình không thoát |
+| **Rò listener** (leak) | Gắn thêm listener mà không gỡ, bộ nhớ tăng dần |
+| **`uncaughtException`** | Lỗi không ai bắt, làm sập tiến trình |
+| **Backpressure**, **`bufferedAmount`** | Bên nhận đọc chậm hơn bên gửi, dữ liệu dồn lại · số byte đang chờ gửi trong bộ nhớ server |
+| **Load test** | Thử tải: nhiều client cùng gửi để đo server chịu được bao nhiêu |
+| **Throughput** (tin/giây) | Số tin xử lý được mỗi giây |
+| **Độ trễ** (latency) | Thời gian từ lúc gửi tới lúc nhận |
+| **Trung bình** · **trung vị** | Tổng chia số lượng · giá trị đứng giữa khi xếp từ nhỏ tới lớn |
+| **Phân vị** (percentile) **p50 / p95 / p99** | p95 = 95% số lần đo nhỏ hơn hoặc bằng giá trị này; p50 chính là trung vị |
+| **Nearest-rank** | Cách tính phân vị: lấy phần tử thứ `ceil(p/100 × n)` của mảng đã sắp, đếm từ 1 |
+| **Loopback** | Kết nối trong cùng một máy (`127.0.0.1`), không qua mạng thật — nhanh hơn thực tế |
+| **`performance.now()`** | Đồng hồ đo khoảng thời gian chính xác tới phần nghìn mili giây |
+| **Debug** | Tìm nguyên nhân lỗi và sửa |
+| **Log vòng đời**, **id kết nối** | Dòng ghi mỗi lần mở/nhận/đóng kết nối · mã riêng của từng kết nối để lần theo |
+| **DevTools** | Công cụ của trình duyệt (F12); tab Network → WS xem từng tin WebSocket |
+| **Client dòng lệnh** | Chương trình chat gõ trong terminal (`cli.js`) để thử server bằng tay |
+
 ### `sleep` làm test chập chờn
 
-Server trả lời sau 30 ms lúc máy rảnh, 80 ms lúc máy CI bận (CI: máy chạy test tự động mỗi lần đẩy code lên, thường dùng chung và chậm hơn máy bạn):
+Server trả lời sau 30 ms lúc máy rảnh, 80 ms lúc máy CI bận:
 
 ```js
 import { once } from 'node:events';

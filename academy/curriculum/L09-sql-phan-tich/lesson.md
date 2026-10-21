@@ -6,9 +6,9 @@
 
 Sau buổi này (khoảng 3,5 giờ) bạn sẽ:
 
-- Viết truy vấn với `SELECT`, `WHERE`, `GROUP BY`, `HAVING`, `ORDER BY`, `LIMIT`.
-- Nối bảng bằng `JOIN`, phân biệt `INNER JOIN` và `LEFT JOIN`.
-- Dùng **CTE** (`WITH`) và **window function**: `ROW_NUMBER`, `RANK`, trung bình trượt.
+- Viết truy vấn (câu hỏi gửi DB) với `SELECT` (chọn cột), `WHERE` (lọc hàng), `GROUP BY` (gom nhóm), `HAVING` (lọc nhóm), `ORDER BY` (sắp xếp), `LIMIT` (lấy N dòng đầu).
+- Nối bảng bằng `JOIN` (ghép hàng theo cột chung), phân biệt `INNER JOIN` và `LEFT JOIN`.
+- Dùng **CTE** (`WITH`, bước trung gian có tên) và **window function** (tính trên nhóm hàng mà không gộp hàng): `ROW_NUMBER`, `RANK`, trung bình trượt.
 - **Kết quả đo được:** 8 hàm trong `queries.py` qua hết **11 test**.
 
 > 🧠 **Ghi nhớ:** Vòng phỏng vấn kỹ thuật Data gần như luôn có bài "viết SQL trên giấy". Window function là phần phân loại ứng viên.
@@ -25,11 +25,72 @@ Mỗi hàm chạy **một** câu SQL và trả `conn.execute(...).fetchall()`. D
 | Nối bảng | `companies_with_min_jobs(k)`, `jobs_with_skill(skill)` |
 | Window | `top_skill_per_city`, `top_paid_per_city(k)`, `monthly_trend` |
 
-Test dùng DB mẫu 10 tin (`FIXTURE_SQL` trong file test) — đáp án biết trước. `python queries.py` chạy trên `jobradar.db` thật của L08.
+Test dùng DB mẫu 10 tin (fixture `FIXTURE_SQL` trong file test) — đáp án biết trước. `python queries.py` chạy trên `jobradar.db` thật của L08.
 
 **Xong khi:** bấm **Chạy test** thấy `11 passed`.
 
 ## 🤔 Tại sao? (kiến thức nền)
+
+### Hiểu trước khi làm
+
+**Bối cảnh.** Dữ liệu đã nằm gọn trong `jobradar.db` (L08). Giờ là lúc trả lời câu hỏi của người làm sản phẩm: thành phố nào tuyển nhiều nhất, kỹ năng nào đang hot, lương theo cấp bậc ra sao, số tin tăng hay giảm theo tháng. Khi bảng có hàng triệu dòng, không ai kéo hết về Python để đếm. Ta gửi cho cơ sở dữ liệu một câu hỏi viết bằng **SQL**; nó tự tính và chỉ trả về vài dòng kết quả.
+
+**Ví dụ đời thường.**
+- **GROUP BY** giống kiểm phiếu: chia phiếu thành từng chồng theo ứng viên, rồi đếm mỗi chồng.
+- **JOIN** giống ghép danh sách lớp với bảng điểm theo mã học sinh để biết điểm ấy là của ai.
+- **Window function** giống bảng xếp hạng trong từng lớp: mỗi học sinh vẫn giữ dòng của mình, chỉ có thêm cột "hạng trong lớp".
+- **Trung bình trượt** giống điểm trung bình của 3 bài kiểm tra gần nhất, cập nhật sau mỗi bài.
+
+**Bạn đã gặp nó ở đâu.**
+- Pivot table trong Excel, Google Sheets: chính là GROUP BY.
+- Bảng xếp hạng V-League theo từng mùa: RANK trong từng nhóm.
+- Trang báo cáo của người bán trên Shopee: doanh thu theo tháng, sản phẩm bán chạy nhất.
+- Đường trung bình giá 7 ngày, 20 ngày trên app chứng khoán: trung bình trượt.
+
+| | GROUP BY, JOIN | Window function, CTE |
+|---|---|---|
+| **What** — là gì? | GROUP BY gom hàng theo cột rồi tính một giá trị mỗi nhóm. JOIN ghép hàng của hai bảng theo cột chung. | Window function tính cho **mỗi hàng** dựa trên nhóm hàng liên quan, không gộp hàng. CTE đặt tên cho một bước trung gian. |
+| **Why** — vì sao cần? | Trả lời câu hỏi "bao nhiêu, trung bình bao nhiêu" trên dữ liệu nằm ở nhiều bảng. | Giải các bài "top N mỗi nhóm", xếp hạng, xu hướng mà GROUP BY không làm được. |
+| **When** — khi nào dùng? | Đếm, cộng, tính trung bình theo nhóm; cần thông tin từ bảng khác. | Xếp hạng trong nhóm, trung bình trượt, câu SQL dài cần chia bước. |
+| **When not** — khi nào không? | Chỉ cần đọc vài dòng thô: `SELECT ... WHERE` là đủ. | Chỉ cần một con số mỗi nhóm: GROUP BY gọn hơn. |
+| **Where** — ở đâu? | 5 hàm đầu trong `queries.py`. | `top_skill_per_city`, `top_paid_per_city`, `monthly_trend`. |
+| **How** — chạy thế nào? | DB chạy theo thứ tự FROM/JOIN → WHERE → GROUP BY → HAVING → SELECT → ORDER BY → LIMIT. | `OVER (PARTITION BY ... ORDER BY ...)` chia nhóm và sắp xếp trong nhóm, rồi tính cho từng hàng. |
+
+**Từ mới trong bài**
+
+| Thuật ngữ | Nghĩa đời thường |
+|---|---|
+| truy vấn (query) | Một câu hỏi viết bằng SQL gửi cho DB |
+| khai báo (declarative) | Nói "muốn kết quả gì", để DB tự chọn cách làm |
+| `SELECT`, `FROM` | Lấy những cột nào / từ bảng nào |
+| `WHERE`, `HAVING` | Lọc hàng trước khi gom nhóm / lọc nhóm sau khi gom |
+| `GROUP BY` | Gom các hàng cùng giá trị thành một nhóm |
+| `ORDER BY`, `LIMIT` | Sắp xếp (`DESC` = giảm dần) / chỉ lấy N dòng đầu |
+| hàm gộp (aggregate) | Hàm biến cả nhóm thành một số: `COUNT`, `SUM`, `AVG`, `MAX` |
+| `AS` | Đặt tên mới cho cột kết quả |
+| `JOIN ... ON`, `INNER JOIN`, `LEFT JOIN` | Ghép bảng theo điều kiện; INNER bỏ hàng không có cặp, LEFT giữ lại và điền `NULL` |
+| `NULL`, `IS NULL` | "Không biết giá trị"; phải kiểm tra bằng `IS NULL`, không dùng `=` |
+| CTE (`WITH ... AS`) | Bảng tạm có tên, dùng ngay trong câu tiếp theo |
+| window function, `OVER` | Hàm tính trên một "cửa sổ" hàng; `OVER (...)` mô tả cửa sổ đó |
+| `PARTITION BY` | Chia hàng thành nhóm để tính riêng từng nhóm |
+| `ROW_NUMBER`, `RANK`, `DENSE_RANK` | Đánh số thứ tự / xếp hạng có nhảy hạng khi bằng nhau / xếp hạng không nhảy |
+| top-N mỗi nhóm | Lấy N hàng đứng đầu trong từng nhóm, vd. kỹ năng hàng đầu mỗi thành phố |
+| trung bình trượt, cộng dồn | Trung bình của vài kỳ gần nhất / trung bình từ đầu tới hiện tại |
+| `ROWS BETWEEN 1 PRECEDING AND CURRENT ROW` | Cửa sổ gồm hàng trước và hàng hiện tại |
+| `substr` | Cắt một đoạn chuỗi, vd. lấy `"2026-09"` từ ngày |
+| index | "Mục lục" giúp DB tìm hàng nhanh không phải đọc hết bảng |
+| fixture | Dữ liệu mẫu cố định test dùng, đáp án biết trước |
+| self-join | Ghép một bảng với chính nó |
+
+```mermaid
+flowchart TD
+    Q["Câu hỏi: kỹ năng hàng đầu mỗi thành phố?"] --> J["JOIN jobs với job_skills"]
+    J --> G["GROUP BY thành phố, kỹ năng: đếm số tin"]
+    G --> C["CTE: lưu kết quả đếm"]
+    C --> W["Window: xếp hạng kỹ năng trong từng thành phố"]
+    W --> F["Câu ngoài: lấy hạng 1"]
+    F --> R["Mỗi thành phố một dòng"]
+```
 
 ### SQL: nói "muốn gì", không nói "làm thế nào"
 
@@ -73,8 +134,6 @@ flowchart TD
 | `AVG(x)` | tự bỏ qua NULL |
 
 ### Window function: tính trên "cửa sổ" mà không gộp hàng
-
-Window function tính một giá trị cho **mỗi hàng** dựa trên một nhóm hàng liên quan — khác `GROUP BY` là **không gộp** hàng lại.
 
 `ROW_NUMBER() OVER (PARTITION BY city ORDER BY n DESC)`: chia theo `city`, trong mỗi nhóm đánh số 1, 2, 3… theo `n` giảm dần. Lọc `= 1` là ra "đứng đầu mỗi nhóm" — bài toán top-N-per-group kinh điển.
 

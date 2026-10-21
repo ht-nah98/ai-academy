@@ -2,7 +2,7 @@
   "id": "N00-js-cho-nguoi-biet-python",
   "title": "JavaScript cho người đã biết Python",
   "goal": "Viết 9 hàm nhỏ luyện cú pháp JavaScript nền (biến, object, hàm, class, closure, JSON, await); qua hết 19 test.",
-  "duration_min": 120,
+  "duration_min": 135,
   "concepts": [
     "js-syntax-basics",
     "js-objects-arrays",

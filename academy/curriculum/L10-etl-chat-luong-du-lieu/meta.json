@@ -2,7 +2,7 @@
   "id": "L10-etl-chat-luong-du-lieu",
   "title": "ETL lặp lại được & chất lượng dữ liệu",
   "goal": "Đóng gói ETL idempotent kèm bộ kiểm tra chất lượng dữ liệu chặn bản ghi lỗi — 4 hàm trong pipeline.py qua hết 14 test, chạy 2 lần trên dữ liệu thật đều nạp đúng 264 tin.",
-  "duration_min": 210,
+  "duration_min": 225,
   "concepts": [
     "etl",
     "idempotency",

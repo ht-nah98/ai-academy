@@ -2,7 +2,7 @@
   "id": "L04-temperature-system-prompt",
   "title": "Temperature & system prompt",
   "goal": "Cấu hình system prompt và temperature để chatbot trả lời nhất quán; qua hết 26 test và đo được độ ổn định qua 5 lần gọi model thật.",
-  "duration_min": 180,
+  "duration_min": 195,
   "concepts": [
     "temperature",
     "system-prompt",

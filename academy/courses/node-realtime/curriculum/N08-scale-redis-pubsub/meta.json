@@ -2,7 +2,7 @@
   "id": "N08-scale-redis-pubsub",
   "title": "Nhiều server với Redis pub/sub",
   "goal": "Nối nhiều instance chat bằng pub/sub: broker trong bộ nhớ để test offline, Redis thật để chạy nhiều tiến trình; qua hết 8 test.",
-  "duration_min": 210,
+  "duration_min": 225,
   "concepts": [
     "horizontal-scaling",
     "pubsub-broker",

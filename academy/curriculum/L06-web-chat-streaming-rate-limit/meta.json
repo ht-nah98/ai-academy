@@ -2,7 +2,7 @@
   "id": "L06-web-chat-streaming-rate-limit",
   "title": "Web chat, streaming, lỗi & rate limit",
   "goal": "Làm trang chat stream từng mẩu chữ và tự retry có backoff khi gặp lỗi 429; qua hết 32 test và chat được trên trình duyệt.",
-  "duration_min": 210,
+  "duration_min": 225,
   "concepts": [
     "streaming",
     "rate-limit",

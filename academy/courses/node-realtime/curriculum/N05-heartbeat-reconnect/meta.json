@@ -2,7 +2,7 @@
   "id": "N05-heartbeat-reconnect",
   "title": "Heartbeat ping/pong & tự kết nối lại",
   "goal": "Phát hiện kết nối chết bằng ping/pong, tự kết nối lại có backoff + jitter, gửi bù tin lúc offline; qua hết 9 test.",
-  "duration_min": 210,
+  "duration_min": 225,
   "concepts": [
     "half-open-connection",
     "heartbeat-ping-pong",

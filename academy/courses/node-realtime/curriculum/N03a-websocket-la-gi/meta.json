@@ -1,0 +1,139 @@
+{
+  "id": "N03a-websocket-la-gi",
+  "title": "WebSocket là gì? Vì sao cần? (không code)",
+  "goal": "Hiểu WebSocket qua 5W1H, so polling/SSE/WebSocket bằng demo chạy thật, đọc được 4 sự kiện; qua 13 câu trắc nghiệm.",
+  "kind": "quiz",
+  "duration_min": 75,
+  "concepts": [
+    "websocket-what-why",
+    "http-polling"
+  ],
+  "entry": "answers.js",
+  "checklist": [
+    "Giải thích HTTP hỏi–đáp bằng hình ảnh quầy thông tin, và vì sao server không tự báo tin được",
+    "Kể 5 sản phẩm thật dùng realtime và nói sản phẩm nào KHÔNG cần WebSocket",
+    "Nói được bảng 5W1H của WebSocket trong 1 phút không nhìn bài",
+    "So sánh polling, long polling, SSE, WebSocket: ví dụ đời thường, chiều, độ trễ, khi nào dùng",
+    "Đã chạy npm run demo, ghi lại số request, % rỗng và độ trễ của hai cột",
+    "Thấy được trong DevTools: nhiều request poll so với một dòng WS có status 101",
+    "Kể vòng đời kết nối: bắt tay Upgrade → 101 → open/connection → message → close",
+    "Phân biệt ws:// và wss://, biết vì sao trang https mở ws:// bị chặn",
+    "Chỉ ra trong code mẫu: khối connection, message, close, error chạy khi nào",
+    "Nói được 3 hiểu lầm: Socket.IO ≠ WebSocket, không thay REST, kết nối chết im lặng",
+    "Qua hết test của bài (13 câu)"
+  ],
+  "interview_questions": [
+    "WebSocket là gì? Nó khác HTTP thông thường ở điểm nào?",
+    "Vì sao với HTTP, server không thể chủ động gửi tin cho trình duyệt?",
+    "Polling, long polling, SSE và WebSocket khác nhau thế nào? Cho mỗi cách một ví dụ sản phẩm phù hợp.",
+    "Khi nào KHÔNG nên dùng WebSocket?",
+    "Kể vòng đời một kết nối WebSocket, từ lúc trình duyệt gọi new WebSocket tới lúc đóng.",
+    "Socket.IO có phải là WebSocket không? Client WebSocket thuần có kết nối được server Socket.IO không?",
+    "ws:// và wss:// khác nhau thế nào? Trên production bạn dùng cái nào, vì sao?",
+    "Trong một hệ thống thật, giữa trình duyệt và server Node có những tầng nào ảnh hưởng tới kết nối WebSocket?"
+  ],
+  "tutor_notes": "Bài khái niệm cho người CHƯA có nền tảng mạng, đặt trước N03. Học viên từng nói: 'chưa hiểu websocket là gì, tại sao cần, bị đưa vào làm luôn'. Không đưa code mới; dùng ba hình ảnh: HTTP = quầy thông tin (hỏi mới trả lời), polling = cứ 1 giây ra quầy hỏi 'có thư không' (52% rỗng trong số đo của khóa, vẫn trễ, 1.000 người × 1 lần/giây = 60.000 request/phút), WebSocket = gọi điện giữ máy. Long polling = ra quầy đứng chờ; SSE = bật đài nghe một chiều. Bài làm là answers.js: 13 câu trắc nghiệm, thay null bằng 'A'–'D'; test in lời giải thích khi sai. KHÔNG đọc đáp án hộ: hỏi lại học viên bằng tình huống đời thường (vd. 'nếu nhân viên quầy không được tự đi tìm bạn, thư mới đến thì sao?'), hoặc chỉ mục trong bài đọc. Demo: npm run demo, cổng 3004 (EADDRINUSE → PORT=3014 npm run demo; PowerShell: $env:PORT=3014; npm run demo); demo.js/public/index.html viết sẵn, không cần sửa. Hiểu lầm hay gặp: nghĩ WebSocket thay REST; nghĩ Socket.IO là WebSocket; nghĩ mất mạng thì server biết ngay (thực tế chết im lặng, cần heartbeat N05); nghĩ WebSocket không liên quan HTTP (thực tế bắt đầu bằng request Upgrade → 101); nhầm sự kiện 'connection' (server, mỗi kết nối một lần) với 'message' (mỗi tin). Bước 5 tắt server: cột WebSocket báo close 1006 và KHÔNG tự kết nối lại — nối sang N05.",
+  "tasks": [
+    {
+      "fn": "Phần A — Vì sao cần",
+      "signature": "answers.q1 – q3",
+      "summary": "HTTP chỉ trả lời khi được hỏi; cái giá của polling",
+      "example": "q2: 1.000 người hỏi mỗi giây → mấy request/phút?",
+      "test_prefix": "Phần A"
+    },
+    {
+      "fn": "Phần B — Hoạt động thế nào",
+      "signature": "answers.q4 – q6",
+      "summary": "Bắt tay Upgrade → 101, ws:// và wss://, một message trông ra sao",
+      "example": "q5: trang https mở ws:// thì sao?",
+      "test_prefix": "Phần B"
+    },
+    {
+      "fn": "Phần C — Chọn đúng công cụ",
+      "signature": "answers.q7 – q10",
+      "summary": "Khi nào WebSocket, SSE, REST; Socket.IO khác WebSocket",
+      "example": "q8: bảng giá chỉ đẩy một chiều → chọn gì?",
+      "test_prefix": "Phần C"
+    },
+    {
+      "fn": "Phần D — Đọc code công ty",
+      "signature": "answers.q11 – q13",
+      "summary": "Sự kiện connection/message/close chạy khi nào",
+      "example": "q11: vừa mở trang → khối nào chạy?",
+      "test_prefix": "Phần D"
+    }
+  ],
+  "brief": {
+    "context": "TeamPulse sắp chuyển từ REST API hỏi–đáp (N02) sang realtime. Trước khi viết code WebSocket ở N03, cả nhóm cần chung một cách hiểu: nó là gì, giải quyết vấn đề gì, khi nào không nên dùng.",
+    "problem": "Người mới vào dự án thường gặp từ WebSocket, polling, SSE, Socket.IO, 101, wss mà không biết chúng giải quyết chuyện gì. Hệ quả: dùng WebSocket cho cả việc REST làm tốt hơn, nhầm Socket.IO với WebSocket, không lường trước kết nối chết im lặng. Bài này dựng nền bằng demo chạy thật và câu hỏi tình huống, chưa viết code.",
+    "requirements": [
+      {
+        "task": "Phần A — Vì sao cần",
+        "purpose": "Hiểu vì sao HTTP thường không báo tin ngay được."
+      },
+      {
+        "task": "Phần B — Hoạt động thế nào",
+        "purpose": "Hình dung đúng một kết nối WebSocket từ đầu tới cuối."
+      },
+      {
+        "task": "Phần C — Chọn đúng công cụ",
+        "purpose": "Chọn đúng công nghệ cho từng sản phẩm, tránh dùng thừa."
+      },
+      {
+        "task": "Phần D — Đọc code công ty",
+        "purpose": "Đọc được code WebSocket thật trước khi tự viết ở N03."
+      }
+    ],
+    "deliverable": "answers.js qua 13/13 test; số liệu hai cột của npm run demo trên máy bạn; tự nói được bảng 5W1H trong 1 phút.",
+    "constraints": [
+      "Không cần viết code: chỉ chạy demo và chọn đáp án A–D.",
+      "Mỗi câu sai có lời giải thích; đọc rồi mới sửa.",
+      "Demo chỉ chạy trên 127.0.0.1, cổng 3004."
+    ],
+    "product_nodes": [
+      "polling",
+      "ws-gateway"
+    ],
+    "workflow": {
+      "flow": "chain",
+      "inputs": [
+        {
+          "label": "Demo polling vs WebSocket",
+          "detail": "npm run demo, cổng 3004"
+        },
+        {
+          "label": "Bài đọc kiến thức nền",
+          "detail": "5W1H, sơ đồ, từ điển thuật ngữ"
+        }
+      ],
+      "steps": [
+        {
+          "task": "Phần A — Vì sao cần",
+          "label": "Vì sao cần WebSocket"
+        },
+        {
+          "task": "Phần B — Hoạt động thế nào",
+          "label": "Bắt tay, wss, message"
+        },
+        {
+          "task": "Phần C — Chọn đúng công cụ",
+          "label": "WebSocket, SSE hay REST"
+        },
+        {
+          "task": "Phần D — Đọc code công ty",
+          "label": "Đọc 4 sự kiện + send"
+        }
+      ],
+      "outputs": [
+        {
+          "label": "answers.js qua 13 test",
+          "detail": "Mỗi câu có lời giải thích"
+        },
+        {
+          "label": "Giải thích WebSocket trong 1 phút",
+          "detail": "What, why, when, where, how"
+        }
+      ]
+    }
+  }
+}

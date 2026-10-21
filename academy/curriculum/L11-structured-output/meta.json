@@ -2,7 +2,7 @@
   "id": "L11-structured-output",
   "title": "Structured output & validate",
   "goal": "Trích kỹ năng, cấp bậc, lương, hình thức làm việc từ mô tả tự do thành JSON đúng schema, tự sửa khi output sai — 4 phần trong extract.py qua hết 25 test, chạy thật trên tin trong jobradar.db của L10.",
-  "duration_min": 210,
+  "duration_min": 225,
   "concepts": [
     "structured-output",
     "validation-pydantic",

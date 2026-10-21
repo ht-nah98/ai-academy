@@ -9,9 +9,9 @@ Sau buổi này (khoảng 4 giờ) bạn sẽ:
 - Viết được Python cơ bản: biến, hàm, vòng lặp.
 - Dùng **list** (dãy có thứ tự) và **dict** (bảng tra key → value).
 - Lọc, đếm, sắp xếp bằng vòng lặp **`for` / `if`** cơ bản; đọc được **list comprehension** như cách viết gọn của vòng lặp đó.
-- Ước lượng **Big-O**: vì sao đếm bằng dict (O(n)) nhanh hơn gọi `list.count()` trong vòng lặp (O(n²)).
-- Xử lý giá trị thiếu **`None`** mà không làm chương trình sập.
-- **Kết quả đo được:** 4 hàm trong `jobs.py` qua hết **15 test**.
+- Ước lượng **Big-O** (code chậm đi bao nhiêu khi dữ liệu lớn lên): vì sao đếm bằng dict (O(n)) nhanh hơn gọi `list.count()` trong vòng lặp (O(n²)).
+- Xử lý giá trị thiếu **`None`** ("không có") mà không làm chương trình sập.
+- **Kết quả đo được:** 4 hàm trong `jobs.py` qua hết **15 test** (đoạn code tự kiểm tra hàm của bạn).
 
 > 🧠 **Ghi nhớ:** Gần như mọi thư viện AI và Data (pandas, PyTorch, SDK của LLM…) viết cho Python trước tiên. Phỏng vấn AI/Data intern gần như chắc chắn hỏi Python.
 
@@ -19,7 +19,7 @@ Sau buổi này (khoảng 4 giờ) bạn sẽ:
 
 **Mở file:** `academy/workspace/L01-python-co-ban/jobs.py`.
 
-Trong file có biến `JOBS` — 8 tin tuyển dụng, mỗi tin là một dict. Bạn viết 4 hàm (thay chỗ `raise NotImplementedError`). Docstring dưới mỗi `def` ghi rõ yêu cầu.
+Trong file có biến `JOBS` — 8 tin tuyển dụng, mỗi tin là một dict. Bạn viết 4 hàm (thay chỗ `raise NotImplementedError`). Docstring (đoạn mô tả trong `"""..."""`) dưới mỗi `def` ghi rõ yêu cầu.
 
 | Hàm | Ví dụ với `JOBS` |
 |---|---|
@@ -31,6 +31,67 @@ Trong file có biến `JOBS` — 8 tin tuyển dụng, mỗi tin là một dict.
 **Xong khi:** bấm **Chạy test** thấy `15 passed`.
 
 ## 🤔 Tại sao? (kiến thức nền)
+
+### Hiểu trước khi làm
+
+**Bối cảnh.** Một trang tuyển dụng có hàng nghìn tin. Câu hỏi như "Hà Nội có bao nhiêu tin?", "lương trung bình bao nhiêu?" mà đếm tay thì mất cả ngày và dễ sai. Ta viết lệnh để máy tính làm thay: **Python** là ngôn ngữ để viết lệnh, **list** và **dict** là cách cất dữ liệu, **hàm** là gói một việc lại để gọi lúc nào cũng được.
+
+**Ví dụ đời thường.**
+- **list** giống tờ danh sách đi chợ: các món xếp theo thứ tự, đọc từ trên xuống.
+- **dict** giống danh bạ điện thoại: tra theo tên (key) ra số (value), không cần đọc từ đầu.
+- **hàm** giống công thức nấu ăn: đưa nguyên liệu vào (tham số), nhận món ra (`return`).
+- **vòng lặp `for`** giống thu ngân quét từng món trong giỏ hàng, hết món thì dừng.
+
+**Bạn đã gặp nó ở đâu.**
+- Trang kết quả tìm việc trên TopCV, ITviec: một **list** các tin.
+- Trang chi tiết một tin (tiêu đề, công ty, lương): một **dict**.
+- Bộ lọc "Hà Nội" hay "Python" trên Shopee, TopCV: một **hàm lọc** chạy vòng lặp qua từng món.
+- Hàm `SUM`, `AVERAGE` trong Excel: **hàm** nhận một dãy số, trả một con số.
+
+| | Python, list, dict, hàm |
+|---|---|
+| **What** — là gì? | Python: ngôn ngữ lập trình đọc gần như tiếng Anh. list: dãy có thứ tự. dict: bảng tra key → value. Hàm: một việc có tên, nhận đầu vào, trả kết quả. |
+| **Why** — vì sao cần? | Gần như mọi thư viện AI/Data viết cho Python trước. Dữ liệu từ API, file JSON về tới chương trình đều thành list và dict. |
+| **When** — khi nào dùng? | list khi cần giữ thứ tự và duyệt lần lượt; dict khi cần tra theo tên hoặc đếm theo nhóm; hàm khi một việc lặp lại hoặc cần kiểm tra riêng. |
+| **When not** — khi nào không? | Đừng tìm theo tên trong list dài (chậm, dùng dict). Bảng hàng triệu dòng nên dùng pandas, SQL (L07–L09). |
+| **Where** — ở đâu? | Script xử lý dữ liệu, backend web, notebook phân tích. Trong bài: biến `JOBS` là list 8 dict, 4 hàm trong `jobs.py`. |
+| **How** — chạy thế nào? | Python đọc file từ trên xuống, chạy từng dòng. Thân hàm chỉ chạy khi có người gọi; `for` lặp lại khối thụt lề cho từng phần tử. |
+
+**Từ mới trong bài**
+
+| Thuật ngữ | Nghĩa đời thường |
+|---|---|
+| biến | Cái nhãn dán lên một giá trị: `x = 5` |
+| hàm, `def`, `return` | Một việc có tên; `def` khai báo, `return` trả kết quả ra ngoài |
+| tham số | Đầu vào của hàm, vd. `jobs`, `skill` |
+| list `[...]` | Dãy có thứ tự, phần tử đầu ở vị trí 0 |
+| dict `{key: value}`, key, value | Bảng tra: key là tên ô, value là nội dung ô |
+| tuple `(...)` | Giống list nhưng không sửa được, vd. `("python", 6)` |
+| set | Tập hợp không trùng, không thứ tự |
+| `for`, `if`, `while` | Lặp qua từng phần tử / rẽ nhánh theo điều kiện / lặp khi điều kiện còn đúng |
+| list comprehension | Cách viết vòng `for` + `append` trong một dòng `[...]` |
+| `None` | Giá trị "không có" (vd. lương thỏa thuận) |
+| phương thức (method) | Hàm gắn với một giá trị, gọi bằng dấu chấm: `"Ab".lower()` |
+| lỗi (exception), `TypeError`, `raise` | Python dừng lại và báo sai; `raise` là tự báo lỗi |
+| `raise NotImplementedError` | Dòng giữ chỗ nghĩa là "hàm này chưa viết" |
+| docstring | Đoạn mô tả trong `"""..."""` ngay dưới `def`, ghi yêu cầu của hàm |
+| test, pytest | Code tự động gọi hàm của bạn và so với kết quả đúng; pytest là công cụ chạy test |
+| Big-O | Cách ước lượng code chậm đi bao nhiêu khi dữ liệu lớn lên |
+| hash table | Cách dict cất dữ liệu để tra một key gần như tức thì |
+| `lambda` | Hàm không tên viết trong một dòng |
+| module, `import` | Mỗi file `.py` là một module; `import` mượn hàm từ file khác |
+| terminal | Cửa sổ gõ lệnh, vd. `python3 jobs.py` |
+
+```mermaid
+flowchart TD
+    A["JOBS: list 8 tin, mỗi tin là dict"] --> B["Gọi hàm, truyền JOBS vào"]
+    B --> C["for: lấy từng tin"]
+    C --> D{"if: tin thỏa điều kiện?"}
+    D -- "Có" --> E["Ghi vào kết quả"]
+    D -- "Không" --> C
+    E --> C
+    C -- "Hết tin" --> F["return kết quả"]
+```
 
 ### Python đọc như tiếng Anh
 
@@ -49,9 +110,7 @@ Khối lệnh xác định bằng thụt lề 4 dấu cách, không dùng `{ }`.
 
 ### list, dict, tuple
 
-**list** là dãy có thứ tự, **dict** là bảng tra `key → value`, **tuple** là list không sửa được.
-
-Ví dụ: `["Python", "SQL"]` · `{"city": "Hà Nội"}` · `("python", 6)`.
+Ví dụ: list `["Python", "SQL"]` · dict `{"city": "Hà Nội"}` · tuple `("python", 6)`.
 
 Dict là **hash table**: key được băm thành số chỉ thẳng tới ô nhớ, nên tra cứu gần như tức thì (O(1)) dù có 10 hay 10 triệu key. Vì vậy "đếm theo nhóm" luôn dùng dict.
 

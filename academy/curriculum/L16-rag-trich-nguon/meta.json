@@ -2,7 +2,7 @@
   "id": "L16-rag-trich-nguon",
   "title": "RAG có trích nguồn",
   "goal": "Trả lời câu hỏi chỉ từ các tin truy hồi được, mỗi ý kèm id tin [JR-xxxxx], từ chối khi nguồn không có câu trả lời, và kiểm tra id được trích có thật trong nguồn — 4 hàm trong rag.py qua hết 8 test.",
-  "duration_min": 180,
+  "duration_min": 195,
   "concepts": [
     "rag",
     "citation"

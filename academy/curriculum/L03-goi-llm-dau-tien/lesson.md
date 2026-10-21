@@ -6,11 +6,11 @@
 
 Sau buổi này (khoảng 3,5 giờ) bạn sẽ:
 
-- Giải thích được **LLM** (Large Language Model) ở mức trực giác: **dự đoán token tiếp theo**.
+- Giải thích được **LLM** (mô hình AI sinh văn bản) ở mức trực giác: **dự đoán token (mẩu chữ) tiếp theo**.
 - Hiểu **token**, vì sao giá và giới hạn tính theo token, và tự đo: **tiếng Việt tốn token hơn tiếng Anh**.
-- Dùng **messages** với các **role** `system` / `user` / `assistant`.
-- Gọi model qua **API tương thích OpenAI** và đọc trường **`usage`**.
-- **Kết quả đo được:** `chat.py` qua hết **12 test** (client giả, không tốn token) và chạy thật trả lời được câu hỏi.
+- Dùng **messages** (danh sách tin nhắn gửi model) với các **role** (ai nói) `system` / `user` / `assistant`.
+- Gọi model qua **API tương thích OpenAI** (cùng cách gọi với OpenAI) và đọc trường **`usage`** (số token đã dùng).
+- **Kết quả đo được:** `chat.py` qua hết **12 test** (client giả lập, không gọi mạng, không tốn token) và chạy thật trả lời được câu hỏi.
 
 ## 📋 Đề bài
 
@@ -28,9 +28,69 @@ Bạn viết 3 hàm (thay chỗ `raise NotImplementedError`); docstring ghi rõ 
 
 ## 🤔 Tại sao? (kiến thức nền)
 
+### Hiểu trước khi làm
+
+**Bối cảnh.** JobRadar muốn trả lời câu hỏi tự do của người dùng, kiểu "Data Engineer intern cần học gì?". Viết sẵn câu trả lời bằng `if/else` cho mọi câu hỏi là không thể. **LLM** là chương trình đã đọc lượng văn bản khổng lồ nên viết tiếp được câu trả lời nghe tự nhiên. Nó chạy trên máy chủ đắt tiền của nhà cung cấp; ta gửi câu hỏi qua API (như L02) và trả tiền theo lượng chữ, đo bằng **token**.
+
+**Ví dụ đời thường.**
+- **LLM** giống tính năng gợi ý từ tiếp theo trên bàn phím điện thoại, nhưng khổng lồ: nhìn cả đoạn văn phía trước, đoán mẩu chữ kế tiếp, rồi lặp lại.
+- **Token** giống số km của taxi: đồng hồ tính tiền theo km, LLM tính tiền theo token đọc vào và viết ra.
+- **Gọi API chat** giống gửi tin cho tổng đài: bạn gửi cả đoạn hội thoại, ghi rõ dòng nào ai nói (**role**); tổng đài trả lời kèm hóa đơn số token (**usage**).
+
+**Bạn đã gặp nó ở đâu.**
+- ChatGPT, Gemini, Copilot: giao diện chat bọc quanh một LLM.
+- Chatbot chăm sóc khách hàng của ngân hàng, nhà mạng trên Zalo, Messenger.
+- Gmail, Outlook gợi ý viết tiếp hoặc soạn nhanh câu trả lời email.
+- Gợi ý từ trên bàn phím Gboard, iPhone — phiên bản rất nhỏ của cùng ý tưởng.
+
+| | LLM | Token | Gọi API chat |
+|---|---|---|---|
+| **What** — là gì? | Mô hình AI sinh văn bản bằng cách đoán mẩu chữ tiếp theo. | Mẩu chữ model đọc và viết; một từ có thể là 1 hoặc nhiều token. | Gửi list **messages** tới `/v1/chat/completions`, nhận câu trả lời và `usage`. |
+| **Why** — vì sao cần? | Trả lời câu hỏi tự do mà luật `if/else` không viết xuể. | Giá tiền và giới hạn độ dài đều tính theo token. | Không cần GPU riêng; đổi model chỉ bằng một tham số. |
+| **When** — khi nào dùng? | Viết, tóm tắt, trả lời, phân loại văn bản. | Ước tính chi phí, đặt `max_tokens`. | Mọi lần app cần LLM trả lời. |
+| **When not** — khi nào không? | Cần sự thật chắc chắn hoặc phép tính chính xác (LLM có thể bịa); việc `if/else` đơn giản làm được. | — | Trong test: dùng client giả, không gọi thật. |
+| **Where** — ở đâu? | Server của NVIDIA tại build.nvidia.com. | Trường `usage` trong response. | Hàm `ask()` trong `chat.py`. |
+| **How** — chạy thế nào? | Đoạn văn → đoán token → nối vào → lặp tới khi "hết" hoặc chạm `max_tokens`. | Câu chữ được cắt thành token trước khi vào model. | `client.chat.completions.create(model=..., messages=...)` → đọc `choices[0].message.content`. |
+
+**Từ mới trong bài**
+
+| Thuật ngữ | Nghĩa đời thường |
+|---|---|
+| LLM (Large Language Model) | Mô hình ngôn ngữ lớn: chương trình AI sinh văn bản |
+| model | Một LLM cụ thể, gọi bằng tên, vd. `nvidia/nemotron-3-super-120b-a12b` |
+| huấn luyện, training cutoff | Giai đoạn model "đọc" dữ liệu để học; cutoff = mốc ngày dữ liệu dừng |
+| mạng nơ-ron | Cấu trúc toán học bên trong model, thay cho "bảng tra" khổng lồ |
+| hallucination | Model bịa ra thông tin nghe hợp lý nhưng sai |
+| token | Mẩu chữ model đọc/viết; đơn vị tính tiền |
+| prompt / completion | Phần gửi vào / phần model viết ra |
+| `prompt_tokens`, `completion_tokens` | Số token vào / số token ra của một lần gọi |
+| `max_tokens` | Trần độ dài câu trả lời |
+| chat template | "Khuôn" model tự bọc quanh messages, tốn thêm vài token |
+| context window | Số token tối đa model đọc một lần (học kỹ ở L05) |
+| messages, role | List tin nhắn gửi model; role = ai nói: `system` (luật của lập trình viên), `user` (người dùng), `assistant` (model) |
+| API tương thích OpenAI | Cùng định dạng gọi với OpenAI, nên một thư viện `openai` gọi được nhiều nhà cung cấp |
+| client, `base_url` | Đối tượng giữ kết nối tới nhà cung cấp; `base_url` = địa chỉ gốc của API |
+| GPU | Chip tính toán mạnh chạy model, nguồn gốc của chi phí |
+| `usage`, `finish_reason` | Hóa đơn token / lý do dừng (`stop` tự xong, `length` bị cắt) |
+| `extra_body`, thinking | Trường gửi thêm ngoài tham số chuẩn; thinking = chế độ model "nghĩ nháp" trước khi trả lời |
+| đối tượng, thuộc tính | Giá trị có các trường đọc bằng dấu chấm: `response.usage` |
+| `**kwargs` | Gom mọi tham số dạng `tên=giá_trị` thành một dict |
+| client giả (fake client) | Bản giả có cùng cách gọi, trả kết quả cố định, không tốn token |
+
+```mermaid
+flowchart TD
+    Q["Câu hỏi của người dùng"] --> M["build_messages: system + user"]
+    M --> C["client gửi request tới NVIDIA"]
+    C --> L["LLM đoán từng token"]
+    L --> R["Response"]
+    R --> A["answer: message.content"]
+    R --> U["usage: số token vào, ra"]
+    U --> E["estimate_cost_usd: tiền USD"]
+```
+
 ### LLM = dự đoán token tiếp theo
 
-LLM giống **gợi ý bàn phím điện thoại** phiên bản khổng lồ: nhìn toàn bộ đoạn văn phía trước rồi đoán **token tiếp theo**, lặp lại cho tới khi đoán ra token "kết thúc".
+LLM nhìn toàn bộ đoạn văn phía trước rồi đoán **token tiếp theo**, lặp lại cho tới khi đoán ra token "kết thúc".
 
 ```mermaid
 flowchart TD
@@ -51,7 +111,7 @@ Ba hệ quả bạn sẽ gặp suốt khóa học:
 
 ### Token
 
-**Token** là mẩu chữ mà model đọc và viết: từ phổ biến là 1 token, từ hiếm bị cắt thành nhiều mẩu. Giá và giới hạn đều tính theo token.
+Từ phổ biến là 1 token, từ hiếm bị cắt thành nhiều mẩu.
 
 - Tiếng Anh trung bình 1 token ≈ 4 ký tự ≈ ¾ từ.
 - Mỗi token đầu ra là một lần chạy toàn bộ model → token ra đắt hơn token vào.

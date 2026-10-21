@@ -4,15 +4,17 @@
 
 ## 🎯 Mục tiêu
 
-Sau buổi này (khoảng 3,5 giờ) bạn sẽ:
+Sau buổi này (khoảng 4 giờ) bạn sẽ:
 
 - Giải thích **IP, localhost, cổng, kết nối TCP** — và vì sao HTTP chỉ là văn bản đi trên kết nối đó.
 - Dùng **EventEmitter**: `on`, `once`, `emit` — nền của mọi thứ trong Node (server, socket, stream, WebSocket).
 - Dựng **HTTP server** bằng `http.createServer`, đọc `req.method`, `req.url`, header, body; trả lời bằng `res`.
 - Trả **đúng mã trạng thái**: 200, 201, 400, 404, 405, 413, 500.
 - Đọc **body** dạng stream an toàn: gom mẩu, giới hạn kích thước, JSON hỏng → 400.
-- Hiểu giới hạn của mô hình **hỏi–đáp**: mỗi response trả lời đúng một request, client không hỏi thì không nhận được gì — lý do có WebSocket ở N03.
+- Hiểu giới hạn của mô hình **hỏi–đáp**: mỗi response trả lời đúng một request, client không hỏi thì không nhận được gì — lý do có WebSocket (N03a giải thích, N03 bắt tay làm).
 - **Kết quả đo được:** `api.js` qua hết **15 test**; `curl` được API thật trên cổng 3000.
+
+> 📖 Từ lạ ở trên và trong Đề bài (server, cổng, route, body, mã trạng thái, `curl`…) được giải nghĩa ở mục *Hiểu trước khi làm*, ngay đầu phần kiến thức nền.
 
 ## 📋 Đề bài
 
@@ -23,8 +25,8 @@ Sau buổi này (khoảng 3,5 giờ) bạn sẽ:
 | `ChatRoom.post(user, text)` | Kiểm tra dữ liệu, tạo tin `{id, user, text, ts}`, lưu, `emit('message')` |
 | `ChatRoom.history(sinceId)` | Tin có `id > sinceId` |
 | `sendJson(res, status, data)` | Trả JSON với đúng status và `Content-Type` |
-| `readJsonBody(req, limit)` | Gom body, quá lớn → 413, hỏng → 400 |
-| `createApp(room)` | Server: `GET /health`, `GET/POST /messages`, 404, 405, 500 |
+| `readJsonBody(req, limit)` | Gom body, quá lớn → 413 ("body quá lớn"), hỏng → 400 ("gửi sai") |
+| `createApp(room)` | Server: `GET /health`, `GET/POST /messages`, 404 ("không có đường dẫn này"), 405 ("có đường dẫn nhưng sai method"), 500 ("server lỗi") |
 
 `httpError(status, message)` đã viết sẵn: tạo `Error` có thêm thuộc tính `status`.
 
@@ -49,16 +51,74 @@ Content-Type: application/json; charset=utf-8
 
 > 📖 **Cú pháp:** `class ... extends`, `this`, `{ port } = ...`, `async`/`await`, `try/catch` đã học ở **N00**; Promise và `for await` ở **N01**.
 
-### Mạng 101: IP, cổng, kết nối TCP
+### Hiểu trước khi làm
 
-Bài này mở server đầu tiên, nên cần bốn khái niệm mạng — đủ dùng cho cả khóa:
+**Bối cảnh.** An và Bình mở TeamPulse trên hai máy khác nhau mà phải thấy **cùng một** danh sách tin. Vậy tin không thể nằm trên máy của từng người: phải cất ở một máy chung luôn bật, ai cần thì hỏi tới — đó là **server** (máy chủ). Hai bên cần một luật hỏi–đáp chung để hiểu nhau: **HTTP**. Bài này viết server đó: nhận câu hỏi, biết câu hỏi muốn gì, trả lời kèm mã "được" hay "lỗi gì", và báo cho phần khác của chương trình mỗi khi có tin mới.
 
-| Khái niệm | Hình dung | Trong khóa |
-|---|---|---|
-| **Client / server** | Bên hỏi / bên trả lời | Trình duyệt, `curl`, `fetch` là client; `node api.js` là server |
-| **Địa chỉ IP** | Số nhà của một máy trên mạng | `127.0.0.1` (tên khác: `localhost`) = **chính máy này**, gói tin không ra khỏi máy |
-| **Cổng (port)** | Số phòng trong nhà, 0–65535 | Mỗi server "nghe" một cổng: N02 dùng 3000, N03 3001, N04 3002. Web thật: 80 (http), 443 (https) |
-| **Kết nối TCP** | Một đường ống byte **hai chiều** giữa hai đầu `IP:cổng` | Byte vào đầu này ra đầu kia, đúng thứ tự, không mất |
+**Ví dụ đời thường.** Một **quầy thông tin** trong tòa nhà văn phòng. Địa chỉ tòa nhà là **IP**, số quầy là **cổng (port)**. Khách điền phiếu yêu cầu (**request**): loại việc — hỏi xem (**GET**) hay nộp hồ sơ (**POST**) —, phòng nào (**đường dẫn**, vd. `/messages`), giấy tờ kèm theo (**body**). Nhân viên tra theo phòng (**route**) rồi trả phiếu kết quả (**response**) có đóng dấu mã (**status code**): 200 "xong", 404 "không có phòng này", 400 "phiếu điền sai". Còn **EventEmitter** là cái loa trong tòa nhà: mỗi khi có hồ sơ mới, loa báo, ai đã đăng ký nghe thì nghe.
+
+**Bạn đã gặp nó ở đâu.**
+- Gõ `shopee.vn` rồi Enter: trình duyệt gửi một request GET tới server của Shopee, nhận về trang web.
+- Bấm link hỏng và thấy "404 Not Found" — đúng mã trạng thái bạn sẽ trả trong bài.
+- Bấm "Đăng" trên Facebook: app gửi request POST kèm nội dung bài.
+- App ngân hàng báo "Hệ thống đang bận, vui lòng thử lại" — server trả mã nhóm 5xx.
+
+| Câu hỏi | Trả lời |
+|---|---|
+| **What** — là gì | Server: chương trình chạy liên tục, nghe ở một cổng, trả lời request. HTTP: luật viết request/response bằng chữ. |
+| **Why** — vì sao cần | Dữ liệu chung (tin nhắn) phải nằm một chỗ; mọi app, trình duyệt, công cụ đều nói được HTTP. |
+| **When** — khi nào dùng | Client cần hỏi lấy hoặc gửi dữ liệu: tải lịch sử chat, gửi một tin, kiểm tra server còn sống. |
+| **When not** — khi nào không | Server cần **tự đẩy** tin mới ngay khi có: HTTP thường bắt client hỏi lại liên tục — lý do có WebSocket (N03a). |
+| **Where** — ở đâu | Mọi trang web, app di động; trong khóa: `node api.js` trên máy bạn, cổng 3000. |
+| **How** — chạy thế nào | Client mở kết nối tới `IP:cổng`, gửi vài dòng chữ (method, đường dẫn, header, body); server chọn route, xử lý, gửi lại vài dòng chữ có mã trạng thái. |
+
+```mermaid
+sequenceDiagram
+    participant A as App của An (client)
+    participant S as Server api.js, cổng 3000
+    participant R as ChatRoom (EventEmitter)
+    participant B as App của Bình (client)
+    A->>S: POST /messages, body có user và text
+    S->>R: room.post(user, text)
+    R-->>R: emit message, loa báo tin mới
+    S-->>A: 201 Created, tin vừa tạo
+    B->>S: GET /messages?since=0
+    S-->>B: 200 OK, danh sách tin
+    B->>S: DELETE /messages
+    S-->>B: 405 Method Not Allowed
+```
+
+**Từ mới trong bài**
+
+| Từ | Nghĩa đời thường |
+|---|---|
+| **Server** (máy chủ) · **client** | Bên trả lời · bên hỏi (trình duyệt, `curl`, `fetch`, app) |
+| **Địa chỉ IP**, **`localhost` / `127.0.0.1`** | "Số nhà" của một máy trên mạng · chính máy bạn, tin không ra khỏi máy |
+| **Cổng (port)** | "Số quầy" 0–65535; mỗi server nghe một cổng (N02 dùng 3000; web thật 80, 443) |
+| **Kết nối TCP** | Đường ống byte hai chiều giữa hai đầu `IP:cổng`: đúng thứ tự, không mất |
+| **Byte**, **UTF-8** | Đơn vị dữ liệu nhỏ nhất · cách ghi chữ thành byte (chữ có dấu tốn 2–3 byte) |
+| **HTTP** | Luật hỏi–đáp bằng văn bản đi trên kết nối TCP |
+| **Request** · **response** | Phiếu hỏi client gửi · phiếu trả lời server gửi lại |
+| **Method** (`GET`, `POST`, `DELETE`) | Loại việc: hỏi xem · gửi tạo mới · xoá |
+| **URL**, **đường dẫn (path)**, **query** | Địa chỉ đầy đủ · phần `/messages` · phần sau dấu `?`, vd. `?since=1` |
+| **Route** | Cặp method + đường dẫn mà server biết xử lý, vd. `GET /messages` |
+| **Header** · **body** | Các dòng "Tên: giá trị" mô tả request/response · phần nội dung chính phía sau |
+| **`Content-Type`** | Header nói body là loại gì, vd. `application/json` |
+| **Status code** (mã trạng thái) | Số 3 chữ số trong response: 2xx được, 4xx client gửi sai, 5xx server lỗi |
+| **API**, **REST API** | Bộ địa chỉ để chương trình khác gọi lấy/gửi dữ liệu · kiểu API dùng method + đường dẫn như trên |
+| **Express** | Thư viện làm server phổ biến; bài này **không** dùng để thấy phần bên dưới |
+| **`curl`** · **`fetch`** | Công cụ gửi request từ terminal · hàm gửi request trong JavaScript |
+| **EventEmitter**, **listener** | Nguồn phát sự kiện (cái loa) · hàm đăng ký nghe sự kiện |
+| **`on` / `once` / `emit`** | Đăng ký nghe mãi · nghe một lần · phát sự kiện |
+| **Stream**, **chunk**, **Buffer** | Dữ liệu đến từng mẩu · một mẩu · kiểu chứa byte thô của Node |
+| **Timestamp** (`ts`) | Mốc thời gian, dạng `2026-10-20T06:17:32.494Z` (giờ UTC) |
+| **`EADDRINUSE`** | Lỗi "cổng này đã có chương trình khác nghe" |
+| **Biến môi trường** (`PORT`) | Giá trị đặt ngoài code khi chạy lệnh, chương trình đọc qua `process.env` |
+| **PowerShell** | Terminal mặc định của Windows; lệnh hơi khác bash của Linux/macOS |
+
+### Mạng 101: HTTP chỉ là văn bản trên kết nối TCP
+
+Các từ client, server, IP, cổng, TCP đã có trong bảng trên; sơ đồ dưới ghép chúng lại:
 
 ```mermaid
 flowchart TD

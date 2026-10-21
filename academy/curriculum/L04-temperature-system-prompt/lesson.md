@@ -6,7 +6,7 @@
 
 Sau buổi này (khoảng 3 giờ) bạn sẽ:
 
-- Giải thích được **temperature** và **top_p** ở mức trực giác: model **bốc thăm** token theo xác suất.
+- Giải thích được **temperature** và **top_p** (hai núm chỉnh độ ngẫu nhiên) ở mức trực giác: model **bốc thăm** token theo xác suất.
 - Biết khi nào cần **ổn định** (temperature 0) và khi nào cần **sáng tạo**.
 - Viết **system prompt** có cấu trúc: vai trò, luật, định dạng, ví dụ mẫu (**few-shot**).
 - **Kết quả đo được:** `prompting.py` qua hết **26 test**, và tự đo số câu trả lời khác nhau qua 5 lần gọi ở các temperature khác nhau.
@@ -28,6 +28,64 @@ Bạn viết 5 hàm (thay chỗ `raise NotImplementedError`); docstring ghi rõ 
 **Xong khi:** `26 passed`, rồi chạy thật `python prompting.py` thấy temperature 0 ổn định hơn hẳn temperature 1.2.
 
 ## 🤔 Tại sao? (kiến thức nền)
+
+### Hiểu trước khi làm
+
+**Bối cảnh.** Hỏi LLM cùng một câu hai lần có thể nhận hai câu trả lời khác nhau. Khi trích lương từ tin tuyển dụng, ta muốn lần nào cũng ra một kết quả; khi đặt tên sản phẩm, ta lại muốn nhiều ý khác nhau. **Temperature** là núm chỉnh mức "ngẫu hứng" đó. Model cũng cần biết nó đóng vai gì, theo luật nào, trả lời theo khuôn nào — phần chỉ dẫn viết một lần, áp cho mọi câu hỏi, gọi là **system prompt**.
+
+**Ví dụ đời thường.**
+- **Temperature** giống bốc thăm trong một hộp phiếu ghi từ tiếp theo. Temperature thấp: hộp gần như toàn phiếu của từ hợp lý nhất, bốc lần nào cũng ra nó. Temperature cao: phiếu của các từ hiếm được bỏ thêm vào, kết quả đa dạng nhưng dễ "lạc đề".
+- **System prompt** giống bản nội quy phát cho nhân viên mới trước ca làm: khách không thấy, nhưng nhân viên làm theo trong mọi cuộc trò chuyện.
+- **Few-shot** giống cho nhân viên mới xem 2–3 mẫu đã làm đúng thay vì giải thích dài dòng.
+
+**Bạn đã gặp nó ở đâu.**
+- Nút "Tạo lại câu trả lời" trên ChatGPT, Gemini: cùng câu hỏi, ra bản khác — vì có bốc thăm.
+- Chế độ "Sáng tạo / Cân bằng / Chính xác" của Copilot thời đầu: thực chất là các mức temperature.
+- "Custom instructions" của ChatGPT, các bot GPTs: người dùng tự viết system prompt.
+- Chatbot ngân hàng luôn xưng "Quý khách" và từ chối chuyện ngoài lề: system prompt đặt luật.
+
+| | Temperature (và top_p) | System prompt (và few-shot) |
+|---|---|---|
+| **What** — là gì? | Tham số chỉnh độ ngẫu nhiên khi model chọn token tiếp theo. | Message `role: system` mô tả vai trò, luật, định dạng; few-shot = thêm vài cặp hỏi–đáp mẫu. |
+| **Why** — vì sao cần? | Cùng một model dùng được cho việc cần ổn định lẫn việc cần ý tưởng. | Câu trả lời đúng giọng, đúng khuôn, ngắn hơn và rẻ hơn. |
+| **When** — khi nào dùng? | 0 cho trích xuất, phân loại, SQL; ~0.5 cho trò chuyện; ~1 cho brainstorm. | Mọi chatbot sản phẩm; few-shot khi cần model bắt chước một định dạng. |
+| **When not** — khi nào không? | Không cần chỉnh cả temperature lẫn top_p cùng lúc. Không dựa vào temperature 0 để test lặp lại 100% (dùng client giả). | Không nhét thông tin bí mật vào system prompt (người dùng khéo có thể moi ra). Không viết luật mâu thuẫn nhau. |
+| **Where** — ở đâu? | Tham số `temperature=...` trong `client.chat.completions.create`. | Phần tử đầu của list messages (L03). |
+| **How** — chạy thế nào? | Model chấm điểm mọi token → đổi thành xác suất (temperature làm xác suất nhọn hoặc phẳng) → bốc thăm một token. | Model đọc system trước mọi message khác, coi đó là chỉ dẫn của nhà phát triển. |
+
+**Từ mới trong bài**
+
+| Thuật ngữ | Nghĩa đời thường |
+|---|---|
+| xác suất | Khả năng xảy ra, từ 0 đến 1; các khả năng cộng lại bằng 1 |
+| sampling (bốc thăm) | Chọn ngẫu nhiên một token theo xác suất của nó |
+| temperature | Núm chỉnh độ ngẫu nhiên: thấp = ổn định, cao = đa dạng |
+| top_p (nucleus sampling) | Chỉ giữ nhóm token khả năng cao nhất có tổng xác suất ≥ p, bỏ đuôi hiếm |
+| logits | Điểm thô model chấm cho từng token, chưa phải xác suất |
+| softmax, `math.exp` | Công thức đổi điểm thô thành xác suất; `exp` là hàm mũ dùng trong công thức đó |
+| system prompt, persona | Chỉ dẫn chung cho model; persona = vai trò model đóng |
+| prompt engineering | Kỹ năng viết chỉ dẫn để model làm đúng ngay lần đầu |
+| ràng buộc, định dạng | Luật model phải theo / khuôn câu trả lời (vd. JSON, gạch đầu dòng) |
+| zero-shot, few-shot | Chỉ có chỉ dẫn / có thêm vài ví dụ hỏi–đáp mẫu |
+| trích xuất, phân loại | Lấy thông tin ra từ văn bản / xếp văn bản vào nhóm |
+| brainstorm | Nghĩ ra nhiều ý tưởng |
+| diversity, stability | Số câu trả lời khác nhau / tỉ lệ câu xuất hiện nhiều nhất |
+| dict comprehension, `.items()` | Viết vòng lặp tạo dict trong một dòng; `.items()` trả từng cặp (key, value) |
+| `collections.Counter` | Dict chuyên đếm, có sẵn trong Python |
+| `try` / `except` | Thử chạy; gặp lỗi thì nhảy sang khối xử lý thay vì dừng chương trình |
+| rate limit | Giới hạn số lần gọi API mỗi phút |
+
+```mermaid
+flowchart TD
+    S["System prompt: vai trò, luật, định dạng"] --> M["messages"]
+    F["Few-shot: cặp hỏi–đáp mẫu"] --> M
+    U["Câu hỏi user"] --> M
+    M --> L["LLM chấm điểm token"]
+    T["temperature"] --> P["Xác suất nhọn hoặc phẳng"]
+    L --> P
+    P --> B["Bốc thăm token"]
+    B --> A["Câu trả lời"]
+```
 
 ### Temperature
 
@@ -167,7 +225,7 @@ Hỏi `nemotron-3-super` 5 lần câu "Đặt một tên ngắn cho ứng dụng
 
 ### System prompt
 
-System prompt là "bản mô tả công việc" cho model: nó là ai, được làm gì, không được làm gì, trả lời theo khuôn nào. Người dùng không thấy nó, nhưng nó ảnh hưởng **mọi** câu trả lời.
+Người dùng không thấy system prompt, nhưng nó ảnh hưởng **mọi** câu trả lời.
 
 ```mermaid
 flowchart TD

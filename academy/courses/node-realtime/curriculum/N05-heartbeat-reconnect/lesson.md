@@ -4,7 +4,7 @@
 
 ## 🎯 Mục tiêu
 
-Sau buổi này (khoảng 3,5 giờ với người mới) bạn sẽ:
+Sau buổi này (khoảng 4 giờ với người mới) bạn sẽ:
 
 - Giải thích vì sao kết nối **chết im lặng** (half-open TCP, NAT/proxy cắt kết nối nhàn rỗi) và vì sao `close` có thể tới sau **hàng giờ**.
 - Viết **heartbeat** phía server: ping định kỳ, kết nối không trả pong thì `terminate()`.
@@ -12,7 +12,7 @@ Sau buổi này (khoảng 3,5 giờ với người mới) bạn sẽ:
 - Viết **client tự kết nối lại**: xử lý `readyState`, xếp hàng tin lúc offline, gửi bù khi có mạng.
 - **Kết quả đo được:** `heartbeat.js` qua hết **9 test**; với heartbeat 5 giây, client bị treo được phát hiện sau **6,3 giây** (chạy thật ở Bước 6).
 
-> 🧠 **Ghi nhớ:** `close` chỉ đến khi TCP **biết** kết nối đã đứt. Mất điện, rút cáp, laptop gập máy, NAT xoá bảng ánh xạ — không gói tin nào báo cho server. Muốn biết sớm, phải **chủ động hỏi**: gửi ping, chờ pong.
+> 📖 Từ lạ ở trên và trong Đề bài (half-open, NAT, proxy, heartbeat, backoff, jitter…) được giải nghĩa ở mục *Hiểu trước khi làm*, ngay đầu phần kiến thức nền.
 
 ## 📋 Đề bài
 
@@ -30,6 +30,71 @@ Phần chạy thử (`npm start`, `npm run client`, `npm run client:freeze`) đ�
 
 ## 🤔 Tại sao? (kiến thức nền)
 
+### Hiểu trước khi làm
+
+**Bối cảnh.** Bạn gập laptop, hay đi vào thang máy mất sóng. Máy bạn không kịp nói "tạm biệt" với server, nên server vẫn tưởng bạn đang online: tên bạn vẫn sáng chấm xanh, tin gửi cho bạn rơi vào khoảng không — có khi suốt hàng giờ. Ở phía bạn, khi có sóng lại, app phải **tự nối lại** mà không bắt người dùng tải lại trang, và không làm mất những tin bạn gõ lúc mất sóng. Bài này giải cả hai phía.
+
+**Ví dụ đời thường.** Đang gọi điện mà đầu bên kia im lặng lâu, bạn hỏi "Alo, còn nghe không?" (**ping**), bên kia đáp "Còn" (**pong**). Hỏi một lượt mà tới lượt sau vẫn không ai đáp → cúp máy (**terminate**). Đó là **heartbeat** — nhịp tim. Còn khi máy bị rớt: bạn không bấm gọi lại liên tục mỗi giây, mà chờ 1 giây, rồi 2, rồi 4… (**backoff mũ**). Sau một sự cố tổng đài, nghìn người cùng gọi lại đúng một giây thì tổng đài lại nghẽn — nên mỗi người chờ lệch nhau một chút ngẫu nhiên (**jitter**). Tin gõ lúc mất sóng thì ghi tạm vào giấy nháp (**hàng đợi offline**), có sóng gửi bù theo đúng thứ tự.
+
+**Bạn đã gặp nó ở đâu.**
+- Zalo, Messenger hiện "Đang kết nối…" khi xe đi qua hầm, rồi tự trở lại bình thường.
+- Tin nhắn gửi lúc mất mạng hiện "Đang gửi", có mạng thì tự đi.
+- Google Docs báo "Đang cố kết nối lại… thay đổi sẽ được lưu khi có mạng".
+- Game online (Liên Quân, PUBG) báo "Mất kết nối, đang kết nối lại".
+- Slack, Discord hiện thanh "Reconnecting…" sau khi bạn mở lại laptop.
+
+| Câu hỏi | Trả lời |
+|---|---|
+| **What** — là gì | Heartbeat: server định kỳ ping từng kết nối, ai không pong thì cắt. Reconnect: client tự mở kết nối mới khi mất, chờ lâu dần, có jitter. |
+| **Why** — vì sao cần | Kết nối có thể chết mà không bên nào nhận được tín hiệu gì; chỉ chủ động hỏi mới biết sớm. |
+| **When** — khi nào dùng | Mọi kết nối giữ mở lâu: chat, thông báo, game, bảng giá chứng khoán. |
+| **When not** — khi nào không | Request HTTP ngắn (hỏi xong là đóng) không cần heartbeat; thư viện đã có sẵn (Socket.IO, N06) thì không tự viết lại. |
+| **Where** — ở đâu | Heartbeat ở **server** (`startHeartbeat`); reconnect và hàng đợi ở **client** (`createReconnectingClient`). |
+| **How** — chạy thế nào | Mỗi `intervalMs`: kết nối nào lượt trước chưa pong → cắt; còn lại → đánh dấu "chờ pong" và ping. Client mất kết nối → chờ `backoffDelay(lần thử)` → thử lại; được thì gửi bù hàng đợi. |
+
+```mermaid
+sequenceDiagram
+    participant S as Server
+    participant C as Client
+    S->>C: ping (lượt 1)
+    C-->>S: pong, còn sống
+    Note over C: Gập laptop, mất sóng
+    S->>C: ping (lượt 2), không ai đáp
+    Note over S: Lượt 3: chưa thấy pong, terminate
+    Note over C: Có sóng lại
+    C->>S: Thử kết nối sau 1 s, server chưa lên
+    C->>S: Thử lại sau 2 s, được
+    C->>S: Gửi bù tin trong hàng đợi
+```
+
+**Từ mới trong bài**
+
+| Từ | Nghĩa đời thường |
+|---|---|
+| **TCP** | "Đường ống byte" tin cậy giữa hai máy mà WebSocket (và HTTP) chạy bên trên; byte gửi đi được đánh số, mất thì gửi lại |
+| **FIN** · **RST** | Gói "tạm biệt" — đóng đàng hoàng · gói "cúp máy" — huỷ ngay. Phải có máy còn sống gửi đi thì bên kia mới biết |
+| **Kết nối chết im lặng**, **half-open** | Một bên đã mất mà bên kia vẫn tưởng kết nối mở |
+| **NAT**, **proxy**, **load balancer** | Trạm trung gian giữa client và server (router Wi-Fi, proxy công ty, bộ chia tải); im lặng lâu thì nó **quên** kết nối mà không báo ai |
+| **nginx**, **AWS ALB** | Hai phần mềm/dịch vụ trung gian phổ biến; thường cắt kết nối im lặng sau 60 giây |
+| **TCP keepalive** | Hệ điều hành tự gửi gói thăm dò khi im lặng — mặc định sau 2 giờ mới bắt đầu, quá muộn cho chat |
+| **Heartbeat** | Định kỳ hỏi "còn sống không" để phát hiện kết nối chết |
+| **Ping / pong** | Gói hỏi / gói đáp có sẵn trong WebSocket; bên nhận ping tự trả pong |
+| **Frame điều khiển**, **opcode** | Gói WebSocket dùng để quản lý kết nối (ping, pong, close) · số ghi loại gói |
+| **`terminate()`** · **`close()`** | Cắt ngay · chào rồi chờ bên kia chào lại (kết nối chết thì chờ vô ích) |
+| **Interval**, **sweep** | Khoảng thời gian lặp lại · một lượt đi kiểm tra mọi kết nối |
+| **Bộ đệm (buffer)** | Vùng nhớ chứa dữ liệu chờ gửi; `send` không lỗi chỉ nghĩa là đã vào bộ đệm |
+| **Reconnect** | Tự kết nối lại sau khi mất |
+| **Retry** | Thử lại một việc bị lỗi |
+| **Backoff mũ** (exponential backoff) | Mỗi lần thử lại chờ gấp đôi lần trước, có **trần** (`cap`, `maxMs`) |
+| **Jitter** (full / equal) | Cộng một khoảng ngẫu nhiên để các client không thử cùng lúc · full: 0 → `cap`; equal: `cap/2` → `cap` |
+| **Thundering herd** | "Đàn trâu chạy loạn": rất nhiều client cùng ập vào server một lúc |
+| **Hàng đợi (queue)**, **FIFO** | Danh sách chờ · vào trước ra trước |
+| **Online / offline** | Đang có / không có kết nối |
+| **`readyState`** | Trạng thái kết nối: `CONNECTING` 0, `OPEN` 1, `CLOSING` 2, `CLOSED` 3 |
+| **Seed** | Số khởi đầu cho hàm ngẫu nhiên giả, để lần nào chạy cũng ra cùng dãy |
+| **Đồng hồ giả** (`mock.timers`) | Test tua nhanh thời gian thay vì chờ thật |
+| **Thuộc tính nội bộ** (`_socket`) | Phần bên trong thư viện, dấu `_` = không phải API công khai, chỉ dùng trong demo/test |
+
 ### Kết nối chết im lặng
 
 | Tình huống | Server thấy gì | Bao lâu mới có `close` |
@@ -39,17 +104,11 @@ Phần chạy thử (`npm start`, `npm run client`, `npm run client:freeze`) đ�
 | Wi-Fi rớt, laptop gập máy, mất điện | **Không gì cả** | Nếu server đang gửi dữ liệu: khi TCP gửi lại mãi không được, Linux bỏ cuộc sau ≈ **15 phút**. Nếu không ai gửi gì: chỉ TCP keepalive phát hiện, mặc định ≈ **2 giờ 11 phút** |
 | NAT / proxy / load balancer cắt kết nối nhàn rỗi | Không gì cả | Như trên. Nhiều proxy cắt sau 60 giây im lặng (vd. nginx mặc định 60 giây; AWS ALB — bộ cân bằng tải của Amazon — mặc định 60 giây) |
 
-> 🧠 **Ghi nhớ — vài từ của tầng mạng:**
-> - **TCP**: "đường ống byte" tin cậy giữa hai máy mà WebSocket (và HTTP) chạy bên trên; byte gửi đi được đánh số, mất thì gửi lại.
-> - **FIN**: gói "tạm biệt" — một bên đóng kết nối đàng hoàng. **RST**: gói "cúp máy" — huỷ kết nối ngay. Cả hai đều là **gói tin**: phải có máy còn sống gửi đi thì bên kia mới biết.
-> - **NAT / proxy / load balancer**: trạm trung gian giữa client và server (router Wi-Fi, proxy công ty, bộ chia tải). Nó nhớ "ai đang nói chuyện với ai"; im lặng quá lâu thì nó **quên** mà không báo ai.
-> - **TCP keepalive**: hệ điều hành tự gửi gói thăm dò khi kết nối im lặng — nhưng mặc định sau 2 giờ mới bắt đầu, quá muộn cho chat.
->
-> Nguồn các con số Linux: `tcp_retries2 = 15` (≈ 15 phút gửi lại); `tcp_keepalive_time = 7200` giây + 9 lần thăm dò × `tcp_keepalive_intvl = 75` giây ≈ 2 giờ 11 phút. Không cần nhớ tên tham số; chỉ cần nhớ cỡ "phút tới giờ".
+> 🧠 **Ghi nhớ:** `close` chỉ đến khi TCP **biết** kết nối đã đứt; mất điện, gập máy, NAT quên kết nối — không gói tin nào báo cho server. Muốn biết sớm, phải **chủ động hỏi**: ping, chờ pong. Nguồn các con số Linux: `tcp_retries2 = 15` (≈ 15 phút gửi lại); `tcp_keepalive_time = 7200` giây + 9 lần thăm dò × `tcp_keepalive_intvl = 75` giây ≈ 2 giờ 11 phút. Không cần nhớ tên tham số; chỉ cần nhớ cỡ "phút tới giờ".
 
-Kết nối mà một bên đã mất còn bên kia vẫn tưởng mở gọi là **half-open**. Hậu quả với TeamPulse: tên "ma" nằm mãi trong danh sách online, tin gửi đi không ai nhận, bộ nhớ cho kết nối chết không được giải phóng.
+Hậu quả của kết nối **half-open** với TeamPulse: tên "ma" nằm mãi trong danh sách online, tin gửi đi không ai nhận, bộ nhớ cho kết nối chết không được giải phóng.
 
-Chạy thử: client "treo" (ngừng đọc socket), server vẫn gửi được, `readyState` vẫn `OPEN`. (`client._socket` là socket TCP bên dưới — thuộc tính **nội bộ** của `ws`, dấu `_` nghĩa là "không phải API công khai"; chỉ dùng để giả lập sự cố trong demo/test, không dùng trong code thật.)
+Chạy thử: client "treo" (ngừng đọc socket), server vẫn gửi được, `readyState` vẫn `OPEN`. (`client._socket` là socket TCP bên dưới — thuộc tính nội bộ của `ws`, không dùng trong code thật.)
 
 ```js
 import { WebSocketServer, WebSocket } from 'ws';

@@ -13,7 +13,7 @@ Sau buổi này (khoảng 3 giờ) bạn sẽ:
 - Đọc file bằng **`fs/promises`** và xử lý file không tồn tại.
 - **Kết quả đo được:** `chatlog.js` qua hết **15 test**, `npm start` in ra thống kê log chat.
 
-> 🧠 **Ghi nhớ:** Node.js = engine V8 (chạy JavaScript, giống Chrome) + thư viện I/O bất đồng bộ (libuv). Server WebSocket ở công ty bạn chạy trên đúng mô hình này: **một luồng** JavaScript phục vụ hàng nghìn kết nối nhờ không bao giờ ngồi chờ I/O.
+> 📖 Từ lạ ở trên (module, npm, Promise, event loop, bất đồng bộ…) được giải nghĩa ở mục *Hiểu trước khi làm*, ngay đầu phần kiến thức nền.
 
 ## 📋 Đề bài
 
@@ -43,9 +43,68 @@ withTimeout(delay(1000), 200) → lỗi "timeout" sau 201 ms
 
 > 📖 **Cú pháp:** bài này dùng cú pháp đã học ở **N00**: `const`/`let`, `===`, arrow function `(x) => ...` (= `lambda`), template literal `` `${x}` `` (= f-string), object `{}`, `for...of`, `try/catch`. Gặp chỗ lạ, mở lại bảng Python ↔ JS của N00.
 
-### Node.js là gì
+### Hiểu trước khi làm
 
-JavaScript sinh ra để chạy trong trình duyệt. Node.js lấy engine V8 của Chrome ra chạy riêng, bỏ phần trình duyệt (`document`, `window`), thêm phần server cần: file, mạng, tiến trình.
+**Bối cảnh.** Một máy chủ chat phục vụ nhiều người cùng lúc, và phần lớn thời gian nó chỉ **chờ**: chờ đọc xong file, chờ tin nhắn đi qua mạng. Nếu chương trình đứng yên mỗi lần chờ, người thứ hai phải đợi người thứ nhất xong — một trăm người là một trăm lượt xếp hàng. Node.js được làm ra để chương trình **giao việc chờ đi rồi làm việc khác**, quay lại khi có kết quả. Bài này học cách viết code theo kiểu đó, cùng cách chia code thành nhiều file (module) và dùng thư viện người khác viết sẵn (npm).
+
+**Ví dụ đời thường.** Một nhà hàng chỉ có **một bồi bàn**. Bồi bàn ghi order bàn 1, đưa xuống bếp rồi **không đứng chờ ở bếp** mà đi ghi order bàn 2, bàn 3. Món nào xong, bếp bấm chuông; bồi bàn làm xong việc đang dở rồi mang món ra. Bồi bàn là luồng JavaScript duy nhất; bếp là hệ điều hành lo đọc file, mạng; tiếng chuông là **callback** được xếp hàng; vòng đi lại không ngừng của bồi bàn là **event loop**. Nếu bồi bàn tự đứng thái rau 10 phút (tính toán nặng), cả nhà hàng đứng chờ. Còn **module** là các ngăn tủ dán nhãn trong bếp, **npm** là siêu thị bán nguyên liệu đóng gói sẵn.
+
+**Bạn đã gặp nó ở đâu.**
+- Zalo đang gửi một ảnh lớn mà bạn vẫn gõ được tin khác — việc chờ mạng chạy "nền".
+- Shopee hiện vòng xoay "đang tải" nhưng trang vẫn cuộn được.
+- Máy chủ Discord, Slack giữ hàng nghìn kết nối mở, mỗi kết nối hầu như chỉ ngồi chờ tin.
+- Tải một project từ GitHub về, gõ `npm install` là đủ thư viện để chạy.
+
+| Câu hỏi | Trả lời |
+|---|---|
+| **What** — là gì | Node.js: chương trình chạy JavaScript ngoài trình duyệt, có thêm đọc file, mở kết nối mạng. Bất đồng bộ: gọi việc chờ xong thì chạy tiếp, kết quả đến sau. |
+| **Why** — vì sao cần | Một luồng phục vụ được hàng nghìn người, vì thời gian chờ không bị phí. |
+| **When** — khi nào dùng | Việc chủ yếu là chờ: máy chủ web, chat, đọc ghi file, gọi API. |
+| **When not** — khi nào không | Tính toán nặng kéo dài (xử lý ảnh, video, mô hình học máy): một vòng lặp lâu làm cả server đứng hình. |
+| **Where** — ở đâu | Phía máy chủ của TeamPulse; công cụ dòng lệnh; trong khóa: mọi file `.js` bạn chạy bằng `node`. |
+| **How** — chạy thế nào | Code gặp việc chờ thì đăng ký "xong thì gọi tôi", chạy tiếp dòng sau; event loop lấy từng kết quả đã xong ra chạy, lần lượt. |
+
+```mermaid
+sequenceDiagram
+    participant JS as Luồng JavaScript (bồi bàn)
+    participant OS as Hệ điều hành (bếp)
+    participant Q as Hàng đợi callback (chuông)
+    JS->>OS: Đọc file messages.jsonl giùm tôi
+    Note over JS: Không chờ, chạy tiếp dòng sau
+    JS->>OS: Hẹn giờ 300 ms
+    OS-->>Q: File đọc xong
+    Q-->>JS: Event loop: chạy callback đọc file
+    OS-->>Q: Hết 300 ms
+    Q-->>JS: Event loop: chạy callback hẹn giờ
+```
+
+**Từ mới trong bài**
+
+| Từ | Nghĩa đời thường |
+|---|---|
+| **Node.js**, **V8** | Runtime chạy JavaScript ngoài trình duyệt; V8 là "động cơ" chạy JS lấy từ Chrome |
+| **Hệ điều hành** | Linux, Windows, macOS — phần mềm nền lo file, mạng, bộ nhớ cho mọi chương trình |
+| **I/O** | Input/Output: mọi việc đọc ghi ra ngoài chương trình (file, mạng) — thường là việc phải chờ |
+| **Luồng (thread)** | Một "người làm" chạy code lần lượt từng dòng; JS trong Node chỉ có một |
+| **Đồng bộ / bất đồng bộ** | Đứng chờ xong mới làm tiếp / giao việc rồi làm tiếp, kết quả báo sau |
+| **Event loop** | Vòng lặp của Node: chạy code, rồi lần lượt lấy kết quả đã xong ra xử lý |
+| **libuv**, **thread pool** | Thư viện bên trong Node lo việc chờ; nhóm luồng phụ làm hộ việc file |
+| **Callback** | Hàm đưa cho người khác để họ gọi lại khi xong việc |
+| **Microtask** · **timer** | Hàng chờ ưu tiên cho Promise · hẹn giờ `setTimeout` |
+| **Promise** | "Phiếu hẹn" kết quả: *pending* (chưa có), *fulfilled* (có giá trị), *rejected* (lỗi) |
+| **`async` / `await`** | Đánh dấu hàm có chờ / chờ một Promise mà không chặn cả chương trình |
+| **Timeout** | Hạn chờ tối đa; quá hạn thì bỏ, báo lỗi |
+| **Module**, **ESM** · **CommonJS** | Mỗi file một module; ESM = cách `import`/`export` hiện nay · CommonJS = cách `require` cũ |
+| **npm**, **`npx`** | Công cụ cài thư viện, chạy lệnh của project · chạy một công cụ không cần cài hẳn |
+| **`package.json`** | Hồ sơ project: `type`, `scripts` (lệnh đặt tên), `dependencies` (thư viện cần) |
+| **`package-lock.json`**, **`node_modules/`** | Sổ ghi đúng phiên bản thư viện · thư mục chứa thư viện đã tải |
+| **`fs/promises`** | Module có sẵn của Node để đọc ghi file, trả Promise |
+| **`ENOENT`** | Mã lỗi "không có file hay thư mục này" |
+| **Log**, **JSONL** | Nhật ký ghi lại sự việc · file mà mỗi dòng là một JSON riêng (`messages.jsonl`) |
+| **`SyntaxError`** · **`TypeError`** | Lỗi "chữ viết sai cú pháp" (vd. JSON hỏng) · lỗi "dùng sai kiểu" (vd. đọc thuộc tính của `null`) |
+| **Regex** `/.../` | Mẫu tìm chuỗi; `/\r?\n/` = "xuống dòng, có thể có `\r` trước" |
+
+### Node.js là gì — so với trình duyệt và Python
 
 | | JS trong trình duyệt | Node.js | Python (đã học) |
 |---|---|---|---|

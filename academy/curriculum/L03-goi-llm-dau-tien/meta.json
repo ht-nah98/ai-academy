@@ -2,7 +2,7 @@
   "id": "L03-goi-llm-dau-tien",
   "title": "Gọi LLM đầu tiên",
   "goal": "Viết hàm ask() gửi câu hỏi tới LLM và trả về câu trả lời + số token đã dùng; qua hết 12 test với fake client và chạy thật được với model NVIDIA.",
-  "duration_min": 210,
+  "duration_min": 225,
   "concepts": [
     "llm-next-token",
     "token",

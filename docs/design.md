@@ -179,6 +179,17 @@ Qua bài = `ok` (returncode 0, không fail, ≥1 test pass). Khái niệm `learn
 - Starter giữ nguyên signature + docstring, thân hàm `raise NotImplementedError`.
 - Docstring nêu đủ mọi yêu cầu mà test kiểm tra (học viên không phải đoán).
 - Lời giải tham chiếu để ngoài repo, không commit.
+**Hiểu trước khi làm (bắt buộc, mọi bài)**
+- Học viên không có nền tảng. Không được đưa code hay thuật ngữ mới ra trước khi trả lời: nó **là gì**, **vì sao** cần, **khi nào** dùng (và khi nào không), **ở đâu** trong hệ thống/ứng dụng thật, **hoạt động thế nào** ở mức hình dung.
+- Mục đầu tiên của `## 🤔 Tại sao? (kiến thức nền)` là `### Hiểu trước khi làm`, gồm theo thứ tự:
+  1. **Bối cảnh**: vấn đề đời thật mà khái niệm sinh ra để giải quyết (2–4 câu, không thuật ngữ).
+  2. **Ví dụ đời thường**: một phép so sánh quen thuộc (quầy thông tin, gọi điện, bưu điện…).
+  3. **Bạn đã gặp nó ở đâu**: 3–5 sản phẩm thật (Zalo, Grab, Shopee, Google Docs…).
+  4. **Bảng 5W1H**: What / Why / When / When not / Where / How, mỗi ô 1–2 câu.
+  5. **Từ mới trong bài**: bảng thuật ngữ → nghĩa đời thường, cho mọi từ chuyên môn xuất hiện lần đầu trong bài.
+  6. Một sơ đồ hình dung (mermaid) khi giúp ích.
+- Thuật ngữ chưa giải thích không được xuất hiện trong Đề bài, Bước hay code trước mục này. Tab "Hướng dẫn" trên UI mở "① Hiểu trước" mặc định.
+
 **Nhiều cách giải: vòng lặp cơ bản luôn đi trước**
 - Học viên chưa quen cú pháp viết tắt của Python. Mọi demo có xử lý dữ liệu đều có **Cách 1** viết bằng `for` / `while` / `if-else` cơ bản: mỗi dòng một việc, biến trung gian có tên rõ, có comment ngắn khi cần.
 - Cách viết gọn hoặc dùng thư viện (comprehension, `lambda`, `sorted(key=)`, `Counter`, `any/all`, `zip`, generator, pandas vectorized, numpy…) chỉ là **Cách 2, Cách 3…**, đặt ngay sau Cách 1, đầu ra giống hệt. Lần đầu một cú pháp viết tắt xuất hiện trong khóa, phải chỉ ra nó tương đương đoạn vòng lặp nào.

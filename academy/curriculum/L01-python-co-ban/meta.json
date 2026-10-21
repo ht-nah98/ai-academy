@@ -2,7 +2,7 @@
   "id": "L01-python-co-ban",
   "title": "Python cơ bản qua dữ liệu tuyển dụng",
   "goal": "Viết 4 hàm Python (filter_by_skill, count_by_city, average_salary, top_skills) xử lý danh sách tin tuyển dụng và qua hết 15 test.",
-  "duration_min": 240,
+  "duration_min": 255,
   "concepts": [
     "python-basics",
     "list-dict",

@@ -6,10 +6,10 @@
 
 Sau buổi này (khoảng 3,5 giờ) bạn sẽ:
 
-- Giải thích được **streaming** và vì sao nó làm chatbot "cảm giác" nhanh hơn.
-- Phân biệt lỗi **đáng thử lại** (429, 5xx, timeout) và lỗi **không đáng** (400, 401, 404).
-- Viết **retry** với **exponential backoff + jitter**.
-- Dựng API chat bằng **FastAPI** và chạy trang web chat thật.
+- Giải thích được **streaming** (gửi chữ từng mẩu) và vì sao nó làm chatbot "cảm giác" nhanh hơn.
+- Phân biệt lỗi **đáng thử lại** (429, 5xx, timeout — quá giờ chờ) và lỗi **không đáng** (400, 401, 404).
+- Viết **retry** (tự thử lại) với **exponential backoff + jitter** (chờ tăng gấp đôi, cộng chút ngẫu nhiên).
+- Dựng API chat bằng **FastAPI** (thư viện Python dựng web API) và chạy trang web chat thật.
 - **Kết quả đo được:** `webchat.py` qua hết **32 test**, và chat được trên `http://127.0.0.1:8001`.
 
 ## 📋 Đề bài
@@ -21,16 +21,79 @@ Sau buổi này (khoảng 3,5 giờ) bạn sẽ:
 | `backoff_delays(n, base, cap)` | Thời gian chờ tăng gấp đôi, có trần |
 | `is_retryable(error)` | Lỗi này có đáng thử lại? |
 | `with_retry(fn, max_tries, ...)` | Gọi lại `fn` khi gặp lỗi tạm thời |
-| `stream_text(chunks)` · `collect_stream` | Lấy chữ từ từng chunk của stream |
-| Handler `POST /chat` trong `create_app` | Gọi LLM qua `with_retry`, hết lượt → 503 |
+| `stream_text(chunks)` · `collect_stream` | Lấy chữ từ từng chunk (mẩu) của stream |
+| Handler (hàm xử lý) `POST /chat` trong `create_app` | Gọi LLM qua `with_retry`, hết lượt → 503 (server bận) |
 
 **Xong khi:** `32 passed`, rồi `python webchat.py` và chat được trên trình duyệt, chữ hiện dần.
 
 ## 🤔 Tại sao? (kiến thức nền)
 
+### Hiểu trước khi làm
+
+**Bối cảnh.** Đưa chatbot lên trang web thì gặp hai vấn đề. Một: model viết câu dài mất vài giây, người dùng nhìn màn hình trống và tưởng app bị treo. Hai: nhà cung cấp chỉ cho khoảng 40 lần gọi mỗi phút; gọi quá là bị từ chối tạm thời. App không được sập vì vậy, mà phải chờ một chút rồi thử lại cho khéo.
+
+**Ví dụ đời thường.**
+- **Streaming** giống xem bóng đá trực tiếp thay vì chờ tải xong cả trận: nội dung tới đâu xem tới đó.
+- **Rate limit** giống quầy chỉ phục vụ 40 khách mỗi phút; đông quá thì nhân viên bảo "quay lại sau".
+- **Retry với backoff** giống gọi điện gặp máy bận: chờ 1 phút gọi lại, vẫn bận thì chờ 2 phút, rồi 4 phút — không bấm gọi liên tục.
+- **Jitter** giống tan ca mà mỗi người ra cổng lệch nhau vài giây, thay vì cả xưởng ùa ra cùng lúc gây tắc.
+
+**Bạn đã gặp nó ở đâu.**
+- ChatGPT, Gemini: chữ hiện dần từng cụm thay vì hiện cả đoạn một lần.
+- YouTube, Netflix phát video khi chưa tải xong.
+- App ngân hàng giờ cao điểm báo "Hệ thống đang bận, vui lòng thử lại".
+- Săn sale Shopee 12.12: "Quá nhiều người truy cập, vui lòng thử lại sau".
+- Gmail mất mạng hiện "Đang thử kết nối lại sau vài giây".
+
+| | Streaming | Rate limit và retry |
+|---|---|---|
+| **What** — là gì? | Server gửi câu trả lời thành từng mẩu ngay khi model viết ra. | Rate limit: giới hạn số lần gọi mỗi phút (vượt → 429). Retry: tự gọi lại khi lỗi tạm thời. |
+| **Why** — vì sao cần? | Người dùng thấy chữ sau chưa tới 1 giây thay vì chờ cả câu. | Lỗi tạm thời rất thường gặp; thử lại đúng cách giúp app không sập. |
+| **When** — khi nào dùng? | Giao diện chat, câu trả lời dài. | Lỗi 429, 5xx, timeout, mất mạng. |
+| **When not** — khi nào không? | Kết quả cần đủ mới dùng được (JSON để code đọc), hoặc xử lý hàng loạt không ai ngồi xem. | Lỗi 400, 401, 404: thử lại vẫn sai, phải sửa code hoặc key. |
+| **Where** — ở đâu? | Endpoint `/chat/stream` và hàm `stream_text`. | `with_retry` bọc quanh lời gọi API trong handler `/chat`. |
+| **How** — chạy thế nào? | Gọi `create(..., stream=True)` → lặp `for chunk in stream` → gửi tiếp chữ trong mỗi chunk cho trình duyệt. | Thử → lỗi đáng thử lại → chờ 1s, 2s, 4s… (nhân số ngẫu nhiên) → thử lại; hết lượt → trả 503. |
+
+**Từ mới trong bài**
+
+| Thuật ngữ | Nghĩa đời thường |
+|---|---|
+| streaming | Gửi dữ liệu thành dòng chảy từng mẩu, không đợi xong hết |
+| chunk | Một mẩu dữ liệu trong stream |
+| SSE (Server-Sent Events) | Cách server đẩy từng dòng `data: ...` qua một kết nối HTTP mở lâu |
+| rate limit, RPM | Giới hạn tốc độ gọi; RPM = số request mỗi phút |
+| 429, 5xx, 503 | Gọi quá nhanh / lỗi phía server / server đang bận |
+| lỗi tạm thời | Lỗi tự hết sau một lúc (bận, mạng chập chờn) |
+| timeout | Thời gian chờ tối đa; quá giờ thì bỏ cuộc và báo lỗi |
+| retry | Tự động thử lại |
+| exponential backoff, trần (cap) | Mỗi lần thất bại chờ gấp đôi lần trước; cap = mức chờ tối đa |
+| jitter | Nhân thời gian chờ với số ngẫu nhiên để các client không thử lại cùng lúc |
+| thundering herd | Nhiều client cùng thử lại một lúc, gây quá tải mới |
+| `Retry-After` | Header server báo "chờ đúng ngần này giây rồi gọi lại" |
+| FastAPI, uvicorn | Thư viện biến hàm Python thành web API / chương trình chạy server đó |
+| handler | Hàm xử lý một endpoint, vd. `POST /chat` |
+| Pydantic, 422 | Thư viện kiểm tra kiểu dữ liệu vào; dữ liệu sai kiểu → mã 422 |
+| `HTTPException` | Cách FastAPI trả mã lỗi kèm thông báo |
+| `TestClient` | Gọi thử API trong test mà không cần mở server thật |
+| `127.0.0.1:8001` | Địa chỉ máy của chính bạn, cổng 8001 |
+| generator, `yield`, `next` | Hàm trả từng phần tử khi được hỏi tới; `next` lấy phần tử kế tiếp |
+| class lỗi, `super().__init__` | Tự định nghĩa loại lỗi mới dựa trên `Exception` có sẵn |
+| `getattr(obj, tên, mặc_định)` | Đọc thuộc tính, không có thì lấy mặc định |
+
+```mermaid
+flowchart TD
+    B["Trình duyệt gửi câu hỏi"] --> S["FastAPI webchat.py"]
+    S --> R{"Gọi API NVIDIA"}
+    R -- "429, 5xx, timeout" --> W["Chờ backoff có jitter"] --> R
+    R -- "Hết lượt thử" --> E["Trả 503: model đang bận"]
+    R -- "Thành công, stream=True" --> C["Nhận từng chunk"]
+    C --> P["Gửi ngay từng mẩu chữ"]
+    P --> B
+```
+
 ### Streaming
 
-Không có streaming, người dùng nhìn màn hình trống tới khi model viết **xong** cả câu. Có streaming, server gửi **từng mẩu** ngay khi model sinh ra — tổng thời gian không đổi nhưng chữ đầu tiên đến sớm hơn nhiều.
+Tổng thời gian không đổi, nhưng chữ đầu tiên đến sớm hơn nhiều.
 
 ```mermaid
 sequenceDiagram

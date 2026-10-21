@@ -2,7 +2,7 @@
   "id": "L05-hoi-thoai-context-window",
   "title": "Hội thoại nhiều lượt & context window",
   "goal": "Giữ lịch sử hội thoại và tự cắt bớt khi vượt ngân sách token cho trước; qua hết 25 test và chat nhiều lượt thật trong terminal.",
-  "duration_min": 180,
+  "duration_min": 195,
   "concepts": [
     "context-window",
     "messages-roles",

@@ -4,12 +4,12 @@
 
 ## 🎯 Mục tiêu
 
-Sau buổi này (khoảng 3 giờ) bạn sẽ:
+Sau buổi này (khoảng 3 giờ 15 phút) bạn sẽ:
 
 - Dựng **tập câu hỏi gán nhãn** cho RAG: câu có đáp án (kèm id tin đúng) và câu **không** có đáp án.
-- Đo truy hồi bằng **recall@k** và **MRR**.
-- Đo câu trả lời: **từ chối đúng**, **từ chối nhầm**, **trích dẫn hợp lệ**, **citation precision / recall**.
-- So hai cấu hình (không chia chunk vs chunk 10 từ) và chọn bằng số liệu, kèm giới hạn của số liệu đó.
+- Đo truy hồi bằng **recall@k** (k kết quả đầu chứa bao nhiêu phần tin đúng) và **MRR** (tin đúng đầu tiên đứng hạng mấy).
+- Đo câu trả lời: **từ chối đúng**, **từ chối nhầm**, **trích dẫn hợp lệ**, **citation precision / recall** (precision/recall của L13 áp lên các id được trích).
+- So hai cấu hình (cách dựng index: không chia chunk vs chunk 10 từ) và chọn bằng số liệu, kèm giới hạn của số liệu đó.
 - **Kết quả đo được:** 4 hàm trong `eval_rag.py` qua hết **8 test**; `python eval_rag.py` in bảng so sánh hai cấu hình trên 20 câu hỏi.
 
 > 🧠 **Ghi nhớ:** RAG sai có thể do **tìm** sai (tin đúng không vào prompt) hoặc **đọc** sai (tin đúng có trong prompt nhưng model bỏ qua hay gán nhầm). Đo gộp một con số thì không biết sửa chỗ nào.
@@ -38,6 +38,55 @@ Không cần API key, không cần mạng, chỉ thư viện chuẩn.
 **Xong khi:** bấm **Chạy test** thấy `8 passed`, và viết được kết luận chọn cấu hình nào kèm số liệu.
 
 ## 🤔 Tại sao? (kiến thức nền)
+
+### Hiểu trước khi làm
+
+**Bối cảnh.** RAG của L16 trả lời trôi chảy 3 câu thử. Nhưng trước khi cho người dùng thật dùng, cần biết: trên nhiều câu hỏi, nó tìm đúng tin bao nhiêu lần, có bịa khi không có đáp án không, và đổi cách chia chunk thì tốt lên hay tệ đi. Khi câu trả lời sai, cũng cần biết sai ở **bước tìm** hay ở **bước đọc**, vì mỗi bước sửa một kiểu.
+
+**Ví dụ đời thường.** Đánh giá một thủ thư: bước 1, bạn hỏi sách, thủ thư mang ra 5 cuốn — trong đó có cuốn đúng không, và cuốn đúng nằm trên cùng hay dưới đáy chồng? (đo tìm). Bước 2, thủ thư đọc 5 cuốn đó rồi tóm tắt cho bạn — có nói đúng sách nào chứa thông tin không, có dám nói "thư viện không có" khi thật sự không có không? (đo đọc). Thủ thư giỏi tìm mà tóm tắt sai, hay ngược lại, cần đào tạo khác nhau.
+
+**Bạn đã gặp nó ở đâu.**
+- Google xếp hạng kết quả: hầu hết người dùng chỉ bấm 1–3 kết quả đầu, nên vị trí của trang đúng quan trọng hơn việc nó có trong trang 5.
+- Shopee, Tiki đo "người dùng có bấm vào kết quả đầu không" để chỉnh ô tìm kiếm.
+- Chatbot hỗ trợ của ngân hàng được kiểm trên bộ câu hỏi mẫu trước mỗi lần cập nhật.
+- Các bảng xếp hạng model AI công khai chấm trên bộ câu hỏi cố định có đáp án.
+
+| Câu hỏi | Trả lời |
+|---|---|
+| **What** — là gì? | **Đánh giá RAG**: chấm riêng hai tầng trên tập câu hỏi gán nhãn — **truy hồi** (recall@k, MRR) và **câu trả lời** (từ chối đúng, trích dẫn đúng). |
+| **Why** — vì sao cần? | Một con số gộp không cho biết sửa index hay sửa prompt. Thiếu câu "không có đáp án" thì không đo được model có bịa hay không. |
+| **When** — khi nào dùng? | Trước khi đưa RAG cho người dùng; mỗi lần đổi chunk, đổi model embedding, đổi prompt. |
+| **When not** — khi nào không? | Khi chưa có quy tắc gán nhãn cho câu hỏi; hoặc vài câu thử nhanh lúc đang code — dùng để gỡ lỗi, không dùng để kết luận. |
+| **Where** — nằm ở đâu? | Script chạy riêng trên kết quả đã lưu của RAG (`runs_*.json`), không nằm trên đường trả lời người dùng. |
+| **How** — chạy thế nào? | Với mỗi câu: so danh sách tin truy hồi với tin đúng theo nhãn → recall@k, hạng; so id được trích với nhãn → citation precision/recall; câu không có đáp án → có từ chối không. Rồi lấy trung bình cho từng cấu hình. |
+
+**Từ mới trong bài**
+
+| Từ | Nghĩa đời thường |
+|---|---|
+| tầng truy hồi / tầng sinh (retrieval / generation) | bước tìm tin / bước model đọc tin và viết câu trả lời |
+| `relevant` | id các tin đúng của một câu hỏi, theo nhãn |
+| `retrieved` | 5 id hệ thống tìm được, theo thứ hạng |
+| hạng (rank) | vị trí trong danh sách kết quả, tính từ 1 |
+| recall@k | trong các tin đúng, bao nhiêu phần nằm trong k kết quả đầu |
+| hit@k | có ít nhất một tin đúng trong k kết quả đầu không (0 hoặc 1) |
+| reciprocal rank, MRR | 1 / hạng của tin đúng đầu tiên (hạng 1 → 1, hạng 4 → 0.25, không thấy → 0); MRR = trung bình trên mọi câu |
+| từ chối đúng / từ chối nhầm | câu không có đáp án mà model từ chối / câu có đáp án mà model vẫn từ chối |
+| `hallucinated` | câu không có đáp án mà model vẫn trả lời — tức là bịa |
+| citation precision / recall | trong id được trích, bao nhiêu phần đúng nhãn / trong tin đúng nhãn, bao nhiêu phần được trích |
+| `citation_valid` | mọi id trích đều nằm trong nguồn đã đưa (kiểm của L16, không cần nhãn) |
+| cấu hình (config) | một cách dựng hệ thống, ở đây: `whole` (không chia chunk), `c10` (chunk 10 từ) |
+| production | hệ thống đang chạy thật cho người dùng |
+
+```mermaid
+flowchart TD
+    Q["Câu hỏi gán nhãn<br/>16 có đáp án + 4 không"] --> T["Tầng tìm<br/>tin đúng có trong top 5?"]
+    T --> M1["recall@k, MRR"]
+    T --> A["Tầng đọc<br/>model trả lời, trích id"]
+    A --> M2["Từ chối đúng / nhầm<br/>citation precision, recall"]
+    M1 --> D["So cấu hình, chọn bằng số liệu"]
+    M2 --> D
+```
 
 ### Tập câu hỏi gán nhãn cho RAG
 
@@ -129,7 +178,7 @@ Cách 2: 3
 
 > ⚖️ **So sánh:** cả hai O(n) trong trường hợp xấu nhất và dừng sớm khi gặp phần tử khớp. Cách 2 gọn hơn nhưng khó đọc hơn với người mới; Cách 1 hoàn toàn ổn.
 
-Phần còn lại tự ghép từ công thức trong bảng ở phần Kiến thức nền: điều kiện "khớp" là id nằm trong `relevant`; `recall_at_k` đếm id đúng trong `retrieved[:k]` (id khác nhau). Docstring còn hai trường hợp: id lặp trong `relevant` và `relevant` rỗng.
+Phần còn lại tự ghép từ công thức trong bảng "Chỉ số truy hồi" (mục ① Hiểu trước): điều kiện "khớp" là id nằm trong `relevant`; `recall_at_k` đếm id đúng trong `retrieved[:k]` (id khác nhau). Docstring còn hai trường hợp: id lặp trong `relevant` và `relevant` rỗng.
 
 ### Bước 3 — Cả bộ → `evaluate_retrieval`
 
@@ -137,7 +186,7 @@ Chỉ tính câu **có** đáp án; câu thiếu trong `runs` coi như truy hồ
 
 ### Bước 4 — Câu trả lời → `evaluate_answers`
 
-Tính tay ví dụ trong test trước khi code: 3 câu có đáp án, 1 câu không. Chú ý mỗi chỉ số có **mẫu số riêng** (bảng ở phần Kiến thức nền), và mẫu số 0 → 0.0.
+Tính tay ví dụ trong test trước khi code: 3 câu có đáp án, 1 câu không. Chú ý mỗi chỉ số có **mẫu số riêng** (bảng "Chỉ số câu trả lời", mục ① Hiểu trước), và mẫu số 0 → 0.0.
 
 > ⚠️ **Lỗi hay gặp:** tính `citation_precision` gộp cả câu không có đáp án. Câu không có đáp án mà model vẫn trích nguồn đã được đếm ở `hallucinated` / `correct_refusal`; gộp vào precision thì một lỗi bị đếm hai lần.
 

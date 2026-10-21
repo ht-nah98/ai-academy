@@ -2,7 +2,7 @@
   "id": "L09-sql-phan-tich",
   "title": "SQL phân tích",
   "goal": "Viết 8 truy vấn phân tích dùng JOIN, GROUP BY và window function trả lời câu hỏi thị trường — 8 hàm trong queries.py qua hết 11 test.",
-  "duration_min": 210,
+  "duration_min": 225,
   "concepts": [
     "sql-basics",
     "sql-joins",

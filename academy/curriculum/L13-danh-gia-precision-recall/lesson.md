@@ -4,12 +4,12 @@
 
 ## 🎯 Mục tiêu
 
-Sau buổi này (khoảng 3 giờ) bạn sẽ:
+Sau buổi này (khoảng 3 giờ 15 phút) bạn sẽ:
 
-- Hiểu **tập nhãn** (golden set) và **hướng dẫn gán nhãn**: thước đo phải có trước khi đo.
-- Tính **precision, recall, F1** cho đầu ra dạng tập hợp (kỹ năng), và **accuracy** cho trường đơn (cấp bậc, lương).
-- Phân biệt **micro** và **macro** average.
-- Làm **phân tích lỗi**: từ con số đi tới nguyên nhân cụ thể, rồi tới cách sửa.
+- Hiểu **tập nhãn** (golden set — bộ mẫu kèm đáp án đúng do người xác định) và **hướng dẫn gán nhãn**: thước đo phải có trước khi đo.
+- Tính **precision** (lấy ra bao nhiêu phần đúng), **recall** (sót bao nhiêu), **F1** (gộp hai số) cho đầu ra dạng tập hợp (kỹ năng), và **accuracy** (tỉ lệ đúng) cho trường đơn (cấp bậc, lương).
+- Phân biệt hai cách lấy trung bình: **micro** và **macro**.
+- Làm **phân tích lỗi** (đọc từng lỗi, gom theo nguyên nhân): từ con số đi tới nguyên nhân cụ thể, rồi tới cách sửa.
 - **Kết quả đo được:** 4 hàm trong `evaluate.py` qua hết **17 test**; `python evaluate.py` in bảng so sánh prompt v1 và v2 trên 30 tin.
 
 > 🧠 **Ghi nhớ:** "Chạy thử vài tin thấy ổn" không phải đánh giá. Đánh giá là: tập cố định, nhãn có quy tắc, chỉ số định nghĩa rõ, chạy lại được.
@@ -26,18 +26,70 @@ Sau buổi này (khoảng 3 giờ) bạn sẽ:
 
 | Hàm | Việc |
 |---|---|
-| `normalize_skill(skill)` | `"  Postgres "` → `"postgresql"` |
+| `normalize_skill(skill)` | chuẩn hóa tên: `"  Postgres "` → `"postgresql"` |
 | `evaluate_skills(gold, pred)` | precision, recall, F1 (micro) cho kỹ năng |
-| `field_accuracy(gold, pred, field)` | accuracy một trường + bảng nhầm lẫn |
+| `field_accuracy(gold, pred, field)` | accuracy một trường + bảng nhầm lẫn (đếm sai kiểu nào) |
 | `error_report(gold, pred, top)` | kỹ năng hay bị thừa / bị sót nhất |
 
 **Xong khi:** bấm **Chạy test** thấy `17 passed`, và viết được kết luận chọn v1 hay v2 kèm số liệu.
 
 ## 🤔 Tại sao? (kiến thức nền)
 
-### Tập nhãn và hướng dẫn gán nhãn
+### Hiểu trước khi làm
 
-**Tập nhãn** (golden set) là một bộ mẫu cố định kèm đáp án đúng do người xác định. Mọi phiên bản prompt/model đều chấm trên cùng bộ này để so được với nhau.
+**Bối cảnh.** Bộ trích xuất của L11 chạy xong, nhìn vài tin thấy "có vẻ đúng". Nhưng quản lý hỏi: "đúng bao nhiêu phần trăm? prompt mới có tốt hơn prompt cũ không?". Nhìn bằng mắt không trả lời được, và mỗi lần nhìn lại thấy một kiểu. Cần một bộ đề có đáp án và một cách chấm điểm cố định.
+
+**Ví dụ đời thường.** Chấm bài trắc nghiệm: thầy có **đáp án chuẩn** (tập nhãn), mọi bài thi đều chấm theo cùng đáp án đó nên điểm hai học sinh so được với nhau. Với câu "khoanh mọi đáp án đúng", chỉ đếm số câu đúng là chưa đủ: học sinh khoanh hết cả 4 ô sẽ không bao giờ sót, nhưng khoanh thừa rất nhiều. Vì vậy cần hai con số: khoanh thừa bao nhiêu (precision), bỏ sót bao nhiêu (recall).
+
+**Bạn đã gặp nó ở đâu.**
+- Gmail lọc thư rác: lọt thư rác vào hộp chính (sót) hay chặn nhầm thư sếp (thừa) — hai lỗi khác nhau.
+- Tìm kiếm trên Shopee: kết quả đầu toàn hàng không liên quan là precision thấp.
+- Xét nghiệm nhanh COVID: "dương tính giả" và "âm tính giả".
+- Camera an ninh nhận diện khuôn mặt: báo động nhầm so với bỏ sót người lạ.
+
+| Câu hỏi | Trả lời |
+|---|---|
+| **What** — là gì? | **Đánh giá (evaluation)**: chấm hệ thống trên một **tập nhãn** cố định bằng các chỉ số định nghĩa rõ. **Precision / recall / F1**: đo thừa / sót / điểm gộp khi đầu ra là một tập hợp. |
+| **Why** — vì sao cần? | Để so hai phiên bản prompt/model bằng con số thay vì cảm giác, và biết sửa gì trước. |
+| **When** — khi nào dùng? | Mỗi lần đổi prompt, đổi model, đổi dữ liệu — trước khi đưa lên cho người dùng. |
+| **When not** — khi nào không? | Khi chưa có quy tắc gán nhãn rõ ràng: con số đo ra không có nghĩa. Viết quy tắc trước. |
+| **Where** — nằm ở đâu? | Ngoài đường chạy chính: một script chạy riêng trên tập nhãn, kết quả là bảng so sánh các phiên bản. |
+| **How** — chạy thế nào? | Chuẩn hóa tên → so từng tin giữa đáp án và dự đoán → cộng dồn đúng / thừa / sót → tính chỉ số → đọc các lỗi lặp lại nhiều nhất. |
+
+**Từ mới trong bài**
+
+| Từ | Nghĩa đời thường |
+|---|---|
+| nhãn (label), gold | đáp án đúng do người xác định cho một mẫu |
+| tập nhãn (golden set) | bộ đề cố định kèm đáp án, dùng để chấm mọi phiên bản |
+| hướng dẫn gán nhãn | quy tắc viết ra giấy để hai người gán nhãn ra cùng kết quả |
+| dự đoán (pred, prediction) | đầu ra của hệ thống cho một mẫu |
+| tp / fp / fn | đúng (true positive) / thừa (false positive) / sót (false negative) |
+| precision | trong những cái lấy ra, bao nhiêu phần đúng |
+| recall | trong những cái đúng, lấy được bao nhiêu phần |
+| F1 | một con số gộp precision và recall, chỉ cao khi cả hai cùng cao |
+| trung bình điều hòa | kiểu trung bình bị kéo xuống mạnh bởi số nhỏ (F1 dùng kiểu này) |
+| accuracy | số mẫu đúng / tổng số mẫu |
+| micro / macro average | cộng dồn mọi mẫu rồi chia một lần / tính từng lớp rồi lấy trung bình |
+| lớp (class) | một giá trị cần nhận ra, vd. từng kỹ năng, từng cấp bậc |
+| bảng nhầm lẫn | đếm từng cặp (đáp án, dự đoán) khi sai → biết model hay nhầm theo hướng nào |
+| chuẩn hóa, alias | đưa các cách viết khác nhau về một tên (`Postgres` = `PostgreSQL`); alias là tên gọi khác |
+| phân tích lỗi (error analysis) | đọc từng lỗi, gom theo nguyên nhân, sửa nguyên nhân lớn nhất trước |
+| tập phát triển / tập kiểm tra | bộ dùng để sửa / bộ chỉ dùng để báo cáo, không nhìn vào khi sửa |
+| regression | sửa chỗ này làm hỏng chỗ khác đang đúng |
+
+```mermaid
+flowchart TD
+    G["Tập nhãn<br/>30 tin + đáp án"] --> C["So từng tin"]
+    P1["Dự đoán prompt v1"] --> C
+    P2["Dự đoán prompt v2"] --> C
+    C --> M["Chỉ số<br/>precision, recall, F1, accuracy"]
+    C --> E["Phân tích lỗi<br/>thừa gì, sót gì"]
+    M --> D["Chọn v1 hay v2"]
+    E --> D
+```
+
+### Tập nhãn và hướng dẫn gán nhãn
 
 Đáp án đúng cần **quy tắc viết ra giấy**. Tin ghi "2+ năm kinh nghiệm" thì cấp bậc là gì? Không có quy tắc, hai người gán hai kiểu, và con số đo được không có nghĩa.
 
@@ -98,7 +150,7 @@ Riêng accuracy không đủ để biết sửa gì. **Bảng nhầm lẫn** đ�
 
 ### Phân tích lỗi và bẫy "tối ưu trên đề thi"
 
-**Phân tích lỗi** (error analysis) là đọc từng lỗi, gom theo nguyên nhân, sửa nguyên nhân lớn nhất trước. Prompt v2 trong bài sinh ra đúng theo cách đó: đọc lỗi của v1 → thêm quy tắc.
+Prompt v2 trong bài sinh ra bằng phân tích lỗi: đọc lỗi của v1 → thêm quy tắc.
 
 Bẫy: v2 được sửa **dựa trên chính 30 tin này**, nên điểm của v2 trên 30 tin này là **lạc quan**. Như ôn đúng đề rồi thi lại đúng đề đó. Ở công ty, người ta tách **tập phát triển** (dùng để sửa) và **tập kiểm tra** (chỉ dùng để báo cáo, không nhìn vào khi sửa).
 
@@ -125,7 +177,7 @@ Các demo dùng giỏ trái cây và tài liệu — không phải dữ liệu b
 
 Không cần API key, không cần mạng: dự đoán đã được chạy sẵn và lưu trong `predictions_v1.json`, `predictions_v2.json`. Bài chỉ dùng thư viện chuẩn.
 
-Mở `gold_30.json`, đọc 3–4 tin và nhãn của chúng, đối chiếu với bảng hướng dẫn gán nhãn (tab **Kiến thức nền**).
+Mở `gold_30.json`, đọc 3–4 tin và nhãn của chúng, đối chiếu với bảng hướng dẫn gán nhãn (mục **① Hiểu trước**).
 
 ### Bước 2 — So sánh công bằng → `normalize_skill`
 

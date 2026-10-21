@@ -4,7 +4,7 @@
 
 ## 🎯 Mục tiêu
 
-Sau buổi này (khoảng 3,5 giờ với người mới; thêm 30–90 phút nếu lần đầu cài Docker/Redis cho phần chạy thật) bạn sẽ:
+Sau buổi này (khoảng 4 giờ với người mới; thêm 30–90 phút nếu lần đầu cài Docker/Redis cho phần chạy thật) bạn sẽ:
 
 - Giải thích vì sao **broadcast trong một tiến trình** không đủ khi chạy nhiều instance.
 - Thiết kế một **interface broker** nhỏ (`publish`/`subscribe`) và viết bản **trong bộ nhớ** (EventEmitter) để test không cần Redis.
@@ -13,23 +13,7 @@ Sau buổi này (khoảng 3,5 giờ với người mới; thêm 30–90 phút n�
 - Tính được **chi phí fan-out**, biết khi nào cần **sticky session**, và Socket.IO giải bài này bằng adapter ra sao.
 - **Kết quả đo được:** `scale.js` qua hết **8 test** không cần Redis; `npm start` + 2 client dòng lệnh ở cổng 3008/3009 thấy tin của nhau; với Redis thật, 2 **tiến trình** ở cổng 3108/3109 thấy tin của nhau; 2.000 tin giao trong 0,03 s, độ trễ trung vị 4,3 ms (Redis) so với 2,3 ms (bộ nhớ).
 
-> 🧠 **Ghi nhớ:** WebSocket là kết nối **có trạng thái**: một client gắn với **một** tiến trình cho tới khi đứt. Muốn tin tới client ở tiến trình khác, phải có một kênh **giữa các tiến trình** — pub/sub.
-
-> 🧠 **Ghi nhớ — bốn từ của bài:**
-> - **Instance** (hay "node" trong bài): một bản server đang chạy — một tiến trình `node scale.js`. Production chạy nhiều bản giống hệt nhau, trên một hay nhiều máy.
-> - **Load balancer**: "cửa vào" chia kết nối của client cho các instance (vd. nginx, AWS ALB). Client chỉ biết một địa chỉ.
-> - **Redis**: một server lưu dữ liệu trong RAM, các chương trình nói chuyện với nó qua mạng (cổng 6379). Ngoài lưu key–value, nó có **pub/sub**: chương trình *publish* tin lên một kênh, mọi chương trình đã *subscribe* kênh đó nhận được.
-> - **Docker**: chạy phần mềm đóng gói sẵn (gọi là image, vd. `redis:7-alpine`) bằng một lệnh, không phải cài từng thứ vào máy. Bài này chỉ dùng nó để bật Redis; có cách cài Redis không cần Docker ở Bước 6.
-
-```mermaid
-flowchart TD
-    C1["Client An"] --> LB["Load balancer"]
-    C2["Client Binh"] --> LB
-    LB --> A["Instance A<br/>(tiến trình node)"]
-    LB --> B["Instance B<br/>(tiến trình node)"]
-    A <--> R[("Redis: kênh pub/sub")]
-    B <--> R
-```
+> 📖 Từ lạ ở trên và trong Đề bài (instance, load balancer, pub/sub, Redis, Docker, broker, fan-out…) được giải nghĩa ở mục *Hiểu trước khi làm*, ngay đầu phần kiến thức nền.
 
 ## 📋 Đề bài
 
@@ -46,6 +30,70 @@ flowchart TD
 **Xong khi:** `# pass 8`, và `npm start` + hai client dòng lệnh (An ở cổng 3008, Binh ở 3009) thấy tin của nhau (Bước 6, không cần Redis). Có Redis (Docker hoặc cài thẳng): thêm phần 2 tiến trình riêng thấy tin của nhau qua Redis.
 
 ## 🤔 Tại sao? (kiến thức nền)
+
+### Hiểu trước khi làm
+
+**Bối cảnh.** Một máy chủ chỉ chịu được số người có hạn: bộ xử lý, bộ nhớ, số kết nối đều có trần. Khi TeamPulse có hàng chục nghìn người — hoặc chỉ cần cập nhật server mà không làm mọi người rớt cùng lúc — công ty chạy **nhiều bản server giống hệt nhau**, phía trước đặt một "cửa vào" chia người dùng cho từng bản. Rắc rối: mỗi bản chỉ biết những người đang nối vào **chính nó**; An ở bản A gửi tin thì Bình ở bản B không nhận được. Cần một **bảng tin chung** giữa các bản — bài này dùng pub/sub của Redis.
+
+**Ví dụ đời thường.** Một chuỗi quán cà phê nhiều chi nhánh; tổng đài đặt bàn chia khách tới chi nhánh còn chỗ (**load balancer**). Mỗi chi nhánh (**instance**) chỉ biết khách đang ngồi ở quán mình. Có thông báo cần tới mọi khách, chi nhánh A không hét sang chi nhánh B được — nên các quản lý lập một **nhóm chat nội bộ** (**kênh pub/sub** trên **Redis**): A đăng tin vào nhóm (**publish**), mọi quản lý đã vào nhóm (**subscribe**) đọc rồi báo cho khách tại quán mình. Nhóm này **không lưu tin**: quản lý nào vắng lúc đó thì lỡ luôn. Còn **Docker** giống mua một thiết bị đóng thùng sẵn, cắm điện là chạy — ở đây là "thùng Redis".
+
+**Bạn đã gặp nó ở đâu.**
+- Shopee, Lazada ngày sale 12.12: hàng triệu người cùng vào, một máy không thể gánh nổi.
+- Bạn và đồng nghiệp ở cùng nhóm Zalo nhưng có thể đang nối vào hai máy chủ khác nhau, vẫn thấy tin của nhau ngay.
+- Một server hỏng mà app vẫn chạy, chỉ vài người bị nối lại — vì còn các bản khác.
+- Nhiều project trên GitHub có file `docker-compose.yml` để bật cơ sở dữ liệu, Redis bằng một lệnh.
+
+| Câu hỏi | Trả lời |
+|---|---|
+| **What** — là gì | Scale ngang: chạy nhiều instance sau load balancer. Pub/sub: instance publish tin lên một kênh chung, mọi instance subscribe kênh đó nhận và giao cho client của mình. |
+| **Why** — vì sao cần | Kết nối WebSocket gắn chặt với **một** instance; broadcast trong một tiến trình không tới người ở instance khác. |
+| **When** — khi nào dùng | Từ hai instance trở lên; cần chịu tải lớn hoặc cập nhật không gián đoạn. |
+| **When not** — khi nào không | Một instance đủ tải (đa số app nhỏ): thêm Redis là thêm một thứ có thể hỏng. Cần lưu tin, giao chắc chắn → dùng DB, Redis Streams, Kafka thay vì pub/sub. |
+| **Where** — ở đâu | Giữa các tiến trình server, qua mạng tới Redis (cổng 6379). Trong khóa: `scale.js`, node A cổng 3008, node B cổng 3009. |
+| **How** — chạy thế nào | Client gửi tin → node nhận **không** gửi thẳng mà publish → Redis chuyển cho mọi node đã subscribe (kể cả node gửi) → mỗi node gửi cho client của nó. |
+
+```mermaid
+flowchart TD
+    C1["Client An"] --> LB["Load balancer"]
+    C2["Client Binh"] --> LB
+    LB --> A["Instance A<br/>(tiến trình node)"]
+    LB --> B["Instance B<br/>(tiến trình node)"]
+    A <--> R[("Redis: kênh pub/sub")]
+    B <--> R
+```
+
+> 🧠 **Ghi nhớ:** WebSocket là kết nối **có trạng thái**: một client gắn với **một** tiến trình cho tới khi đứt. Muốn tin tới client ở tiến trình khác, phải có một kênh **giữa các tiến trình** — pub/sub.
+
+**Từ mới trong bài**
+
+| Từ | Nghĩa đời thường |
+|---|---|
+| **Scale** (mở rộng) · **scale ngang** | Làm hệ thống chịu được nhiều người hơn · thêm máy/bản chạy thay vì mua máy to hơn |
+| **Instance** (hay "node" trong bài) | Một bản server đang chạy — một tiến trình `node scale.js`; production chạy nhiều bản giống hệt nhau |
+| **Tiến trình**, **production** | Một chương trình đang chạy · môi trường thật người dùng đang dùng |
+| **Load balancer** | "Cửa vào" chia kết nối cho các instance (vd. nginx, AWS ALB); client chỉ biết một địa chỉ |
+| **Có trạng thái** (stateful) | Server nhớ thứ gắn với từng client (kết nối đang mở), nên client không đổi server tuỳ ý được |
+| **Pub/sub**, **publish / subscribe** | Kiểu truyền tin "đăng lên kênh / theo dõi kênh"; người đăng không cần biết ai đang nghe |
+| **Kênh (channel)** | Tên chủ đề để publish/subscribe, vd. `teampulse:chat` |
+| **Broker** | Trung gian chuyển tin giữa người publish và người subscribe (bộ nhớ hoặc Redis) |
+| **Interface** | Bộ hàm cố định (`publish`, `subscribe`) mà nhiều bản cài đặt khác nhau cùng tuân theo |
+| **Unsubscribe** | Huỷ theo dõi kênh |
+| **Redis** | Server lưu dữ liệu trong RAM, chương trình khác nói chuyện với nó qua mạng; có sẵn pub/sub |
+| **RAM**, **key–value** | Bộ nhớ nhanh, mất khi tắt máy · kiểu lưu "khóa → giá trị" |
+| **Subscriber mode** | Kết nối Redis đã subscribe thì chỉ được nghe, không gửi lệnh khác — nên cần 2 kết nối |
+| **Fire-and-forget** | "Bắn rồi quên": gửi đi, không lưu, không gửi lại |
+| **DB**, **Redis Streams**, **Kafka** | Cơ sở dữ liệu lưu lâu dài · hai công cụ hàng đợi tin **có lưu**, giao chắc chắn |
+| **Docker**, **image**, **container** | Công cụ chạy phần mềm đóng gói sẵn · gói phần mềm (vd. `redis:7-alpine`) · một bản đang chạy của gói |
+| **`REDIS_URL`** | Biến môi trường chứa địa chỉ Redis, vd. `redis://127.0.0.1:6379` |
+| **Đồng bộ / bất đồng bộ giao tin** | Người nghe chạy ngay trong lúc `publish` / chạy sau, như tin đi qua mạng |
+| **`setImmediate`** | Hẹn chạy hàm ở lượt event loop kế tiếp |
+| **Fan-out** | Một tin "toả ra" thành nhiều lần gửi (mỗi node × mỗi client) |
+| **Sticky session** | Load balancer luôn đưa cùng một client về cùng một instance |
+| **Adapter** (`@socket.io/redis-adapter`) | Phần cắm giúp Socket.IO tự đồng bộ qua Redis |
+| **Độ trễ**, **trung vị** | Thời gian từ lúc gửi tới lúc nhận · giá trị đứng giữa khi xếp các lần đo |
+| **Bench** (benchmark) | Chạy đo hiệu năng |
+| **Client dòng lệnh** (CLI) | Chương trình chat gõ trong terminal (`cli.js`), không cần trình duyệt |
+| **Close code 1008** | Mã đóng "vi phạm quy định" — ở đây: thiếu tên |
 
 ### Vấn đề: mỗi instance chỉ biết client của nó
 

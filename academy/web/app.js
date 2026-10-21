@@ -614,7 +614,7 @@ async function showLesson(id) {
   const lesson = await capi("/lessons/" + encodeURIComponent(id));
   const keep = current && current.id === id ? current : null;
   const tab0 = keep ? keep.tab : (briefOf(lesson.meta) && !lessonStarted(lesson) ? "brief" : "lesson");
-  current = { id, lesson, tab: tab0 === "brief" && !briefOf(lesson.meta) ? "lesson" : tab0, iv: keep ? keep.iv : {}, guide: cstore.get("guide:" + id, "steps"), pane: keep ? keep.pane : "left" };
+  current = { id, lesson, tab: tab0 === "brief" && !briefOf(lesson.meta) ? "lesson" : tab0, iv: keep ? keep.iv : {}, guide: cstore.get("guide:" + id, "concepts"), pane: keep ? keep.pane : "left" };
   setTutorLesson(lesson.meta.title);
   renderLesson();
   renderSidebar();
@@ -656,7 +656,7 @@ function renderLessonTab() {
       <div class="pane-head"><span class="pane-badge">📋 Nhiệm vụ</span><span class="pane-q">Tôi phải làm gì, đã xong chưa?</span></div>
       <div id="status"></div>
       <div class="block">
-        <h3 class="bh">${tasks.length ? `Việc cần làm <span class="count">${tasks.length} hàm</span>` : "Đề bài"}</h3>
+        <h3 class="bh">${tasks.length ? `Việc cần làm <span class="count">${tasks.length} ${unitOf(m)}</span>` : "Đề bài"}</h3>
         <div id="tasks"></div>
       </div>
       ${sec.goal || sec.intro ? `<div class="block goal"><h3 class="bh">🎯 Sau bài này bạn sẽ</h3><div id="goal"></div></div>` : ""}
@@ -668,10 +668,10 @@ function renderLessonTab() {
     <section class="pane right" aria-label="Hướng dẫn">
       <div class="pane-head"><span class="pane-badge">🧭 Hướng dẫn</span><span class="pane-q">Làm thế nào, vì sao?</span></div>
       <div class="subtabs" role="tablist">
-        <button data-g="steps" role="tab">Các bước</button>
-        <button data-g="concepts" role="tab">Kiến thức nền</button></div>
-      <div id="guide-steps" class="guide"></div>
+        <button data-g="concepts" role="tab">① Hiểu trước</button>
+        <button data-g="steps" role="tab">② Các bước làm</button></div>
       <div id="guide-concepts" class="guide"></div>
+      <div id="guide-steps" class="guide"></div>
     </section></div>`;
 
   // Seg (màn hẹp)
@@ -715,8 +715,10 @@ function renderLessonTab() {
     $("#guide-steps", body).hidden = g !== "steps"; $("#guide-concepts", body).hidden = g !== "concepts";
   };
   $$(".subtabs button", body).forEach((b) => b.onclick = () => setGuide(b.dataset.g));
-  setGuide(current.guide === "concepts" ? "concepts" : "steps");
+  setGuide(current.guide === "steps" ? "steps" : "concepts"); // mặc định: hiểu trước rồi mới làm
 }
+const isQuiz = (m) => (m && m.kind) === "quiz";
+const unitOf = (m) => (isQuiz(m) ? "phần" : "hàm");
 function mdInline(t) { return window.marked ? marked.parseInline(String(t)) : esc(t); }
 
 function renderStatus() {
@@ -725,14 +727,14 @@ function renderStatus() {
   const locked = lesson.status === "locked", started = lesson.workspace_exists;
   const lt = lesson.progress.last_test, passedLesson = lesson.progress.passed;
   const cmd = /\s/.test(lesson.workspace_path) ? `code "${lesson.workspace_path}"` : `code ${lesson.workspace_path}`;
-  const runCmd = !m.entry ? "" : isNode() ? `node ${esc(m.entry)}` : `${roadmap.platform === "windows" ? "python" : "python3"} ${esc(m.entry)}`;
+  const runCmd = isQuiz(m) ? (isNode() ? "npm run demo" : "") : !m.entry ? "" : isNode() ? `node ${esc(m.entry)}` : `${roadmap.platform === "windows" ? "python" : "python3"} ${esc(m.entry)}`;
   const entry = m.entry ? `<code>${esc(m.entry)}</code>` : "file code khung";
   let head, sub;
   if (locked) { head = "🔒 Bài đang khóa"; sub = "Hoàn thành bài trước để mở, hoặc mở khóa thủ công."; }
-  else if (!started) { head = "Sẵn sàng bắt đầu"; sub = "Bấm <b>Bắt đầu</b> — app tạo sẵn thư mục và file code khung cho bạn."; }
-  else if (!lt) { head = "Đã có code khung"; sub = `Mở ${entry} trong VS Code, viết code rồi bấm <b>Chạy test</b>.`; }
+  else if (!started) { head = "Sẵn sàng bắt đầu"; sub = isQuiz(m) ? "Bấm <b>Bắt đầu</b> — app tạo sẵn thư mục, file câu hỏi và demo cho bạn." : "Bấm <b>Bắt đầu</b> — app tạo sẵn thư mục và file code khung cho bạn."; }
+  else if (!lt) { head = isQuiz(m) ? "Đã có file câu hỏi" : "Đã có code khung"; sub = isQuiz(m) ? `Đọc mục ① Hiểu trước, chạy demo, điền đáp án vào ${entry} rồi bấm <b>Chạy test</b>.` : `Mở ${entry} trong VS Code, viết code rồi bấm <b>Chạy test</b>.`; }
   else if (lt.total && lt.passed === lt.total && !lt.failed) { head = "🎉 Đạt hết! Bài đã hoàn thành"; sub = "Giỏi lắm. Bài tiếp theo đã được mở."; }
-  else { head = `${lt.passed}<small>/${lt.total}</small> test đạt`; sub = lt.passed ? "Đang tiến bộ! Xem thẻ bên dưới để biết hàm nào còn thiếu." : "Chưa có test nào đạt — bắt đầu từ hàm đầu tiên nhé."; }
+  else { head = `${lt.passed}<small>/${lt.total}</small> test đạt`; sub = lt.passed ? `Đang tiến bộ! Xem thẻ bên dưới để biết ${unitOf(lesson.meta)} nào còn thiếu.` : `Chưa có test nào đạt — bắt đầu từ ${unitOf(lesson.meta)} đầu tiên nhé.`; }
   const tests = lt && lt.tests;
   const bar = lt && lt.total ? (tests && tests.length ? `<div class="segbar" aria-hidden="true">${tests.map((t) => `<i class="${t.outcome === "passed" ? "ok" : "bad"}" title="${esc(prettyTest(t.name))}"></i>`).join("")}</div>`
     : `<div class="segbar prop" aria-hidden="true"><i class="ok" style="flex:${lt.passed}"></i><i class="bad" style="flex:${lt.total - lt.passed}"></i></div>`) : "";
@@ -748,9 +750,9 @@ function renderStatus() {
     ${started ? `<div class="cmd"><span class="cmd-k">Mở trong VS Code</span><code class="cmd-v" id="wspath" title="${esc(cmd)}">code …/${esc(lesson.workspace_path.split(/[\\/]/).slice(-2).join("/"))}</code></div>` : ""}
     <details class="more howto"${started ? "" : " open"}><summary>Cách làm bài (4 bước)</summary>
       <ol class="howto-list">
-        <li><b>Bắt đầu</b> — app tạo thư mục bài và code khung.</li>
+        <li><b>Bắt đầu</b> — app tạo thư mục bài và ${isQuiz(m) ? "file câu hỏi" : "code khung"}.</li>
         <li>Mở thư mục bằng <b>VS Code</b>, mở ${entry}${runCmd ? ` (chạy thử: <code>${runCmd}</code>)` : ""}.</li>
-        <li>Viết code vào chỗ <code>${isNode() ? "// TODO" : "# TODO"}</code>, xem tab <b>Hướng dẫn</b> khi bí.</li>
+        <li>${isQuiz(lesson.meta) ? "Đọc mục <b>① Hiểu trước</b>, chạy demo, rồi điền đáp án (chữ cái) thay cho <code>null</code>." : `Viết code vào chỗ <code>${isNode() ? "// TODO" : "# TODO"}</code>, xem tab <b>Hướng dẫn</b> khi bí.`}</li>
         <li><b>Chạy test</b> — đạt hết là qua bài, mở bài tiếp.</li></ol></details>
   </div>`;
   const c = $(".cmd", host); if (c) c.appendChild(copyBtn(() => cmd));
@@ -878,6 +880,10 @@ function renderConcepts(sec) {
       const all = mdEl(it.body);
       const first = all.firstElementChild;
       card.innerHTML = `<h4>${mdInline(it.title.replace(/^\d+[.)]\s*/, ""))}</h4>`;
+      // "Hiểu trước khi làm" luôn mở đầy đủ — đây là phần phải đọc trước khi làm
+      if (/^hiểu trước/i.test(it.title.trim())) {
+        card.classList.add("chieu"); all.classList.add("csum"); card.appendChild(all); grid.appendChild(card); return;
+      }
       const sum = document.createElement("div"); sum.className = "md csum";
       if (first) sum.appendChild(first);
       card.appendChild(sum);
@@ -974,7 +980,7 @@ function renderWorkflow(b, tasks, tests) {
   const stage = (cls, icon, title, sub, inner) => `<div class="wf-stage ${cls}"><div class="wf-sth">${bfIcon(icon, "wf-ic")}<span>${title}</span>${sub ? `<small>${sub}</small>` : ""}</div>${inner}</div>`;
   return `<div class="wf${parallel ? " par" : ""}">
     ${ins.length ? stage("in", "input", "Đầu vào", "", `<ul class="wf-list">${ins.map((x) => box(x, "in")).join("")}</ul>`) + arrow : ""}
-    ${stage("proc", "fn", "Xử lý", `${order.length} hàm${parallel ? " · độc lập, cùng đầu vào" : " · theo thứ tự dữ liệu"}`, `<ol class="wf-steps">${steps}</ol>`)}
+    ${stage("proc", "fn", "Xử lý", `${order.length} ${unitOf(current && current.lesson && current.lesson.meta)}${parallel ? " · độc lập, cùng đầu vào" : " · theo thứ tự dữ liệu"}`, `<ol class="wf-steps">${steps}</ol>`)}
     ${outs.length ? arrow + stage("out", "output", "Đầu ra", "", `<ul class="wf-list">${outs.map((x) => box(x, "out")).join("")}</ul>`) : ""}
   </div>`;
 }
@@ -1014,7 +1020,7 @@ function renderBriefTab() {
       <div class="pmap-card"><div class="pmap" id="brief-map"></div>
       <p class="pmap-key"><span><i class="pk hl"></i>Bài này xây</span><span><i class="pk done">✓</i>Đã xây ở bài trước</span></p></div></section>` : ""}
     <div class="cta"><button type="button" class="btn amber cta-btn take-btn" id="take">${cta} <span aria-hidden="true">→</span></button>
-      <span class="cta-sub">${[tasks.length ? `${tasks.length} hàm cần viết` : "", hours].filter(Boolean).join(" · ")}</span>
+      <span class="cta-sub">${[tasks.length ? `${tasks.length} ${isQuiz(m) ? "phần câu hỏi" : "hàm cần viết"}` : "", hours].filter(Boolean).join(" · ")}</span>
       <div id="take-msg" class="runmsg"></div></div>
   </div>`;
   if (hasMap) {

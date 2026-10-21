@@ -2,7 +2,7 @@
   "id": "L13-danh-gia-precision-recall",
   "title": "Đánh giá: tập nhãn, precision/recall",
   "goal": "Đo chất lượng bộ trích xuất trên 30 tin đã gán nhãn: precision/recall/F1 cho kỹ năng, accuracy cho từng trường, phân tích lỗi để chọn giữa prompt v1 và v2 — 4 hàm trong evaluate.py qua hết 17 test.",
-  "duration_min": 180,
+  "duration_min": 195,
   "concepts": [
     "labeled-eval-set",
     "precision-recall",

@@ -1,0 +1,10 @@
+{
+  "name": "teampulse-n03a",
+  "private": true,
+  "type": "module",
+  "description": "TeamPulse — bài N03a: WebSocket là gì, vì sao cần (demo polling vs WebSocket + câu hỏi trắc nghiệm)",
+  "scripts": {
+    "demo": "node demo.js",
+    "test": "node --test \"../../curriculum/N03a-websocket-la-gi/tests/*.test.js\""
+  }
+}

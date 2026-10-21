@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TeamPulse — Polling vs WebSocket</title>
+  <link rel="icon" href="data:,">
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: system-ui, sans-serif; max-width: 1040px; margin: 20px auto; padding: 0 16px; background: #f7f7f8; color: #1d1d1f; }
+    h1 { font-size: 20px; margin: 0 0 4px; }
+    p.lead { margin: 0 0 14px; color: #555; }
+    .bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 14px; }
+    button { padding: 9px 14px; border: 1px solid #bbb; border-radius: 8px; background: #fff; cursor: pointer; font-size: 14px; }
+    button.main { background: #1d4ed8; color: #fff; border-color: #1d4ed8; font-weight: 600; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    @media (max-width: 720px) { .grid { grid-template-columns: 1fr; } }
+    .panel { background: #fff; border: 1px solid #ddd; border-radius: 10px; padding: 12px; min-width: 0; }
+    .panel h2 { font-size: 16px; margin: 0 0 2px; }
+    .panel .how { font-size: 13px; color: #666; margin: 0 0 10px; }
+    .poll h2 { color: #b45309; } .ws h2 { color: #047857; }
+    .nums { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin-bottom: 10px; }
+    .num { background: #f3f4f6; border-radius: 8px; padding: 6px 8px; }
+    .num b { display: block; font-size: 20px; }
+    .num span { font-size: 12px; color: #555; }
+    .log { height: 240px; overflow-y: auto; background: #fafafa; border: 1px solid #eee; border-radius: 8px; padding: 6px; font: 12px/1.5 ui-monospace, monospace; overflow-wrap: anywhere; }
+    .log .empty { color: #999; } .log .news { color: #1a7f37; font-weight: 600; } .log .sys { color: #6b7280; } .log .err { color: #b91c1c; }
+    .state { display: inline-block; padding: 1px 8px; border-radius: 10px; background: #fbe7b0; font-weight: 600; font-size: 12px; }
+    .state.OPEN { background: #c8f2d0; } .state.CLOSED { background: #f6c9c9; }
+    .scale { margin-top: 14px; background: #fff; border: 1px dashed #bbb; border-radius: 10px; padding: 10px 12px; font-size: 14px; }
+    select { padding: 6px; }
+  </style>
+</head>
+<body>
+  <h1>Polling vs WebSocket — cùng một server, cùng một tin</h1>
+  <p class="lead">Bấm <b>Server gửi tin</b> (hoặc bật tự động) rồi so hai cột: ai nhận tin trước, ai phải hỏi bao nhiêu lần.</p>
+
+  <div class="bar">
+    <button class="main" id="send">📣 Server gửi tin</button>
+    <label><input type="checkbox" id="auto"> Tự động: server có tin mỗi 2–5 giây</label>
+    <label>Polling hỏi mỗi
+      <select id="interval">
+        <option value="1000" selected>1 giây</option>
+        <option value="3000">3 giây</option>
+        <option value="5000">5 giây</option>
+      </select></label>
+    <button id="reset">Đặt lại số đếm</button>
+  </div>
+
+  <div class="grid">
+    <section class="panel poll">
+      <h2>① Polling — chạy ra quầy hỏi "có thư không?"</h2>
+      <p class="how">Trình duyệt gửi <code>GET /poll?since=…</code> đều đặn. Server chỉ được trả lời khi có người hỏi.</p>
+      <div class="nums">
+        <div class="num"><b id="p-req">0</b><span>request đã gửi</span></div>
+        <div class="num"><b id="p-empty">0</b><span>lần trả về rỗng</span></div>
+        <div class="num"><b id="p-got">0</b><span>tin đã nhận</span></div>
+        <div class="num"><b id="p-avg">–</b><span>trễ trung bình</span></div>
+        <div class="num"><b id="p-max">–</b><span>trễ lâu nhất</span></div>
+        <div class="num"><b id="p-err">0</b><span>lỗi mạng</span></div>
+      </div>
+      <div class="log" id="p-log"></div>
+    </section>
+
+    <section class="panel ws">
+      <h2>② WebSocket — gọi điện rồi giữ máy</h2>
+      <p class="how">Một kết nối mở sẵn (<span class="state" id="w-state">CONNECTING</span>). Có tin là server nói ngay.</p>
+      <div class="nums">
+        <div class="num"><b id="w-req">0</b><span>request đã gửi (bắt tay)</span></div>
+        <div class="num"><b>0</b><span>lần trả về rỗng</span></div>
+        <div class="num"><b id="w-got">0</b><span>tin đã nhận</span></div>
+        <div class="num"><b id="w-avg">–</b><span>trễ trung bình</span></div>
+        <div class="num"><b id="w-max">–</b><span>trễ lâu nhất</span></div>
+        <div class="num"><b id="w-close">–</b><span>mã đóng (close code)</span></div>
+      </div>
+      <div class="log" id="w-log"></div>
+    </section>
+  </div>
+
+  <div class="scale" id="scale">Nếu 1.000 người cùng mở trang này: …</div>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const NAMES = ['CONNECTING', 'OPEN', 'CLOSING', 'CLOSED'];
+    const ms = (v) => (v === null ? '–' : v < 1000 ? v + ' ms' : (v / 1000).toFixed(2).replace('.', ',') + ' s');
+
+    function log(id, cls, text) {
+      const box = $(id), line = document.createElement('div');
+      line.className = cls;
+      line.textContent = new Date().toLocaleTimeString() + '  ' + text;
+      box.appendChild(line);
+      while (box.children.length > 200) box.firstChild.remove();
+      box.scrollTop = box.scrollHeight;
+    }
+    function track(t) { return { ...t, got: 0, total: 0, max: null }; }
+    let P = track({ req: 0, empty: 0, err: 0 });
+    let W = track({});
+    function addDelay(t, d) { t.got += 1; t.total += d; t.max = t.max === null ? d : Math.max(t.max, d); }
+    function paint() {
+      $('p-req').textContent = P.req; $('p-empty').textContent = P.empty + (P.req ? ' (' + Math.round(100 * P.empty / P.req) + '%)' : '');
+      $('p-got').textContent = P.got; $('p-avg').textContent = ms(P.got ? Math.round(P.total / P.got) : null);
+      $('p-max').textContent = ms(P.max); $('p-err').textContent = P.err;
+      $('w-got').textContent = W.got; $('w-avg').textContent = ms(W.got ? Math.round(W.total / W.got) : null);
+      $('w-max').textContent = ms(W.max);
+      const perMin = Math.round(60000 / Number($('interval').value)) * 1000;
+      $('scale').innerHTML = 'Nếu <b>1.000 người</b> cùng mở trang này: polling gửi khoảng <b>' + perMin.toLocaleString('vi-VN') +
+        ' request/phút</b> lên server, phần lớn chỉ để nghe "chưa có gì". WebSocket: <b>1.000 kết nối mở sẵn</b>, ' +
+        '0 request sau lúc bắt tay — server chỉ làm việc khi thật sự có tin.';
+    }
+
+    // ① Polling: hỏi xong mới hẹn lần sau (setTimeout), không bao giờ có 2 request chồng nhau
+    let since = 0;
+    async function pollOnce() {
+      try {
+        P.req += 1;
+        const asked = since;
+        const res = await fetch('/poll?since=' + asked, { cache: 'no-store' });
+        const list = await res.json();
+        if (list.length === 0) { P.empty += 1; log('p-log', 'empty', 'GET /poll?since=' + asked + ' → [] (chưa có gì)'); }
+        for (const ev of list) {
+          since = ev.id;
+          const d = Date.now() - ev.at;
+          addDelay(P, d);
+          log('p-log', 'news', 'GET /poll?since=' + asked + ' → tin #' + ev.id + ' "' + ev.text + '" (trễ ' + ms(d) + ')');
+        }
+      } catch (err) {
+        P.err += 1; log('p-log', 'err', 'lỗi mạng: ' + err.message + ' (server tắt?) — vẫn thử lại');
+      }
+      paint();
+      setTimeout(pollOnce, Number($('interval').value));
+    }
+
+    // ② WebSocket: mở một lần, rồi chỉ việc lắng nghe 4 sự kiện
+    let ws;
+    function showState() { const s = NAMES[ws.readyState]; $('w-state').textContent = s; $('w-state').className = 'state ' + s; }
+    function connect() {
+      ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws');
+      $('w-req').textContent = Number($('w-req').textContent) + 1;
+      showState();
+      log('w-log', 'sys', 'new WebSocket(...) → gửi 1 request bắt tay (Upgrade)');
+      ws.addEventListener('open', () => { showState(); log('w-log', 'sys', 'open — server trả 101, đường dây đã mở'); });
+      ws.addEventListener('message', (e) => {
+        const ev = JSON.parse(e.data);
+        if (ev.type !== 'news') { log('w-log', 'sys', '← ' + e.data); return; }
+        const d = Date.now() - ev.at;
+        addDelay(W, d); paint();
+        log('w-log', 'news', '← ' + e.data + ' (trễ ' + ms(d) + ')');
+      });
+      ws.addEventListener('close', (e) => { showState(); $('w-close').textContent = e.code; log('w-log', 'err', 'close — code ' + e.code + (e.code === 1006 ? ' (đứt mà không ai báo: server tắt/mất mạng)' : '')); });
+      ws.addEventListener('error', () => log('w-log', 'err', 'error — xem DevTools → Network → WS'));
+    }
+
+    // Nút: nhờ server tạo một tin mới (giả lập "có đơn hàng mới")
+    async function send() {
+      try { await fetch('/send', { method: 'POST' }); } catch (err) { log('p-log', 'err', 'không gửi được: ' + err.message); }
+    }
+    $('send').onclick = send;
+    let autoT = null;
+    function autoLoop() { send(); autoT = setTimeout(autoLoop, 2000 + Math.random() * 3000); }
+    $('auto').onchange = () => { clearTimeout(autoT); if ($('auto').checked) autoT = setTimeout(autoLoop, 1000); };
+    $('interval').onchange = paint;
+    $('reset').onclick = () => { P = track({ req: 0, empty: 0, err: 0 }); W = track({}); $('p-log').textContent = ''; $('w-log').textContent = ''; paint(); };
+
+    fetch('/state', { cache: 'no-store' }).then((r) => r.json()).then((s) => { since = s.lastId; })
+      .catch(() => {}).finally(() => { paint(); pollOnce(); connect(); });
+  </script>
+</body>
+</html>

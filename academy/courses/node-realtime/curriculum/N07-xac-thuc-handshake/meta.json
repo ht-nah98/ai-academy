@@ -2,7 +2,7 @@
   "id": "N07-xac-thuc-handshake",
   "title": "Xác thực token khi handshake",
   "goal": "Ký và kiểm token HMAC, từ chối 401/403 trước khi nâng cấp, chặn Origin lạ, phân quyền từng tin, xử lý token hết hạn; qua hết 9 test.",
-  "duration_min": 210,
+  "duration_min": 225,
   "concepts": [
     "hmac-token",
     "ws-auth-token",

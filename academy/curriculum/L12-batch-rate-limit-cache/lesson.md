@@ -4,11 +4,11 @@
 
 ## 🎯 Mục tiêu
 
-Sau buổi này (khoảng 3,5 giờ) bạn sẽ:
+Sau buổi này (khoảng 3 giờ 45 phút) bạn sẽ:
 
-- Giới hạn tốc độ **chủ động** bằng **rate limiter** cửa sổ trượt (L06 đã xử lý 429 **bị động** bằng retry).
-- **Cache** kết quả LLM ra đĩa: khóa đúng, chỉ cache kết quả tốt, ghi file an toàn.
-- Viết batch job **bền bỉ**: một tin lỗi không làm dừng cả lô; chạy lại không gọi lại phần đã xong.
+- Giới hạn tốc độ **chủ động** bằng **rate limiter** (bộ đếm tự chờ để không gọi API quá nhanh) kiểu cửa sổ trượt; L06 đã xử lý lỗi 429 **bị động** bằng thử lại.
+- **Cache** (lưu sẵn câu trả lời để lần sau khỏi gọi lại) kết quả LLM ra đĩa: khóa đúng, chỉ cache kết quả tốt, ghi file an toàn.
+- Viết batch job (chương trình xử lý cả lô dữ liệu một lượt) **bền bỉ**: một tin lỗi không làm dừng cả lô; chạy lại không gọi lại phần đã xong.
 - **Ước tính chi phí** cho quy mô lớn từ một lần chạy thử.
 - **Kết quả đo được:** 4 phần trong `batch.py` qua hết **13 test**; chạy thật 264 tin, lần 2 chạy lại: `api_calls = 0`.
 
@@ -22,18 +22,70 @@ Sau buổi này (khoảng 3,5 giờ) bạn sẽ:
 
 | Phần | Việc |
 |---|---|
-| `cache_key(model, messages, params)` | khóa SHA-256 cho một request |
+| `cache_key(model, messages, params)` | khóa cache: mã 64 ký tự (SHA-256) định danh một request |
 | `RateLimiter(rpm, clock, sleep).wait()` | chờ nếu đã đủ `rpm` lần gọi trong 60 giây |
 | `run_batch(jobs, client, ...)` | cache → limiter → gọi (có retry) → parse → ghi cache, thống kê |
 | `estimate_cost(...)` | chạy thử n tin → ước tính cho N tin |
 
-`call_with_retry` và `is_retryable` đã viết sẵn ở cuối file. Khác `with_retry` của L06: L06 `max_tries` = **tổng** số lần thử, có jitter; L12 `max_retries` = số lần thử **thêm** (tổng `max_retries + 1`), không jitter để kết quả xác định.
+`call_with_retry` và `is_retryable` đã viết sẵn ở cuối file. Khác `with_retry` của L06: L06 `max_tries` = **tổng** số lần thử, có jitter (cộng thêm thời gian chờ ngẫu nhiên); L12 `max_retries` = số lần thử **thêm** (tổng `max_retries + 1`), không jitter để kết quả xác định.
 
-Bản này không đọc header `Retry-After`; production nên chờ đúng số giây server gửi trong header đó khi có.
+Bản này không đọc header `Retry-After` (server ghi sẵn "chờ N giây rồi gọi lại"); khi chạy thật cho người dùng (production) nên chờ đúng số giây đó khi có.
 
 **Xong khi:** bấm **Chạy test** thấy `13 passed`.
 
 ## 🤔 Tại sao? (kiến thức nền)
+
+### Hiểu trước khi làm
+
+**Bối cảnh.** Ở L11 bạn gọi LLM cho 3 tin; giờ là 264 tin, và ở công ty có thể là 100.000. Gọi dồn dập thì nhà cung cấp chặn ("bạn gọi quá nhanh"). Chương trình chết ở tin thứ 200 thì chạy lại từ đầu, trả tiền lần hai cho 199 tin đã xong. Và trước khi bấm chạy, quản lý sẽ hỏi: "hết bao nhiêu tiền, bao lâu?".
+
+**Ví dụ đời thường.** Quầy photocopy nhận 500 trang. Máy chỉ chạy được 35 trang/phút, đẩy nhanh hơn là kẹt giấy — nên nhân viên tự đếm và nghỉ đúng lúc (rate limit). Trang nào đã photo thì đánh dấu, mất điện xong làm tiếp từ chỗ dở (cache). Một trang rách thì để riêng, không dừng cả xấp (lỗi từng tin). Báo giá trước: photo thử 10 trang, đo mực, nhân lên 500 (ước tính chi phí).
+
+**Bạn đã gặp nó ở đâu.**
+- Gửi OTP liên tục, ngân hàng báo "vui lòng thử lại sau 60 giây" — rate limit.
+- Ảnh và video đã xem trên Facebook, YouTube mở lại tức thì vì trình duyệt đã cache.
+- Google Photos sao lưu hàng nghìn ảnh: mất mạng giữa chừng, có mạng lại thì chạy tiếp, không tải lại từ đầu.
+- Hóa đơn ChatGPT / OpenAI API tính theo số token đã dùng.
+
+| Câu hỏi | Trả lời |
+|---|---|
+| **What** — là gì? | **Batch processing**: chạy cùng một việc cho cả lô bản ghi. **Rate limit**: giới hạn số lần gọi API mỗi phút. **Cache**: lưu kết quả đã có để dùng lại. **Cost**: tiền trả theo số token vào và ra. |
+| **Why** — vì sao cần? | Không giới hạn tốc độ thì bị chặn (lỗi 429); không cache thì trả tiền hai lần và chạy lại từ đầu khi đứt; không ước tính thì không biết hóa đơn tới khi đã muộn. |
+| **When** — khi nào dùng? | Gọi API trả tiền hoặc có giới hạn hàng trăm lần trở lên, nhất là khi phải chạy lại nhiều lần. |
+| **When not** — khi nào không? | Chat trực tiếp với người dùng: mỗi câu hỏi mới, cache gần như không trúng; vài lần gọi lẻ thì retry của L06 là đủ. |
+| **Where** — nằm ở đâu? | Lớp bọc quanh lời gọi LLM của L11: trước khi gọi (cache, limiter), khi gọi (retry), sau khi gọi (ghi cache, cộng token). |
+| **How** — chạy thế nào? | Mỗi tin: tính khóa → có trong cache thì đọc → không thì chờ limiter, gọi API, parse, ghi cache → lỗi thì ghi vào danh sách lỗi và sang tin sau. |
+
+**Từ mới trong bài**
+
+| Từ | Nghĩa đời thường |
+|---|---|
+| batch (batch job) | xử lý cả lô bản ghi trong một lượt chạy, không có người chờ từng kết quả |
+| rate limit, RPM | giới hạn tốc độ; RPM = requests per minute, số lần gọi tối đa mỗi phút |
+| 429 Too Many Requests | mã lỗi HTTP server trả khi bạn gọi vượt giới hạn |
+| rate limiter | phần code tự đếm và tự chờ trước mỗi lần gọi để không vượt giới hạn |
+| cửa sổ trượt (sliding window) | luôn xét "60 giây vừa qua tính tới lúc này", không phải "phút thứ mấy trên đồng hồ" |
+| retry, `max_retries` | thử lại khi lỗi tạm thời; `max_retries` = số lần thử **thêm** |
+| cache, cache hit | kho kết quả đã có; hit = tìm thấy trong kho nên khỏi gọi API |
+| khóa cache | "tên" của một request, cùng câu hỏi thì cùng tên |
+| hash, SHA-256 | hàm biến dữ liệu bất kỳ thành một mã cố định (64 ký tự hex), đổi một chữ là mã đổi hẳn |
+| ghi an toàn (atomic write) | ghi ra file tạm `.tmp` rồi đổi tên một phát — file thật hoặc đủ, hoặc không có |
+| token | mẩu chữ (khoảng một từ hoặc một phần từ) mà LLM đọc và viết; hóa đơn tính theo token |
+| prompt caching | tính năng của nhà cung cấp: phần prompt lặp lại được tính giá rẻ hơn |
+| Batch API | dịch vụ gửi cả lô request một lần, rẻ hơn nhưng trả kết quả chậm (vài giờ) |
+| concurrency | chạy nhiều request song song cùng lúc |
+| `deque` | hàng đợi hai đầu của Python, lấy phần tử đầu rất nhanh |
+| đồng hồ giả (`clock`, `sleep` truyền vào) | test thay đồng hồ thật bằng hàm giả để "chờ 45 giây" mà không chờ thật |
+
+```mermaid
+flowchart TD
+    J["Một tin"] --> H{"Đã có trong cache?"}
+    H -- "Có" --> OK["Dùng lại, 0 đồng"]
+    H -- "Chưa" --> W["Limiter: chờ nếu đã đủ RPM"]
+    W --> C["Gọi API, lỗi tạm thì thử lại"]
+    C --> S["Ghi cache, cộng token"]
+    C -- "lỗi hẳn" --> E["Ghi vào errors, sang tin sau"]
+```
 
 ### Vòng for gọi API — chuyện gì xảy ra
 
@@ -65,7 +117,7 @@ flowchart TD
 
 ### Cache: không trả tiền hai lần
 
-Cùng model, cùng prompt, cùng tham số (temperature 0) → câu trả lời gần như giống nhau, đủ để tái dùng (L04: không bảo đảm giống hệt). Lưu câu trả lời ra đĩa, lần sau đọc lại thay vì gọi — cache chốt kết quả để lần chạy sau lặp lại được.
+Cùng model, cùng prompt, cùng tham số (temperature 0) → câu trả lời gần như giống nhau, đủ để tái dùng (L04: không bảo đảm giống hệt). Cache còn chốt kết quả để lần chạy sau lặp lại được.
 
 Ba quy tắc:
 

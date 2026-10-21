@@ -1,19 +1,19 @@
 # N03 — WebSocket đầu tiên: từ polling tới handshake
 
-> Thấy WebSocket chạy trên trình duyệt trước, rồi mới mổ xẻ: đo bằng số vì sao chat không chạy tốt trên HTTP hỏi–đáp, tự tính handshake bằng tay, viết echo server với thư viện `ws`, đọc client trình duyệt, và tra được lỗi khi kết nối hỏng.
+> Bạn đã hiểu WebSocket là gì, vì sao cần và khi nào không dùng ở bài trước (**N03a**). Bài này bắt tay vào làm: đo cái giá của polling bằng code của chính bạn, tự tính handshake bằng tay, viết echo server với thư viện `ws`, đọc client trình duyệt, và tra được lỗi khi kết nối hỏng.
 
 ## 🎯 Mục tiêu
 
 Sau buổi này (khoảng 4 giờ) bạn sẽ:
 
-- Giải thích WebSocket bằng một hình ảnh: **gửi thư hỏi liên tục** (polling) so với **giữ máy gọi điện** (WebSocket) — kèm sơ đồ trình tự.
+- Biến hình ảnh ở N03a (**chạy ra quầy hỏi liên tục** so với **gọi điện giữ máy**) thành code chạy được và số đo của riêng bạn.
 - Viết **polling** và đo được cái giá của nó: bao nhiêu request rỗng, tin đến trễ bao lâu.
 - Giải thích **handshake WebSocket**: request HTTP có `Upgrade: websocket` → `101 Switching Protocols`, và tự tính **`Sec-WebSocket-Accept`** từ `Sec-WebSocket-Key`.
 - Dùng 4 sự kiện **`open` / `message` / `close` / `error`**, phân biệt tin **text** và **binary**, đọc **`readyState`** — ở cả Node (`ws`) lẫn **trình duyệt** (`new WebSocket`, `addEventListener`, `binaryType`, `ws://` / `wss://`).
 - Viết **echo server** bằng `ws`; xem frame trong **DevTools → Network → WS**; tra lỗi kết nối hỏng (400/426, sai đường dẫn, proxy, 1006).
 - **Kết quả đo được:** `echo.js` qua hết **16 test**; `npm run measure` in số liệu polling vs WebSocket trên máy bạn.
 
-> 🧠 **Ghi nhớ:** WebSocket **không** thay HTTP. Nó **bắt đầu** bằng một request HTTP bình thường, rồi hai bên đồng ý "đổi giao thức" trên chính kết nối TCP đó (Mạng 101 ở N02). Từ lúc ấy, cả server lẫn client đều gửi được bất cứ lúc nào.
+> 🧠 **Ghi nhớ:** WebSocket **không** thay HTTP. Nó **bắt đầu** bằng một request HTTP bình thường, rồi hai bên đồng ý "đổi giao thức" trên chính kết nối TCP đó (mục Mạng 101 của N02). Từ lúc ấy, cả server lẫn client đều gửi được bất cứ lúc nào.
 
 ## 📋 Đề bài
 
@@ -33,53 +33,54 @@ Viết sẵn: `preview.js` (server WebSocket mẫu — Bước 1 chạy nó đ�
 
 ## 🤔 Tại sao? (kiến thức nền)
 
-### Hình dung: gửi thư hỏi liên tục, hay giữ máy gọi điện
+### Hiểu trước khi làm
 
-Ở N02, server biết ngay khi có tin (sự kiện `message`), nhưng HTTP hỏi–đáp chỉ cho server **trả lời**, không cho **chủ động gửi**.
+**Bối cảnh.** Ở N03a bạn đã thấy trên trang demo: polling hỏi liên tục mà tin vẫn trễ, WebSocket giữ một đường dây mở và tin đến ngay. Bài này mở nắp chiếc hộp đó: chính bạn viết vòng polling để đo, tự tính bước "bắt tay" mà thư viện vẫn làm ngầm, rồi viết server WebSocket đầu tiên của TeamPulse. Khi kết nối hỏng ở công ty, bạn sẽ biết nó hỏng ở chặng nào.
 
-- **Polling** giống **gửi thư hỏi** "có gì mới không?" mỗi giây. Hầu hết thư hồi âm là "không có gì"; tin mới phải đợi lá thư hỏi kế tiếp mới về được.
-- **WebSocket** giống **gọi điện rồi giữ máy**. Quay số một lần ("A lô, nói chuyện kiểu WebSocket nhé?" — "Được", mã 101), sau đó bên nào có chuyện thì nói ngay, không phải quay số lại.
+**Ví dụ đời thường.** Vẫn là cuộc gọi điện ở N03a, nhưng giờ bạn nghe từng câu: lời mời "nói chuyện kiểu WebSocket nhé?" (request `Upgrade`), câu đáp "được" kèm **mật khẩu đối** chứng tỏ bên kia thật sự biết luật (`101` + `Sec-WebSocket-Accept`), rồi đến từng câu nói được bỏ vào "phong bì" nhỏ (**frame**). **Echo server** là người chỉ biết **nhắc lại** đúng câu bạn vừa nói — server đơn giản nhất để thử đường dây.
+
+**Bạn đã gặp nó ở đâu.**
+- Trang demo N03a: cột WebSocket có đúng **1** request, status **101**.
+- DevTools của Zalo Web / Messenger → Network → WS: một dòng kết nối và hàng trăm tin JSON chạy qua.
+- Lỗi "WebSocket connection failed" trong Console khi app chat ở công ty không vào được.
+
+| Câu hỏi | Trả lời |
+|---|---|
+| **What** — bài này làm gì | Đo polling bằng code của bạn; tự tính `Sec-WebSocket-Accept`; quyết định trả 101/426/400; đặt tên `readyState`; viết echo server bằng `ws`. |
+| **Why** — vì sao | Thư viện làm hộ handshake, nhưng khi kết nối hỏng bạn phải đọc được từng chặng; số đo của chính bạn là lý lẽ khi đề xuất bỏ polling. |
+| **When** — khi nào dùng | Mỗi lần mở một kết nối WebSocket mới, debug lỗi kết nối, hay đọc log trạng thái kết nối. |
+| **When not** — khi nào không | Không tự viết handshake cho production — dùng `ws` / Socket.IO; tự tính chỉ để hiểu và để debug. |
+| **Where** — ở đâu | `echo.js` chạy cổng 3001 (preview 3003), trình duyệt `public/index.html`, tab DevTools → Network → WS. |
+| **How** — chạy thế nào | `GET /ws` + `Upgrade` → server kiểm header → `101` + Accept → cùng kết nối TCP chở frame text/binary → `close`. |
+
+**Từ mới trong bài** (các từ nền như HTTP, polling, handshake, `101`, frame, `ws://`/`wss://` đã có ở N03a)
+
+| Từ | Nghĩa đời thường |
+|---|---|
+| **`Sec-WebSocket-Key`** · **`Sec-WebSocket-Accept`** | Chuỗi ngẫu nhiên client gửi khi bắt tay · "mật khẩu đối" server tính từ chuỗi đó để chứng tỏ hiểu WebSocket |
+| **SHA-1** · **base64** · **GUID** | Hàm băm biến chuỗi thành "dấu vân tay" cố định · cách viết byte thành chữ đọc được · chuỗi hằng cố định ghi trong chuẩn WebSocket |
+| **`426`** · **`400`** | Mã "cần nâng cấp / sai phiên bản" · mã "request gửi sai" |
+| **Opcode** · **mask** (mặt nạ) | Byte trong frame cho biết loại tin (text, binary, close, ping) · 4 byte client trộn vào nội dung, không phải để bảo mật |
+| **Text** · **binary** | Tin là chữ UTF-8 · tin là byte thô (ảnh, file, số) |
+| **`readyState`** | Số 0–3 cho biết kết nối đang ở đâu: `CONNECTING`, `OPEN`, `CLOSING`, `CLOSED` |
+| **Echo server** | Server nhắc lại đúng tin vừa nhận — dùng để thử đường dây |
+| **Close code** (1000, 1006) | Mã lý do đóng: 1000 đóng bình thường, 1006 đứt mà không ai báo |
+| **`binaryType`**, **`ArrayBuffer`** / **`Blob`** | Cách trình duyệt trao tin binary cho code của bạn |
+| **`setTimeout`** · **`setInterval`** | Hẹn chạy một lần · hẹn chạy lặp đều (dễ làm request chồng nhau) |
+| **Mixed content** | Trang `https://` mở kết nối không mã hóa `ws://` → trình duyệt chặn |
+| **`Origin`** | Header trình duyệt tự gửi: trang nào đang mở kết nối (server dùng để chặn trang lạ, N07) |
 
 ```mermaid
-sequenceDiagram
-    participant B as Trình duyệt
-    participant S as Server
-    Note over B,S: POLLING — gửi thư hỏi mỗi 1 giây
-    B->>S: GET /messages?since=0
-    S-->>B: 200 [] (rỗng)
-    B->>S: GET /messages?since=0
-    S-->>B: 200 [] (rỗng)
-    Note over S: An gửi tin số 1 — server chưa báo được ai
-    B->>S: GET /messages?since=0
-    S-->>B: 200 [tin số 1] (trễ tới 1 giây)
+flowchart LR
+    P["Bước 2: startPolling<br/>đo cái giá của cách cũ"] --> H["Bước 3–4: computeAccept,<br/>handshakeResponse<br/>hiểu chặng bắt tay"]
+    H --> R["Bước 5: readyStateName<br/>đọc trạng thái kết nối"]
+    R --> E["Bước 6–7: createEchoServer<br/>kết nối WebSocket thật,<br/>xem frame trong DevTools"]
 ```
 
-```mermaid
-sequenceDiagram
-    participant B as Trình duyệt
-    participant S as Server
-    Note over B,S: WEBSOCKET — gọi một lần, giữ máy
-    B->>S: GET /ws + Upgrade: websocket
-    S-->>B: 101 Switching Protocols
-    Note over B,S: Kết nối TCP giữ mở, hai chiều
-    Note over S: An gửi tin số 1
-    S->>B: frame: tin số 1 (ngay lập tức)
-    B->>S: frame: "đã xem"
-    S->>B: frame: tin số 2
-```
+### Bài toán: cái giá của polling, đo bằng số
 
-Hai sơ đồ chỉ khác nhau ở chiều mũi tên: polling luôn là trình duyệt hỏi → server đáp; WebSocket có mũi tên **server → trình duyệt** mà không cần ai hỏi.
-
-### Bài toán: các cách báo tin cho client
-
-| Cách | Hoạt động | Nhược điểm |
-|---|---|---|
-| Polling | Client hỏi lại mỗi N giây | Phần lớn request rỗng; tin trễ tới N giây |
-| Long polling | Client hỏi, server **giữ** request tới khi có tin | Mỗi tin vẫn tốn một request + header; phức tạp |
-| Server-Sent Events (SSE) | Client mở một response HTTP, server giữ nó mở và **đẩy dần** từng sự kiện (`text/event-stream`); trình duyệt dùng `EventSource`, tự kết nối lại | **Một chiều** server → client, chỉ text; client gửi lên phải dùng request riêng |
-| **WebSocket** | Một kết nối TCP mở lâu, **hai chiều**, text và binary | Phải tự quản lý kết nối: rớt mạng, kết nối lại, nhiều server (N04, P2) |
-
-> 🎯 **Phỏng vấn hay hỏi:** "SSE hay WebSocket?" — chỉ cần server đẩy xuống (bảng giá, thông báo, log build) thì SSE đơn giản hơn: HTTP thường, qua proxy dễ, tự reconnect. Cần hai chiều tần suất cao (chat, game, cộng tác) hoặc binary thì WebSocket.
+Nhắc lại từ N03a: polling hỏi lại đều đặn nên tốn và trễ; long polling, SSE và WebSocket là các cách để server báo tin ngay (bảng so sánh và khi nào dùng cách nào: xem N03a, mục *Bốn cách báo tin mới*).
+Bài này chỉ lấy polling làm mốc đo, rồi chuyển hẳn sang WebSocket.
 
 Số đo thật bằng `npm run measure` (20 giây, 10 tin, 1 client, chạy trên `127.0.0.1`):
 

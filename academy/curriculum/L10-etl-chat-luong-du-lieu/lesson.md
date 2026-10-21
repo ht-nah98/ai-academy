@@ -4,12 +4,12 @@
 
 ## 🎯 Mục tiêu
 
-Sau buổi này (khoảng 3,5 giờ) bạn sẽ:
+Sau buổi này (khoảng 3 giờ 45 phút) bạn sẽ:
 
-- Tổ chức code thành **ETL**: Extract → Transform → Load.
-- Viết **kiểm tra chất lượng dữ liệu**: không trống, trong khoảng, duy nhất, số dòng tối thiểu.
-- Làm pipeline **idempotent**: upsert (`ON CONFLICT DO UPDATE`) và delete-insert.
-- Dùng `logging` thay `print`; **dừng to** (raise) khi dữ liệu hỏng cả lô.
+- Tổ chức code thành **ETL**: Extract (lấy dữ liệu) → Transform (làm sạch) → Load (nạp vào DB).
+- Viết **kiểm tra chất lượng dữ liệu** (luật tự động bắt dữ liệu vô lý): không trống, trong khoảng, duy nhất, số dòng tối thiểu.
+- Làm pipeline **idempotent** (chạy lại bao nhiêu lần cũng ra cùng kết quả) bằng upsert và delete-insert.
+- Dùng `logging` (ghi nhật ký có mức độ) thay `print`; **dừng to** (raise lỗi) khi dữ liệu hỏng cả lô.
 - **Kết quả đo được:** 4 hàm trong `pipeline.py` qua hết **14 test**; chạy 2 lần trên dữ liệu thật đều ra `{"raw": 302, "clean": 268, "rejected": 4, "loaded": 264}`.
 
 > 🧠 **Ghi nhớ:** Pipeline ở công ty chạy tự động mỗi đêm, không ai ngồi nhìn. Nó phải tự kiểm tra, tự ghi log, và chạy lại an toàn khi lỗi giữa chừng.
@@ -33,11 +33,26 @@ Tên 7 kiểm tra và quy tắc nằm trong docstring `quality_checks`.
 
 ## 🤔 Tại sao? (kiến thức nền)
 
-### ETL
+### Hiểu trước khi làm
 
-**ETL** = Extract (lấy dữ liệu từ nguồn) → Transform (làm sạch, chuẩn hóa) → Load (nạp vào nơi lưu). Mỗi khâu là một hàm riêng, test riêng.
+**Bối cảnh.** Mỗi đêm hệ thống phải lấy tin tuyển dụng mới, làm sạch rồi cất vào cơ sở dữ liệu để sáng ra báo cáo có số. Không ai ngồi canh lúc 2 giờ sáng. Nếu máy lỗi giữa chừng và chạy lại, tin không được nhân đôi; nếu nguồn gửi về thứ vô lý (lương 800 triệu, tin đăng năm 2027), nó phải bị chặn trước khi vào báo cáo.
 
-Bạn đã có T (L07) và L (L08). Bài này thêm **cổng chất lượng** giữa T và L, và đóng gói thành một lệnh.
+**Ví dụ đời thường.** Bếp nhà hàng nhận rau mỗi sáng: nhận hàng → nhặt, rửa → cất vào tủ theo ngăn. Người nhận kiểm từng thùng: thùng dập thì để riêng và ghi sổ; cả xe hàng hỏng thì trả lại, không cất gì. Nhà cung cấp lỡ giao lặp một chuyến thì tủ vẫn chỉ có một ngăn cà chua, không thành hai.
+
+**Bạn đã gặp nó ở đâu.**
+- Ngân hàng: sao kê cuối ngày được tổng hợp tự động mỗi đêm từ mọi giao dịch.
+- Shopee, Tiki: báo cáo doanh thu cho người bán cập nhật mỗi sáng.
+- Bấm "Thanh toán" hai lần vì mạng chậm, ví MoMo / VNPay không trừ tiền hai lần.
+- Form đăng ký báo "email không hợp lệ", Google Sheets có nút "Xóa dữ liệu trùng lặp".
+
+| Câu hỏi | Trả lời |
+|---|---|
+| **What** — là gì? | **Pipeline ETL**: chuỗi bước Extract (lấy) → Transform (làm sạch) → Load (nạp), chạy bằng một lệnh. **Idempotent**: chạy N lần cho kết quả như chạy 1 lần. **Kiểm tra chất lượng**: các luật về dữ liệu chạy tự động mỗi lần — như unit test, nhưng cho dữ liệu. |
+| **Why** — vì sao cần? | Pipeline chắc chắn sẽ bị chạy lại (lỗi mạng, lịch tự thử lại, người bấm nhầm). Không idempotent thì số liệu bị đếm gấp đôi; không kiểm chất lượng thì dữ liệu sai lặng lẽ vào báo cáo. |
+| **When** — khi nào dùng? | Dữ liệu cần cập nhật định kỳ (hằng giờ, hằng đêm) từ một nguồn bạn không kiểm soát. |
+| **When not** — khi nào không? | Phân tích một lần trên notebook rồi bỏ: làm tay là đủ, đóng gói thành pipeline là thừa. |
+| **Where** — nằm ở đâu? | Giữa nguồn dữ liệu (CSV, API, web) và nơi dùng dữ liệu (DB, dashboard, mô hình AI ở các bài sau). |
+| **How** — chạy thế nào? | Đọc CSV → làm sạch (L07) → **cổng chất lượng** → nạp vào SQLite (L08) bằng lệnh "có rồi thì cập nhật, chưa có thì thêm". |
 
 ```mermaid
 flowchart TD
@@ -49,13 +64,31 @@ flowchart TD
     R --> L
 ```
 
-> 💡 **Mẹo:** **ELT** là biến thể: nạp dữ liệu thô vào kho trước, rồi transform bằng SQL trong kho (kiểu dbt). Phổ biến khi kho dữ liệu mạnh (BigQuery, Snowflake).
+**Từ mới trong bài**
+
+| Từ | Nghĩa đời thường |
+|---|---|
+| pipeline | dây chuyền: đầu ra bước trước là đầu vào bước sau, chạy một lệnh là xong cả chuỗi |
+| ETL / ELT | Extract → Transform → Load; ELT là nạp dữ liệu thô vào kho trước rồi mới làm sạch bằng SQL trong kho (BigQuery, Snowflake, công cụ dbt) |
+| lô (batch) | một mẻ dữ liệu xử lý cùng lúc, vd. toàn bộ CSV của một đêm |
+| idempotent | làm lại bao nhiêu lần cũng như làm một lần — như bấm nút gọi thang máy nhiều lần |
+| upsert | update + insert: có rồi thì cập nhật, chưa có thì thêm |
+| delete-insert | xóa đúng phần sắp nạp rồi nạp lại phần đó |
+| full refresh | xóa sạch bảng rồi nạp lại tất cả |
+| khóa tự nhiên | mã có sẵn trong dữ liệu, định danh duy nhất một bản ghi (ở đây là `job_id`) |
+| `ON CONFLICT ... DO UPDATE` | câu SQL upsert: "nếu trùng khóa thì cập nhật thay vì báo lỗi" |
+| `excluded` | trong câu upsert, là dòng **vừa định chèn** (giá trị mới) |
+| soft delete | không xóa hẳn, chỉ đánh dấu (vd. cột `is_active = 0`) |
+| lỗi từng dòng / lỗi cả lô (blocking) | một vài dòng xấu → loại riêng, chạy tiếp; cả mẻ hỏng → dừng, không ghi gì |
+| raise / exception | "ném lỗi": dừng chương trình kèm thông báo để người hoặc code phía trên xử lý |
+| `DataQualityError` | loại lỗi riêng của bài, ném ra khi dữ liệu không đạt — đặt tên riêng để dễ bắt và dễ đọc log |
+| logging, logger | ghi nhật ký có **mức độ** (INFO thông tin, WARNING cảnh báo, ERROR lỗi) và tên nguồn; logger là "cây bút" mang tên module |
+| scheduler | bộ hẹn giờ chạy việc tự động (vd. cron chạy 2 giờ sáng mỗi đêm) |
+| `as_of` | ngày "hôm nay" truyền vào hàm, để test chạy hôm nào cũng ra cùng kết quả |
 
 ### Idempotent: chạy N lần = chạy 1 lần
 
-Một thao tác **idempotent** khi chạy lặp lại không làm thay đổi kết quả sau lần đầu.
-
-Pipeline sẽ bị chạy lại: lỗi mạng giữa chừng, scheduler retry, người vận hành bấm nhầm. Nếu mỗi lần chạy lại thêm một bản sao, báo cáo sẽ đếm gấp đôi — lỗi rất khó phát hiện.
+Ba cách nạp lại an toàn:
 
 | Cách nạp | Ý tưởng | Đánh đổi |
 |---|---|---|
@@ -78,7 +111,7 @@ flowchart TD
 
 ### Chất lượng dữ liệu
 
-Kiểm tra chất lượng là các **khẳng định** về dữ liệu, chạy tự động mỗi lần pipeline chạy — như unit test, nhưng cho dữ liệu.
+Năm khía cạnh thường kiểm, ứng với 7 kiểm tra của bài:
 
 | Khía cạnh | Kiểm tra trong bài |
 |---|---|
@@ -98,9 +131,7 @@ Nguồn trả về 0 dòng, hay một nửa số dòng bị loại — đó là 
 
 ### logging thay vì print
 
-`logging` ghi thông điệp kèm **mức độ** (INFO, WARNING, ERROR) và **nguồn** (tên logger); cấu hình một chỗ để in ra màn hình, ghi file hoặc gửi đi.
-
-Khi pipeline chạy lúc 2 giờ sáng, log là thứ duy nhất kể lại chuyện gì đã xảy ra. `print` không có mức độ, không tắt bớt được, không biết từ module nào.
+`logging` cấu hình một chỗ để in ra màn hình, ghi file hoặc gửi đi. Khi pipeline chạy lúc 2 giờ sáng, log là thứ duy nhất kể lại chuyện gì đã xảy ra. `print` không có mức độ, không tắt bớt được, không biết từ module nào.
 
 > 🎯 **Phỏng vấn hay hỏi:** "Pipeline của bạn chạy lại có an toàn không?" — trả lời bằng idempotency: khóa nào, upsert hay delete-insert, và bằng chứng (test chạy 2 lần so DB).
 

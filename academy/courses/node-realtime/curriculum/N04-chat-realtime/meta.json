@@ -2,7 +2,7 @@
   "id": "N04-chat-realtime",
   "title": "Chat realtime: broadcast, giao thức, presence",
   "goal": "Viết server chat nhiều người: giao thức JSON có kiểm tra, broadcast, tên, vào/ra, danh sách online; qua hết 13 test và chat được giữa hai tab.",
-  "duration_min": 180,
+  "duration_min": 195,
   "concepts": [
     "broadcast",
     "message-protocol",

@@ -13,7 +13,7 @@ Sau buổi này (khoảng 3 giờ) bạn sẽ:
 - Phân biệt trạng thái **chung** của server với trạng thái **riêng** của từng kết nối, và đọc được code WebSocket ở công ty theo một checklist.
 - **Kết quả đo được:** `chat.js` qua hết **13 test**; hai tab trình duyệt chat được với nhau.
 
-> 🧠 **Ghi nhớ:** WebSocket chỉ chuyển **byte**. Nó không biết "tin chat", "vào phòng" hay "ai gửi" — mọi ý nghĩa đó là **giao thức** do bạn tự định nghĩa ở tầng trên. Code WebSocket ở công ty bạn chắc chắn có một giao thức như vậy; đọc được nó là hiểu được nửa hệ thống.
+> 📖 Từ lạ ở trên và trong Đề bài (giao thức, broadcast, presence, `OPEN`, `Map`, `Buffer`…) được giải nghĩa ở mục *Hiểu trước khi làm*, ngay đầu phần kiến thức nền.
 
 ## 📋 Đề bài
 
@@ -41,9 +41,75 @@ Giao thức (ghi đầy đủ ở đầu `chat.js`):
 
 ## 🤔 Tại sao? (kiến thức nền)
 
+### Hiểu trước khi làm
+
+**Bối cảnh.** Server ở N03 chỉ nói lại với đúng người vừa gửi (echo). Chat nhóm cần hơn thế: tin của một người phải tới **mọi người** trong phòng; ai cũng thấy ai đang online; một người tắt máy thì người khác biết. Và vì đường truyền chỉ chở chữ, hai bên phải thỏa thuận trước "tin này là loại gì, có những trường nào" — nếu không, server không phân biệt được "xin vào phòng" với "gửi tin".
+
+**Ví dụ đời thường.** Một **phòng họp có người điều phối** cầm micro (server). Muốn làm gì, người dự họp đưa một tấm thẻ ghi rõ loại việc: thẻ "xin vào, tên tôi là An" (`join`), thẻ "phát biểu" (`chat`). Người điều phối đọc thẻ, nói qua loa cho cả phòng (**broadcast**), giữ **sổ điểm danh** ai đang có mặt (**presence**), ai bước ra khỏi cửa thì gạch tên và báo cả phòng (`left`). Thẻ ghi sai hay chưa điểm danh đã xin phát biểu → nhắc **riêng** người đó (`error`). Bộ luật ghi thẻ mà cả phòng cùng hiểu là **giao thức**.
+
+**Bạn đã gặp nó ở đâu.**
+- Nhóm Zalo, Messenger: "An đã tham gia nhóm", "Bình đã rời nhóm".
+- Chấm xanh "Đang hoạt động" cạnh tên bạn bè trên Messenger.
+- Danh sách người tham gia ở Google Meet, cập nhật ngay khi có người vào/ra.
+- Bình luận trên livestream TikTok, Facebook hiện cho mọi người xem cùng lúc.
+
+| Câu hỏi | Trả lời |
+|---|---|
+| **What** — là gì | Phòng chat: server nhớ mọi kết nối đang mở và tên của từng kết nối, chuyển tin của một người cho cả phòng theo một giao thức `{type, ...}`. |
+| **Why** — vì sao cần | WebSocket chỉ chở chữ/byte, không biết "tin chat" hay "vào phòng" là gì; ý nghĩa đó do giao thức bạn tự định nghĩa. |
+| **When** — khi nào dùng | Nhiều người cần thấy cùng một thứ ngay lập tức: chat nhóm, bảng tin, bình luận trực tiếp, danh sách online. |
+| **When not** — khi nào không | Chỉ một người cần dữ liệu, hoặc dữ liệu không cần tới ngay (lịch sử tin, hồ sơ): một request HTTP thường là đủ. |
+| **Where** — ở đâu | Phần server realtime của mọi app chat; trong khóa: `chat.js` trên cổng 3002, đường `/ws`. |
+| **How** — chạy thế nào | Mỗi tin đến: kiểm tra hợp lệ → xem `type` → làm việc tương ứng (lưu tên, gửi cả phòng, báo lỗi riêng). Kết nối đóng → xoá tên, báo người còn lại. |
+
+```mermaid
+sequenceDiagram
+    participant A as An
+    participant S as Server (người điều phối)
+    participant B as Bình
+    A->>S: join, tên An
+    S-->>A: welcome, online gồm An
+    B->>S: join, tên Bình
+    S-->>B: welcome, online gồm An và Bình
+    S-->>A: joined Bình
+    A->>S: chat Chào cả nhà
+    S-->>A: chat từ An
+    S-->>B: chat từ An
+    Note over B: Bình đóng tab
+    S-->>A: left Bình, online còn An
+```
+
+Code WebSocket ở công ty bạn chắc chắn có một giao thức như vậy; đọc được nó là hiểu được nửa hệ thống.
+
+**Từ mới trong bài**
+
+| Từ | Nghĩa đời thường |
+|---|---|
+| **WebSocket**, **kết nối** | Đường dây giữ mở giữa trình duyệt và server, hai bên gửi lúc nào cũng được (N03) |
+| **Echo server** | Server chỉ gửi lại đúng tin vừa nhận cho người gửi (N03) |
+| **Giao thức (protocol)** | Bộ luật chung: tin có những loại nào, mỗi loại có trường gì, ai nhận |
+| **`type`**, **payload** | Trường ghi loại tin · phần dữ liệu mang theo tin |
+| **Parse**, **kiểm tra (validate)** | Đọc chuỗi thành object · xét dữ liệu có đúng luật không trước khi dùng |
+| **Broadcast** | Gửi cùng một tin cho nhiều người (cả phòng, hoặc trừ một người) |
+| **Presence**, **online** | Biết ai đang có mặt · đang kết nối |
+| **`readyState`**, **`OPEN`** | Trạng thái của kết nối: `CONNECTING`, `OPEN` (dùng được), `CLOSING`, `CLOSED` |
+| **`Map`** · **`Set`** | Bảng khóa → giá trị, khóa là gì cũng được (≈ dict) · tập không trùng (≈ set) |
+| **`Buffer`** | Kiểu chứa byte thô của Node; `ws` đưa tin tới dạng này, `String(raw)` đổi ra chữ |
+| **Frame** | Một gói tin WebSocket trên đường truyền |
+| **Close code** 1000 / 1001 / 1006 | Mã lý do đóng: đóng bình thường / rời trang / đứt đột ngột không lời chào |
+| **`terminate()`** | Cắt kết nối ngay, không chào (giả lập mất mạng trong test) |
+| **Tiến trình (process)** | Một chương trình đang chạy, vd. `node chat.js`; sập là mọi kết nối của nó mất theo |
+| **Trạng thái chung / riêng** | Dữ liệu cả server dùng (danh sách tên) / dữ liệu của riêng một kết nối |
+| **Heartbeat** | Định kỳ hỏi "còn sống không" để phát hiện kết nối chết im lặng (N05) |
+| **DevTools**, **Console** | Công cụ của trình duyệt (F12) · ô gõ lệnh JavaScript trong đó |
+| **XSS** | Lỗi bảo mật: chèn mã chạy được vào trang người khác qua nội dung tin |
+| **Repo** | Kho code của một dự án (thường trên Git) |
+
+Checklist Bước 8 có nhắc vài từ của bài sau (token, Redis, Socket.IO…): chỉ cần nhận ra tên, mỗi từ được giải thích ở N05–N08.
+
 ### Từ echo tới phòng chat
 
-Echo server (N03): mỗi kết nối chỉ nói chuyện với chính nó. Phòng chat: server phải **nhớ mọi kết nối** và **ai là ai**, rồi chuyển tin của người này tới người khác.
+Phòng chat: server phải **nhớ mọi kết nối** và **ai là ai**, rồi chuyển tin của người này tới người khác.
 
 ```mermaid
 flowchart TD

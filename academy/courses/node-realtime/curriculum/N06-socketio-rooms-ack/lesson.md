@@ -4,7 +4,7 @@
 
 ## 🎯 Mục tiêu
 
-Sau buổi này (khoảng 3,5 giờ với người mới) bạn sẽ:
+Sau buổi này (khoảng 4 giờ với người mới) bạn sẽ:
 
 - Dùng **sự kiện** của Socket.IO (`emit`/`on`) thay cho giao thức JSON `{type}` tự viết.
 - Làm **room**: `socket.join`, `socket.leave`, `io.to(room).emit`, `socket.to(room).emit`.
@@ -13,7 +13,7 @@ Sau buổi này (khoảng 3,5 giờ với người mới) bạn sẽ:
 - Giải thích trung thực **ws thuần vs Socket.IO**: Socket.IO **không phải** WebSocket thuần, tốn thêm gì, khi nào chọn cái nào.
 - **Kết quả đo được:** `rooms.js` qua hết **11 test**; `npm run compare`: 10 tin chat tốn 1.833 byte với `ws`, 1.910 byte với Socket.IO chỉ-websocket, 2.995 byte với Socket.IO mặc định (4 request HTTP).
 
-> 🧠 **Ghi nhớ:** Socket.IO là **một giao thức riêng chạy trên** WebSocket (hoặc HTTP long-polling). Client `ws` hay `new WebSocket()` của trình duyệt **không** nói chuyện được với server Socket.IO, và ngược lại.
+> 📖 Từ lạ ở trên và trong Đề bài (room, ack, middleware, idempotent, long-polling…) được giải nghĩa ở mục *Hiểu trước khi làm*, ngay đầu phần kiến thức nền.
 
 ## 📋 Đề bài
 
@@ -37,6 +37,73 @@ Giao thức (ghi đầy đủ ở đầu `rooms.js`):
 **Xong khi:** `# pass 11`, `npm run compare` chạy hết, và `npm start` → `http://127.0.0.1:3006` ở hai tab chat được theo room.
 
 ## 🤔 Tại sao? (kiến thức nền)
+
+### Hiểu trước khi làm
+
+**Bối cảnh.** Từ N03 tới N05 bạn tự viết khá nhiều thứ: gắn `type` để phân loại tin, giữ danh sách người để gửi cả phòng, ping/pong, tự nối lại. Ứng dụng realtime nào cũng cần lại đúng những thứ ấy, nên có thư viện làm sẵn: **Socket.IO**. Nó thêm ba công cụ hay dùng nhất: **sự kiện có tên** (thay cho tự gắn `type`), **room** (nhóm người nhận), **ack** (xác nhận "đã nhận"). Cái giá: client cũng phải dùng thư viện Socket.IO, và mỗi kết nối tốn thêm một ít byte.
+
+**Ví dụ đời thường.** Tự viết bằng `ws` giống tự lắp xe đạp từ phụ tùng; Socket.IO giống mua xe máy có sẵn đèn, còi, khóa — tiện, nhưng phải đổ đúng loại xăng (client Socket.IO), xe đạp không đi chung đường ray với nó. **Room** giống các kênh bộ đàm trong nhà hàng: "khu bếp", "khu bar" — gọi vào kênh nào thì chỉ người trong kênh đó nghe. **Ack** giống gửi **thư bảo đảm có phiếu báo phát**: chỉ khi phiếu quay về, người gửi mới chắc thư đã tới; quá hạn không thấy phiếu thì gửi lại, và mỗi thư có mã riêng để bưu điện không giao hai lần (**idempotent**).
+
+**Bạn đã gặp nó ở đâu.**
+- Slack, Discord chia **kênh**: tin trong kênh `#dev` không hiện ở kênh khác — đó là room.
+- Messenger, WhatsApp hiện dấu tick "đã gửi" khi server xác nhận nhận được tin — đó là ack.
+- Google Meet chia phòng nhỏ (breakout room) giữa buổi họp.
+- Bấm "Gửi" hai lần khi mạng chậm mà tin chỉ hiện một lần — server chống trùng.
+
+| Câu hỏi | Trả lời |
+|---|---|
+| **What** — là gì | Socket.IO: thư viện và **giao thức riêng** chạy trên WebSocket (hoặc HTTP long-polling), có sẵn sự kiện có tên, room, ack, heartbeat, tự kết nối lại. |
+| **Why** — vì sao cần | Không phải tự viết lại những phần ai cũng cần; đội làm nhanh hơn, ít lỗi hơn. |
+| **When** — khi nào dùng | Web app cần nhóm người nhận (room), cần biết chắc tin đã tới (ack), phải chạy cả khi mạng chặn WebSocket. |
+| **When not** — khi nào không | Client không dùng được thư viện Socket.IO (thiết bị IoT, app ngôn ngữ khác, đối tác dùng WebSocket chuẩn); cần kiểm soát từng byte. |
+| **Where** — ở đâu | Cả hai đầu: server `socket.io`, client `socket.io-client`. Trong khóa: `rooms.js`, cổng 3006. |
+| **How** — chạy thế nào | Client `emit('tên', dữ_liệu, ack)`; server `on('tên', ...)` xử lý rồi gọi `ack(kết_quả)`; `io.to(room).emit(...)` gửi cho mọi socket đã `join` room. |
+
+> 🧠 **Ghi nhớ:** client `ws` hay `new WebSocket()` của trình duyệt **không** nói chuyện được với server Socket.IO, và ngược lại.
+
+```mermaid
+sequenceDiagram
+    participant A as Client An
+    participant S as Server Socket.IO
+    participant B as Client Bình (room dev)
+    A->>S: emit join, room dev
+    S-->>A: ack ok, members
+    A->>S: emit chat, room dev, text, clientId c1
+    S-->>B: chat từ An (mọi socket trong room dev)
+    S-->>A: ack ok, id 7
+    Note over A: Ack bị mất, quá timeoutMs
+    A->>S: emit chat lại, cùng clientId c1
+    S-->>A: ack ok, id 7 (không phát lần hai)
+```
+
+**Từ mới trong bài**
+
+| Từ | Nghĩa đời thường |
+|---|---|
+| **Thư viện** | Code người khác viết sẵn, cài bằng npm, gọi để dùng |
+| **`ws` thuần** | Thư viện WebSocket chuẩn dùng ở N03–N05, không thêm gì |
+| **Socket.IO** | Thư viện realtime có giao thức riêng; cần cả gói server `socket.io` lẫn `socket.io-client` |
+| **Sự kiện có tên**, **`emit` / `on`** | Tin mang tên (`'chat'`, `'join'`) · gửi · đăng ký nhận |
+| **Serialize** | Đổi object thành chuỗi để gửi qua mạng (như `JSON.stringify`) |
+| **Socket** (trong Socket.IO) | Một kết nối của một client, có `socket.id` riêng |
+| **Room**, **`join` / `leave`** | Nhóm socket nhận chung tin · vào / rời nhóm |
+| **Namespace** | "Kênh lớn" tách khu vực (vd. `/admin`); room nằm bên trong một namespace |
+| **Ack** (acknowledgement) | Lời xác nhận server gửi lại cho đúng tin client vừa gửi |
+| **`emitWithAck`** | Gửi sự kiện và nhận Promise, có giá trị khi server gọi `ack(...)` |
+| **Timeout**, **retry** | Hạn chờ tối đa · gửi lại khi quá hạn |
+| **Idempotent** | Làm một lần hay lặp lại nhiều lần với cùng id thì kết quả như nhau |
+| **`clientId`**, **UUID** | Mã tin do client tự sinh · chuỗi ngẫu nhiên gần như không bao giờ trùng (`crypto.randomUUID()`) |
+| **Middleware** (`io.use`) | Hàm chạy trước khi kết nối được nhận, có quyền từ chối (bước đệm cho N07) |
+| **Handshake** | Màn chào hỏi lúc mở kết nối, trước khi gửi tin |
+| **Engine.IO** | Tầng bên dưới Socket.IO lo đường truyền, phiên, ping |
+| **Transport** · **fallback** | Đường truyền thật (WebSocket hoặc polling) · tự lùi về đường khác khi đường chính bị chặn |
+| **Polling** · **long-polling** | Hỏi đều đặn · gửi request rồi server **giữ** lại tới khi có tin mới trả lời |
+| **Nâng cấp (upgrade)** | Chuyển từ HTTP sang WebSocket trên cùng kết nối |
+| **Phiên** (`sid`) | Mã nhận diện một lần kết nối ở Engine.IO |
+| **Adapter**, **pub/sub** | Phần cắm cho Socket.IO đồng bộ nhiều server (N08) · kênh "đăng tin / theo dõi" giữa các server |
+| **IoT** | Thiết bị kết nối mạng không phải máy tính: cảm biến, camera, đồ gia dụng |
+| **Byte bắt tay** | Số byte tốn cho màn chào hỏi lúc mở kết nối, trước tin đầu tiên |
+| **`socket hang up`** | Lỗi "đầu bên kia cắt kết nối giữa chừng" |
 
 ### Socket.IO làm sẵn những gì bạn đã tự viết
 
@@ -139,7 +206,7 @@ flowchart TD
     R -- "hết" --> E["Báo lỗi ack_timeout<br/>(hiện 'chưa gửi được' cho người dùng)"]
 ```
 
-> ⚠️ **Lỗi hay gặp:** gửi lại khi không có ack có thể làm server nhận **hai lần** (lần đầu server đã xử lý, chỉ có ack bị mất). Tin quan trọng cần một **id do client sinh** (vd. `crypto.randomUUID()`) để server bỏ qua bản trùng — gọi là xử lý **idempotent**: làm một lần hay làm lại nhiều lần với cùng id thì kết quả như nhau. Bài này làm đúng việc đó với trường `clientId` của `chat` (Bước 3d).
+> ⚠️ **Lỗi hay gặp:** gửi lại khi không có ack có thể làm server nhận **hai lần** (lần đầu server đã xử lý, chỉ có ack bị mất). Tin quan trọng cần một **id do client sinh** (vd. `crypto.randomUUID()`) để server bỏ qua bản trùng — xử lý **idempotent**. Bài này làm đúng việc đó với trường `clientId` của `chat` (Bước 3d).
 
 ### Tự kết nối lại: socket mới, room cũ mất
 

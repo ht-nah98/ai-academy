@@ -2,7 +2,7 @@
   "id": "L15-chunking-vector-index",
   "title": "Chunking & vector index",
   "goal": "Chia mô tả thành chunk có overlap và header, cache embedding trong SQLite theo nội dung, dựng vector index lưu đĩa — 4 phần trong index.py qua hết 12 test; chạy lại 0 lần gọi API, mỗi lần search trên index ~0,02 ms.",
-  "duration_min": 210,
+  "duration_min": 225,
   "concepts": [
     "chunking",
     "vector-index"

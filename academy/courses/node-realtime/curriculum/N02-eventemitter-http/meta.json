@@ -2,7 +2,7 @@
   "id": "N02-eventemitter-http",
   "title": "EventEmitter & HTTP server: mô hình hỏi–đáp",
   "goal": "Viết REST API tin nhắn bằng module http thuần, đúng route và mã trạng thái, phát sự kiện khi có tin; qua hết 15 test.",
-  "duration_min": 210,
+  "duration_min": 225,
   "concepts": [
     "net-basics",
     "event-emitter",

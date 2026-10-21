@@ -2,7 +2,7 @@
   "id": "N01-node-co-ban",
   "title": "Node cơ bản: module, npm, async, event loop",
   "goal": "Viết module đọc log chat từ file bằng async/await, có timeout; qua hết 15 test và chạy được npm start.",
-  "duration_min": 180,
+  "duration_min": 195,
   "concepts": [
     "node-runtime",
     "esm-modules",

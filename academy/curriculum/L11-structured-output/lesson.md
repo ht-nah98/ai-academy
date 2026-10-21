@@ -4,15 +4,15 @@
 
 ## 🎯 Mục tiêu
 
-Sau buổi này (khoảng 3,5 giờ) bạn sẽ:
+Sau buổi này (khoảng 3 giờ 45 phút) bạn sẽ:
 
-- Hiểu vì sao output của LLM là **chuỗi chưa kiểm định**, không phải dữ liệu.
-- Định nghĩa **schema** bằng **pydantic**: kiểu, giá trị hợp lệ, chuẩn hóa, kiểm tra chéo.
-- Viết prompt **few-shot** sinh từ chính schema.
+- Hiểu vì sao output của LLM là **chuỗi chưa kiểm định** (văn bản có thể sai bất cứ chỗ nào), chưa phải dữ liệu dùng được.
+- Định nghĩa **schema** (bản mô tả dữ liệu phải có trường gì, kiểu gì) bằng thư viện **pydantic**: kiểu, giá trị hợp lệ, chuẩn hóa, kiểm tra chéo.
+- Viết prompt **few-shot** (kèm ví dụ mẫu) sinh từ chính schema.
 - Làm **vòng tự sửa** (repair loop): output sai → gửi lỗi lại cho model → thử lại có giới hạn.
 - **Kết quả đo được:** 4 phần trong `extract.py` qua hết **25 test**; `python extract.py` trích đúng JSON cho 3 tin đầu trong CSDL sạch của L10 (`jobradar.db`, bảng `jobs`).
 
-> 🧠 **Ghi nhớ:** LLM là một nguồn dữ liệu **không đáng tin**, giống form người dùng nhập. Kiểm định ở biên, trước khi dữ liệu đi tiếp.
+> 🧠 **Ghi nhớ:** LLM là một nguồn dữ liệu **không đáng tin**, giống form người dùng nhập. Kiểm định ngay ở chỗ dữ liệu đi vào hệ thống, trước khi nó đi tiếp.
 
 ## 📋 Đề bài
 
@@ -31,24 +31,51 @@ Quy tắc chi tiết nằm trong docstring từng phần. Prompt (`SYSTEM_RULES`
 
 ## 🤔 Tại sao? (kiến thức nền)
 
-### LLM trả về chuỗi, hệ thống cần dữ liệu
+### Hiểu trước khi làm
 
-Bảng `jobs` cần `level` thuộc 5 giá trị, `salary_min` là số. LLM chỉ trả về **một chuỗi**, và chuỗi đó có thể lệch theo nhiều kiểu.
+**Bối cảnh.** Mô tả công việc là một đoạn văn tự do: "thành thạo SQL, lương lên tới 30 triệu, làm hybrid". Muốn lọc "tin junior lương trên 20 triệu", hệ thống cần các ô riêng: kỹ năng, cấp bậc, lương. LLM đọc văn bản rất giỏi, nhưng thứ nó trả về chỉ là **một đoạn chữ** — có thể đúng 9 lần rồi sai lần thứ 10. Bài này biến đoạn chữ đó thành dữ liệu có cấu trúc và chặn mọi output sai trước khi vào DB.
 
-Output thật của LLM khi được yêu cầu "trả JSON":
+**Ví dụ đời thường.** Lễ tân khách sạn nhận phiếu đăng ký viết tay. Có mẫu phiếu in sẵn ô (họ tên, số đêm, ngày đến) — đó là schema. Phiếu nào ghi "số đêm: vài hôm" hay ngày đi trước ngày đến thì trả lại khách kèm lời nhắc "ô số đêm phải là số" để khách sửa — đó là validate và tự sửa. Kèm theo một phiếu điền mẫu dán trên quầy — đó là few-shot.
 
-| Kiểu lệch | Ví dụ |
+**Bạn đã gặp nó ở đâu.**
+- Gmail / Google Calendar tự đọc email đặt vé và tạo sự kiện có giờ bay, mã đặt chỗ.
+- Ứng dụng ngân hàng quét hóa đơn, tự điền số tiền và mã khách hàng.
+- Grab, Shopee: ô địa chỉ gõ tự do được tách thành phường, quận, tỉnh.
+- Form đăng ký trên web báo đỏ "số điện thoại không hợp lệ" ngay khi nhập.
+
+| Câu hỏi | Trả lời |
 |---|---|
-| Bọc markdown | ` ```json {...} ``` ` |
-| Chữ thừa | `Đây là kết quả: {...} Hy vọng giúp ích!` |
-| Sai giá trị | `"level": "Lead"` (không thuộc 5 cấp) |
-| Sai kiểu | `"salary_min": "khoảng 20"` |
-| Vô lý | `salary_min: 40, salary_max: 20` |
+| **What** — là gì? | **Structured output**: bắt LLM trả về JSON theo một **schema** cố định thay vì văn xuôi. **Pydantic**: thư viện Python khai báo schema bằng class và kiểm định dữ liệu theo nó. **Few-shot**: đưa vài cặp ví dụ hỏi–đáp mẫu vào prompt. |
+| **Why** — vì sao cần? | Code phía sau (DB, bộ lọc, báo cáo) chỉ làm việc được với dữ liệu đúng kiểu. Ghi thẳng chuỗi sai vào DB thì lỗi nổ ở chỗ khác, lúc khác, rất khó tìm. |
+| **When** — khi nào dùng? | Khi output của LLM được **code** dùng tiếp: trích xuất, phân loại, điền form, gọi công cụ. |
+| **When not** — khi nào không? | Khi output chỉ để **người** đọc (chatbot trả lời, viết nháp email): ép JSON là thừa. |
+| **Where** — nằm ở đâu? | Ngay sau lời gọi LLM, trước khi dữ liệu vào DB hoặc sang bước sau — "cửa kiểm soát" của hệ thống. |
+| **How** — chạy thế nào? | Prompt có schema + ví dụ → LLM trả chuỗi → tách JSON → pydantic kiểm → sai thì gửi lỗi lại cho model sửa, có giới hạn số lần. |
 
-Ghi thẳng vào DB thì lỗi nổ ở chỗ khác, lúc khác: báo cáo sai, truy vấn crash. Kiểm định ngay khi nhận output thì lỗi được bắt **tại nguồn**.
+**Từ mới trong bài**
+
+| Từ | Nghĩa đời thường |
+|---|---|
+| structured output | đầu ra có cấu trúc: dữ liệu chia ô rõ ràng (JSON) thay vì đoạn văn |
+| schema | mẫu phiếu: liệt kê trường nào, kiểu gì, giá trị nào hợp lệ |
+| JSON Schema | cách viết schema bằng chính JSON, chuẩn chung mà nhiều công cụ và LLM đọc được |
+| pydantic, `BaseModel` | thư viện kiểm định dữ liệu; mỗi schema là một class kế thừa `BaseModel` |
+| validate (kiểm định) | so dữ liệu với schema: đúng thì cho qua, sai thì báo lỗi cụ thể |
+| ép kiểu (coerce) | tự đổi `"3"` thành `3` khi chắc chắn không mất nghĩa |
+| `ValidationError` | lỗi pydantic ném ra, liệt kê **mọi** trường sai cùng lúc |
+| `Literal[...]` | "chỉ được là một trong các giá trị này" |
+| `Optional[X]` | được phép là X hoặc trống (`None`) |
+| validator | hàm kiểm tra/chuẩn hóa thêm do bạn viết, pydantic tự gọi khi validate |
+| decorator (`@...`) | dòng bắt đầu bằng `@` đặt trên hàm, "gắn nhãn" để thư viện biết dùng hàm đó vào việc gì |
+| few-shot | kèm vài ví dụ mẫu trong prompt để model bắt chước định dạng (đã gặp ở L04) |
+| repair loop (vòng tự sửa) | output sai → gửi lại cho model kèm lỗi → thử lại, tối đa `max_attempts` lần |
+| `ExtractionError` | lỗi riêng của bài: thử hết số lần vẫn không ra output hợp lệ |
+| code fence | ba dấu backtick bọc code trong markdown — LLM hay bọc JSON trong đó |
+| prompt injection | dữ liệu đầu vào chứa câu "ra lệnh" cho model, vd. "bỏ qua hướng dẫn trước" |
+| JSON mode, function calling | tính năng của một số API ép model trả JSON / trả theo schema (bảng cuối mục) |
 
 ```mermaid
-flowchart LR
+flowchart TD
     T["Mô tả tự do"] --> L["LLM"]
     L --> S["Chuỗi output"]
     S --> P{"parse_json_reply"}
@@ -58,11 +85,23 @@ flowchart LR
     V -- "hợp lệ" --> D["Dữ liệu có cấu trúc"]
 ```
 
+### LLM trả về chuỗi, hệ thống cần dữ liệu
+
+Bảng `jobs` cần `level` thuộc 5 giá trị, `salary_min` là số. Output thật của LLM khi được yêu cầu "trả JSON" có thể lệch theo nhiều kiểu:
+
+| Kiểu lệch | Ví dụ |
+|---|---|
+| Bọc markdown | ` ```json {...} ``` ` |
+| Chữ thừa | `Đây là kết quả: {...} Hy vọng giúp ích!` |
+| Sai giá trị | `"level": "Lead"` (không thuộc 5 cấp) |
+| Sai kiểu | `"salary_min": "khoảng 20"` |
+| Vô lý | `salary_min: 40, salary_max: 20` |
+
+Kiểm định ngay khi nhận output thì lỗi được bắt **tại nguồn**.
+
 ### Schema là hợp đồng — pydantic
 
-**pydantic** khai báo dữ liệu bằng class có kiểu; `model_validate(dict)` vừa **ép kiểu** (`"3"` → `3`) vừa **kiểm tra**, sai thì raise `ValidationError` liệt kê từng lỗi.
-
-FastAPI dùng pydantic để kiểm định request; ở đây ta dùng nó để kiểm định output của LLM. Cùng một ý tưởng: dữ liệu từ bên ngoài phải qua hợp đồng.
+`model_validate(dict)` vừa ép kiểu vừa kiểm tra, sai thì raise `ValidationError`. FastAPI dùng pydantic để kiểm định request; ở đây ta dùng nó để kiểm định output của LLM. Cùng một ý tưởng: dữ liệu từ bên ngoài phải qua hợp đồng.
 
 Một schema, ba công dụng trong bài:
 

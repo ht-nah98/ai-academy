@@ -8,8 +8,8 @@ Sau buổi này (khoảng 3 giờ) bạn sẽ:
 
 - Giải thích được vì sao LLM là **stateless** (không trạng thái) và chatbot "nhớ" bằng cách nào.
 - Hiểu **context window** và vì sao chi phí hội thoại **tăng nhanh** theo số lượt.
-- Viết **class** đầu tiên: `Conversation` giữ lịch sử.
-- Cắt lịch sử theo **ngân sách token**: giữ system + các lượt mới nhất.
+- Viết **class** (khuôn gom dữ liệu và hàm) đầu tiên: `Conversation` giữ lịch sử.
+- Cắt lịch sử theo **ngân sách token** (số token tối đa tự cho phép gửi): giữ system + các lượt mới nhất.
 - **Kết quả đo được:** `conversation.py` qua hết **25 test**, và chat nhiều lượt thật trong terminal.
 
 ## 📋 Đề bài
@@ -28,9 +28,66 @@ Sau buổi này (khoảng 3 giờ) bạn sẽ:
 
 ## 🤔 Tại sao? (kiến thức nền)
 
+### Hiểu trước khi làm
+
+**Bối cảnh.** Người dùng gõ "Mình tên An", lượt sau hỏi "Mình tên gì?" — chatbot phải trả lời được. Nhưng model quên sạch sau mỗi lần gọi API. Vì vậy chính **ứng dụng** phải giữ sổ ghi lại hội thoại và gửi lại mỗi lượt. Sổ càng dày thì càng tốn token, mà model chỉ đọc được một lượng có hạn (**context window**), nên ứng dụng phải biết cắt bớt phần cũ.
+
+**Ví dụ đời thường.**
+- **Model** giống tổng đài viên: mỗi lần bạn gọi lại là một người khác nghe máy, không biết bạn đã nói gì.
+- **Lịch sử hội thoại** giống biên bản cuộc gọi: ứng dụng đọc lại biên bản cho tổng đài viên mới trước khi bạn hỏi tiếp.
+- **Context window** giống mặt bàn làm việc: chỉ trải được ngần ấy trang giấy; quá chỗ thì phải cất bớt trang cũ.
+- **Class** giống mẫu sổ in sẵn: `Conversation` là mẫu, mỗi cuộc chat là một cuốn sổ riêng làm từ mẫu đó.
+
+**Bạn đã gặp nó ở đâu.**
+- ChatGPT, Gemini lưu từng cuộc trò chuyện ở thanh bên; mở cuộc mới thì nó không biết chuyện cũ.
+- Chat quá dài, ChatGPT hoặc Claude báo nên bắt đầu cuộc trò chuyện mới — đã chạm giới hạn context.
+- Chatbot hỗ trợ của Shopee, Lazada hỏi lại mã đơn khi bạn quay lại hôm sau.
+- Zalo, Messenger lưu lịch sử tin nhắn trên máy chủ: ứng dụng nhớ, không phải người nhận nhớ.
+
+| | Trí nhớ hội thoại | Context window |
+|---|---|---|
+| **What** — là gì? | List messages ứng dụng lưu lại và gửi kèm mỗi lượt. | Số token tối đa model đọc trong một lần gọi. |
+| **Why** — vì sao cần? | Model là **stateless**: mỗi lần gọi là mới hoàn toàn. | Vượt giới hạn thì API lỗi; nhiều token còn chậm, đắt và dễ làm model lạc ý. |
+| **When** — khi nào dùng? | Mọi chatbot nhiều lượt. | Khi lịch sử dài: đặt ngân sách token và cắt. |
+| **When not** — khi nào không? | Việc một lượt (dịch một câu, phân loại một tin) không cần lịch sử. | Không nhét đầy context chỉ vì model cho phép. |
+| **Where** — ở đâu? | `class Conversation` trong `conversation.py`. | Hàm `trim_history`, trước mỗi lần gọi API. |
+| **How** — chạy thế nào? | Thêm câu user → gửi cả list → thêm câu trả lời assistant vào list. | Giữ system và câu mới nhất, thêm dần lượt cũ hơn cho tới khi hết ngân sách. |
+
+**Từ mới trong bài**
+
+| Thuật ngữ | Nghĩa đời thường |
+|---|---|
+| stateless (không trạng thái) | Không giữ gì giữa các lần gọi |
+| lượt (turn) | Một cặp người dùng hỏi – model đáp |
+| lịch sử (history) | Mọi message đã có trong cuộc chat |
+| context window | Giới hạn token model đọc một lần |
+| ngân sách token (budget) | Số token tối đa ta tự cho phép gửi, nhỏ hơn giới hạn thật |
+| cắt lịch sử (trim) | Bỏ bớt message cũ cho vừa ngân sách |
+| tóm tắt hội thoại | Nhờ LLM rút các lượt cũ thành một đoạn ngắn |
+| RAG (truy xuất) | Chỉ lấy đoạn tài liệu liên quan để gửi model (học ở P4) |
+| class | Khuôn mẫu gom dữ liệu và các hàm thao tác trên dữ liệu đó |
+| đối tượng (object) | Một "bản" cụ thể làm từ class, vd. `conv = Conversation(...)` |
+| `__init__`, `self` | Hàm chạy khi tạo đối tượng / chính đối tượng đó |
+| thuộc tính, phương thức | Dữ liệu `self.x` / hàm gắn với đối tượng, gọi `conv.add_user(...)` |
+| `_ten` | Tên bắt đầu bằng `_` = "dùng nội bộ", bên ngoài không nên đụng |
+| sao chép (copy) | Tạo list mới độc lập; `b = a` chỉ là thêm tên, không sao chép |
+| `math.ceil` | Làm tròn lên |
+| overhead | Phần token "khung" tốn thêm cho mỗi message |
+| `reversed`, `insert(0, x)` | Duyệt từ cuối lên / chèn vào đầu list |
+
+```mermaid
+flowchart TD
+    U["Người dùng gõ câu mới"] --> A["Conversation: thêm vào lịch sử"]
+    A --> T["trim_history: cắt cho vừa ngân sách"]
+    T --> L["Gửi bản đã cắt tới LLM"]
+    L --> R["Câu trả lời"]
+    R --> B["Conversation: lưu câu trả lời"]
+    B --> U
+```
+
 ### LLM không có trí nhớ
 
-Mỗi lần gọi API là một lần **hoàn toàn mới**: model chỉ thấy đúng những messages bạn gửi lần đó. "Trí nhớ" của chatbot thực ra là **ứng dụng** lưu lịch sử và gửi lại toàn bộ mỗi lượt.
+Model chỉ thấy đúng những messages bạn gửi lần đó; "trí nhớ" là ứng dụng gửi lại toàn bộ lịch sử mỗi lượt.
 
 Mô phỏng bằng một "LLM đồ chơi" chỉ biết đọc messages được gửi:
 
@@ -91,7 +148,7 @@ lượt 10: gửi 1500 token, cộng dồn 8250
 
 ### Context window
 
-**Context window** là số token tối đa model đọc được trong **một** lần gọi (gồm cả system, lịch sử, câu hỏi và chỗ cho câu trả lời). Vượt quá thì API báo lỗi hoặc phần đầu bị bỏ.
+Context window tính **tổng** mọi thứ trong một lần gọi: system, lịch sử, câu hỏi và chỗ cho câu trả lời. Vượt quá thì API báo lỗi hoặc phần đầu bị bỏ.
 
 | Thứ chiếm context | Ví dụ JobRadar |
 |---|---|

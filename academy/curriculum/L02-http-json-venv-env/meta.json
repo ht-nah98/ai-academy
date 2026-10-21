@@ -2,7 +2,7 @@
   "id": "L02-http-json-venv-env",
   "title": "HTTP, JSON, venv, .env — gọi API NVIDIA",
   "goal": "Tạo venv, đọc API key từ .env, lấy danh sách model từ API NVIDIA rồi nhóm theo nhà phát hành và lọc theo từ khóa; qua hết 15 test offline.",
-  "duration_min": 210,
+  "duration_min": 225,
   "concepts": [
     "venv-pip",
     "env-secrets",

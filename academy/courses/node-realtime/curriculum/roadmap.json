@@ -5,7 +5,7 @@
   "product": {
     "name": "TeamPulse",
     "tagline": "Dịch vụ chat nhóm và thông báo realtime cho đội nội bộ: tin nhắn, ai đang online, thông báo \"đơn hàng mới\" hay \"build xong\" hiện ngay trên màn hình mọi người, không cần bấm F5.",
-    "problem": "Web truyền thống chạy theo kiểu hỏi–đáp: trình duyệt hỏi, server mới được trả lời. Server có tin mới cũng không tự gửi được. Cách chữa cháy phổ biến là polling: cứ 1 giây hỏi lại một lần. Đo thật trên máy (1 client, 10 tin trong 20 giây): polling 1 giây gửi 21 request, 52% trả về rỗng, tin đến trễ trung bình 0,42 giây; giãn ra 3 giây thì trễ trung bình 1,34 giây. WebSocket giữ 1 kết nối, server đẩy tin ngay: trễ dưới 1 ms, tổng 837 byte so với 8.641 byte của polling.",
+    "problem": "WebSocket là một đường dây luôn mở giữa trình duyệt và server: server có tin là gửi ngay, không phải đợi trình duyệt hỏi. Web truyền thống chạy theo kiểu hỏi–đáp: trình duyệt hỏi, server mới được trả lời. Server có tin mới cũng không tự gửi được. Cách chữa cháy phổ biến là polling: cứ 1 giây hỏi lại một lần. Đo thật trên máy (1 client, 10 tin trong 20 giây): polling 1 giây gửi 21 request, 52% trả về rỗng, tin đến trễ trung bình 0,42 giây; giãn ra 3 giây thì trễ trung bình 1,34 giây. WebSocket giữ 1 kết nối, server đẩy tin ngay: trễ dưới 1 ms, tổng 837 byte so với 8.641 byte của polling.",
     "pains": [
       {
         "title": "HTTP không đẩy được tin",
@@ -30,6 +30,11 @@
         "q": "Làm API JSON trả đúng mã lỗi thế nào?",
         "a": "POST /messages → 201; JSON hỏng → 400; sai route → 404; sai method → 405",
         "project": "P0"
+      },
+      {
+        "q": "WebSocket là gì, sao không dùng HTTP thường?",
+        "a": "HTTP: hỏi mới trả lời, như quầy thông tin; WebSocket: gọi điện rồi giữ máy, server báo tin ngay khi có",
+        "project": "P1"
       },
       {
         "q": "Polling tốn bao nhiêu so với WebSocket?",
@@ -75,7 +80,7 @@
         },
         {
           "title": "Hiểu WebSocket tận gốc",
-          "detail": "Polling vs push đo bằng số, handshake 101 tự tính, sự kiện open/message/close/error, frame text/binary, readyState, broadcast."
+          "detail": "WebSocket là gì và khi nào không dùng (5W1H, polling/SSE/WebSocket), polling vs push đo bằng số, handshake 101 tự tính, sự kiện open/message/close/error, frame text/binary, readyState, broadcast."
         },
         {
           "title": "Realtime cho production",
@@ -83,7 +88,7 @@
         },
         {
           "title": "Sẵn sàng đi làm và phỏng vấn",
-          "detail": "85 câu hỏi phỏng vấn Node/realtime đã luyện; đọc được code WebSocket/Socket.IO của công ty, tự viết test và debug bằng DevTools, log."
+          "detail": "93 câu hỏi phỏng vấn Node/realtime đã luyện; đọc được code WebSocket/Socket.IO của công ty, tự viết test và debug bằng DevTools, log."
         }
       ],
       "note": "Dành cho người đã học một khóa Python (biến, hàm, if/for, list/dict, class) và biết chút HTML/CSS. Chưa quen JavaScript: bắt đầu từ N00 — không cần biết trước Node hay mạng máy tính."
@@ -218,6 +223,11 @@
     {
       "id": "http-polling",
       "title": "HTTP polling",
+      "group": "realtime"
+    },
+    {
+      "id": "websocket-what-why",
+      "title": "WebSocket là gì, khi nào dùng",
       "group": "realtime"
     },
     {
@@ -632,6 +642,14 @@
     [
       "ws-testing-debugging",
       "realtime-common-bugs"
+    ],
+    [
+      "http-polling",
+      "websocket-what-why"
+    ],
+    [
+      "websocket-what-why",
+      "websocket-handshake"
     ]
   ],
   "product_map": {
@@ -800,10 +818,11 @@
       "title": "Realtime với WebSocket",
       "track": "Realtime",
       "brief": {
-        "goal": "Cho server chủ động đẩy tin tới trình duyệt ngay khi có, thay vì để trình duyệt hỏi liên tục.",
+        "goal": "WebSocket là đường dây luôn mở giữa trình duyệt và server, nhờ đó server báo tin mới ngay khi có. Project này hiểu nó trước, rồi cho server chủ động đẩy tin thay vì để trình duyệt hỏi liên tục.",
         "deliverable": "Server chat realtime: echo server, phòng chat nhiều người có tên, vào/ra, danh sách online, giao diện web.",
-        "promise": "Sau 2 bài, bạn mở 2 tab trình duyệt, gõ ở tab này và tin hiện ngay ở tab kia; bạn tự tính được Sec-WebSocket-Accept bằng tay, chỉ ra từng frame trong DevTools, và đọc được handler connection/message/close cùng giao thức JSON trong code WebSocket của công ty.",
+        "promise": "Sau 3 bài, bạn giải thích được WebSocket là gì và khi nào không cần nó; bạn mở 2 tab trình duyệt, gõ ở tab này và tin hiện ngay ở tab kia; bạn tự tính được Sec-WebSocket-Accept bằng tay, chỉ ra từng frame trong DevTools, và đọc được handler connection/message/close cùng giao thức JSON trong code WebSocket của công ty.",
         "can_do": [
+          "Giải thích WebSocket bằng lời thường và 5W1H; chọn đúng giữa polling, SSE, WebSocket, REST",
           "Đo được polling tốn bao nhiêu request và trễ bao lâu so với WebSocket",
           "Giải thích handshake: Upgrade, 101 Switching Protocols, Sec-WebSocket-Key/Accept",
           "Xử lý sự kiện open/message/close/error, frame text và binary, readyState",
@@ -816,6 +835,12 @@
         "cv_line": "Xây server chat realtime bằng Node.js + ws: handshake WebSocket, giao thức JSON có kiểm tra, broadcast, presence; đo polling 21 request/20 s so với 1 kết nối WebSocket."
       },
       "lessons": [
+        {
+          "id": "N03a-websocket-la-gi",
+          "title": "WebSocket là gì? Vì sao cần? (không code)",
+          "goal": "Hiểu WebSocket qua 5W1H và demo polling vs WebSocket chạy thật; qua 13 câu trắc nghiệm.",
+          "status": "ready"
+        },
         {
           "id": "N03-websocket-dau-tien",
           "title": "WebSocket đầu tiên: từ polling tới handshake",

@@ -2,7 +2,7 @@
   "id": "L08-mo-hinh-hoa-sqlite",
   "title": "Mô hình hóa & nạp SQLite",
   "goal": "Thiết kế schema 3 bảng (jobs, companies, job_skills) và nạp dữ liệu sạch vào SQLite — 4 hàm trong db.py qua hết 13 test, jobradar.db có 30 công ty và 268 tin.",
-  "duration_min": 180,
+  "duration_min": 195,
   "concepts": [
     "schema",
     "data-modeling",

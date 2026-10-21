@@ -16,6 +16,8 @@ Sau buổi này (khoảng 2 giờ) bạn sẽ:
 
 > 🧠 **Ghi nhớ:** bạn không học lại lập trình — biến, `if`, vòng lặp, hàm, class bạn đã biết từ Python. Bài này chỉ đổi **cách viết**. Khi đọc bài sau mà gặp cú pháp lạ, quay lại bảng Python ↔ JS ở đây.
 
+> 📖 Từ lạ ở trên (runtime, callback, closure, Promise, JSON…) được giải nghĩa trong bảng **Từ mới trong bài** ở mục *Hiểu trước khi làm*, ngay đầu phần kiến thức nền.
+
 ## 📋 Đề bài
 
 **Mở thư mục:** workspace của bài `N00-js-cho-nguoi-biet-python` (có `basics.js`, `package.json`). Đường dẫn đầy đủ: `academy/courses/node-realtime/workspace/N00-js-cho-nguoi-biet-python/` — sau khi bấm **Bắt đầu**, tab Bài học có dòng **Mở trong VS Code** trỏ tới thư mục này.
@@ -50,9 +52,66 @@ greetUser(...)                             → Xin chào, An!
 
 ## 🤔 Tại sao? (kiến thức nền)
 
-### Vì sao cần bài này
+### Hiểu trước khi làm
 
-Mọi bài sau (Node, HTTP, WebSocket) viết bằng JavaScript. Người đã biết Python hiếm khi kẹt ở **ý tưởng** — kẹt ở dấu ngoặc nhọn, `===`, `=>`, `{ port } = ...`. Học riêng cú pháp một lần ở đây, các bài sau chỉ còn phải nghĩ về Node và WebSocket.
+**Bối cảnh.** Khóa học xây dần một ứng dụng chat nhóm tên TeamPulse: phần hiện trên trình duyệt của người dùng và phần chạy trên máy trung tâm để chuyển tin giữa mọi người. Trình duyệt chỉ hiểu một ngôn ngữ lập trình là JavaScript, nên muốn viết cả hai phần bằng **một** ngôn ngữ thì chọn JavaScript. Để JavaScript chạy được ngoài trình duyệt, cần một chương trình tên **Node.js**. Bài này dạy cách viết JavaScript, đối chiếu từng dòng với Python bạn đã biết.
+
+**Ví dụ đời thường.** Code giống một **công thức nấu ăn**; ngôn ngữ lập trình là thứ tiếng viết công thức. Công thức phải có **đầu bếp** đọc và nấu — đó là **runtime** (chương trình đọc và chạy code). Công thức Python cần đầu bếp `python`; công thức JavaScript có hai đầu bếp: **trình duyệt** (bếp có sẵn màn hình, nút bấm) và **Node.js** (bếp có sẵn file, mạng — thứ máy trung tâm cần). Cùng một thứ tiếng, khác bếp nên khác dụng cụ.
+
+**Bạn đã gặp nó ở đâu.**
+- Bấm "Thêm vào giỏ" trên Shopee hay thả tim trên Facebook mà trang không tải lại: JavaScript chạy trong trình duyệt.
+- VS Code, Slack, Discord bản máy tính: viết bằng JavaScript, chạy trên nền Node.js.
+- Netflix, PayPal, LinkedIn dùng Node.js cho một phần máy chủ của họ.
+- `npm` — kho thư viện JavaScript lớn nhất thế giới — bạn sẽ dùng từ bài này.
+
+| Câu hỏi | Trả lời |
+|---|---|
+| **What** — là gì | JavaScript: ngôn ngữ lập trình duy nhất trình duyệt hiểu. Node.js: runtime chạy JavaScript trong terminal, ngoài trình duyệt. |
+| **Why** — vì sao cần | Một ngôn ngữ cho cả giao diện lẫn máy chủ; mọi bài sau của khóa (máy chủ web, chat thời gian thực) viết bằng nó. |
+| **When** — khi nào dùng | Viết trang web có tương tác; viết máy chủ giữ nhiều kết nối mở như chat, thông báo, game online. |
+| **When not** — khi nào không | Tính toán số liệu nặng, phân tích dữ liệu, học máy: Python (pandas, numpy) hợp hơn. |
+| **Where** — ở đâu | Trình duyệt của người dùng (giao diện) và máy chủ (Node.js). Trong khóa: file `.js` trong thư mục workspace, chạy bằng `node`. |
+| **How** — chạy thế nào | Bạn gõ `node basics.js`; Node đọc file từ trên xuống, chạy từng lệnh, in kết quả ra terminal — giống `python basics.py`. |
+
+Người đã biết Python hiếm khi kẹt ở **ý tưởng** — kẹt ở dấu ngoặc nhọn, `===`, `=>`, `{ port } = ...`. Học riêng cú pháp một lần ở đây, các bài sau chỉ còn phải nghĩ về Node và WebSocket.
+
+```mermaid
+flowchart TD
+    A["Bạn viết basics.js bằng JavaScript"] --> B{"Ai đọc và chạy nó?"}
+    B -- "nằm trong trang web" --> C["Trình duyệt Chrome, Firefox<br/>có màn hình, nút bấm"]
+    B -- "gõ trong terminal" --> D["Node.js: node basics.js<br/>có file, mạng"]
+    D --> E["npm test: chạy bộ test chấm bài"]
+    D --> F["npm start: chạy thử, in kết quả"]
+```
+
+**Từ mới trong bài**
+
+| Từ | Nghĩa đời thường |
+|---|---|
+| **JavaScript (JS)** | Ngôn ngữ lập trình của trình duyệt; khóa này dùng nó cho cả máy chủ |
+| **Runtime** | Chương trình đọc và chạy code của bạn (đầu bếp đọc công thức) |
+| **Node.js** (`node`) | Runtime chạy JavaScript ngoài trình duyệt, trong terminal |
+| **Terminal** | Cửa sổ gõ lệnh bằng chữ (VS Code: menu Terminal → New Terminal) |
+| **Workspace** | Thư mục làm bài của riêng bạn, app tạo khi bấm **Bắt đầu** |
+| **Starter** | File code có sẵn khung hàm, phần thân để `TODO` cho bạn viết |
+| **Test** | Đoạn code tự động gọi hàm của bạn và so kết quả với đáp án mong đợi; "pass" = đúng |
+| **npm** | Công cụ đi kèm Node: cài thư viện và chạy lệnh đặt tên sẵn (`npm test`, `npm start`) |
+| **`package.json`** | File "hồ sơ" của project: tên, thư viện cần, các lệnh `npm` |
+| **JSDoc** | Khối chú thích `/** ... */` trên hàm, ghi tham số và kết quả (như docstring Python) |
+| **Module**, `import` / `export` | Mỗi file là một module; `export` cho file khác dùng, `import` để lấy về |
+| **Object** · **mảng** | `{ khóa: giá trị }` (≈ dict) · `[a, b]` (≈ list) |
+| **Truthy / falsy** | Giá trị được `if` coi là đúng / sai |
+| **Template literal** | Chuỗi trong dấu `` ` `` chèn được biến `${x}` (≈ f-string) |
+| **Destructuring** | Lấy nhiều khóa của object ra biến trong một dòng: `const { a, b } = obj` |
+| **Spread** `...` | "Trải" các phần tử/khóa của mảng/object vào chỗ mới |
+| **Arrow function** `=>` | Cách viết hàm ngắn (≈ `lambda`, nhưng được nhiều dòng) |
+| **Callback** | Hàm bạn đưa cho hàm khác để nó gọi lại sau |
+| **Class**, `this`, **getter** | Khuôn tạo object; `this` ≈ `self`; getter = thuộc tính tính ra khi đọc |
+| **Closure** | Hàm "nhớ" biến của nơi nó được tạo ra, kể cả khi nơi đó đã chạy xong |
+| **JSON** | Định dạng chữ để lưu/gửi dữ liệu, trông giống object JS |
+| **`try/catch`** | Thử chạy, có lỗi thì bắt lại xử lý (≈ `try/except`) |
+| **Promise**, `async` / `await` | "Phiếu hẹn" cho kết quả chưa có; `await` = đợi phiếu có kết quả |
+| **HTTP**, **WebSocket** | Hai cách máy tính nói chuyện qua mạng; học từ N02, N03 — bài này chưa cần |
 
 ### Chạy JavaScript và cú pháp chung
 

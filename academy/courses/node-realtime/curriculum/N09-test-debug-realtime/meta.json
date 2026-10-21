@@ -2,7 +2,7 @@
   "id": "N09-test-debug-realtime",
   "title": "Test & debug ứng dụng realtime",
   "goal": "Tự viết test tích hợp cho server WebSocket bắt được 4 bug, chờ tin không dùng sleep, đo tải p50/p95/p99, debug bằng log có id; qua hết 10 test.",
-  "duration_min": 270,
+  "duration_min": 285,
   "concepts": [
     "deterministic-waits",
     "ws-testing-debugging",

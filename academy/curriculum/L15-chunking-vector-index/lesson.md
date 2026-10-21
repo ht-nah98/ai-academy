@@ -4,12 +4,12 @@
 
 ## 🎯 Mục tiêu
 
-Sau buổi này (khoảng 3,5 giờ) bạn sẽ:
+Sau buổi này (khoảng 3 giờ 45 phút) bạn sẽ:
 
-- **Chunking**: chia văn bản theo cửa sổ từ có **overlap**, gắn header để chunk không mất ngữ cảnh.
+- **Chunking** (chia tài liệu dài thành đoạn ngắn): chia theo cửa sổ từ có **overlap** (hai đoạn liền nhau chung vài từ), gắn header (dòng tiêu đề) để đoạn không mất ngữ cảnh.
 - **Cache embedding** trong SQLite theo nội dung: chạy lại, đổi tham số chunk → chỉ gọi API cho đoạn **mới**.
-- Dựng **vector index** vét cạn (brute force) bằng numpy, lưu/đọc đĩa, mỗi tin xuất hiện tối đa một lần trong kết quả.
-- Biết khi nào brute force là đủ, khi nào cần index xấp xỉ (ANN: HNSW, IVF).
+- Dựng **vector index** (kho vector đã sắp sẵn để tìm nhanh) kiểu vét cạn (brute force — so với mọi vector) bằng numpy, lưu/đọc đĩa, mỗi tin xuất hiện tối đa một lần trong kết quả.
+- Biết khi nào brute force là đủ, khi nào cần index xấp xỉ (ANN — tìm nhanh hơn, đổi lại có thể sót).
 - **Kết quả đo được:** 4 phần trong `index.py` qua hết **12 test**; chạy thật: 264 tin → 475 chunk, lần 2 `calls: 0`, mỗi lần `search` trên index ~0,02 ms (chỉ phép tìm, vector câu hỏi đã có sẵn).
 
 > 🧠 **Ghi nhớ:** Embedding tài liệu là việc **làm một lần, dùng nhiều lần**. Thứ chạy mỗi câu hỏi chỉ là: embedding câu hỏi + một phép nhân ma trận.
@@ -22,7 +22,7 @@ Sau buổi này (khoảng 3,5 giờ) bạn sẽ:
 
 | Phần | Việc |
 |---|---|
-| `chunk_text(text, size, overlap)` | cửa sổ `size` từ, trượt `size - overlap` từ |
+| `chunk_text(text, size, overlap)` | cắt đoạn `size` từ, đoạn sau bắt đầu lùi lại `overlap` từ |
 | `make_chunks(jobs, size, overlap)` | mỗi tin → các chunk `{"chunk_id", "job_id", "text"}`, có header |
 | `embed_cached(texts, embed_fn, cache_path, ...)` | embedding có cache SQLite, gọi theo lô |
 | `VectorIndex` (`__init__`, `search`, `save`, `load`) | chuẩn hóa vector, tìm top-k theo tin, lưu/đọc đĩa |
@@ -33,9 +33,59 @@ Sau buổi này (khoảng 3,5 giờ) bạn sẽ:
 
 ## 🤔 Tại sao? (kiến thức nền)
 
+### Hiểu trước khi làm
+
+**Bối cảnh.** L14 tạo một vector cho cả một tin và gọi API mỗi lần chạy. Ở công ty, tài liệu là hợp đồng 30 trang, sổ tay nhân viên, hàng nghìn CV. Một vector cho cả 30 trang thì "nhòe": trộn mọi ý vào một, câu hỏi về điều khoản nghỉ phép không tìm ra trang có điều khoản đó. Và tạo lại vector cho 100.000 đoạn mỗi lần khởi động thì vừa chậm vừa tốn tiền. Cần chia nhỏ tài liệu, tạo vector một lần, cất lại và tìm thật nhanh.
+
+**Ví dụ đời thường.** Sách giáo khoa có **mục lục chia theo bài**, không phải một dòng "Sách Toán 10". Muốn tìm "định lý Pytago" bạn lật tới đúng bài, không đọc cả cuốn — đó là chunking. Mỗi trang ghi tên chương ở đầu trang để mở giữa chừng vẫn biết đang ở đâu — đó là header. Mục lục in một lần, dùng cả năm — đó là index lưu đĩa.
+
+**Bạn đã gặp nó ở đâu.**
+- Google Drive, Notion tìm được một câu nằm giữa tài liệu dài hàng chục trang.
+- Ứng dụng đọc PDF (Adobe, Foxit) "hỏi đáp với tài liệu" trả về đúng trang.
+- ChatGPT, Claude cho tải file PDF lên rồi hỏi: tài liệu được chia đoạn trước khi tìm.
+- Spotify tìm "bài giống bài này" trong hàng chục triệu bài trong chớp mắt nhờ index xấp xỉ.
+
+| Câu hỏi | Trả lời |
+|---|---|
+| **What** — là gì? | **Chunking**: chia tài liệu thành các đoạn (chunk) vài chục đến vài trăm từ. **Vector index**: kho chứa vector của mọi chunk kèm thông tin chunk thuộc tài liệu nào, lưu đĩa, tìm top-k nhanh. |
+| **Why** — vì sao cần? | Đoạn ngắn cho vector rõ nghĩa hơn; model embedding có giới hạn độ dài đầu vào; tạo vector một lần rồi dùng lại thì không tốn API mỗi lần hỏi. |
+| **When** — khi nào dùng? | Tài liệu dài, nhiều ý; kho tài liệu được hỏi nhiều lần. |
+| **When not** — khi nào không? | Tài liệu vốn ngắn (mô tả tin JobRadar trung bình 47 từ) — chia có thể không giúp gì; phải đo (L17). |
+| **Where** — nằm ở đâu? | Bước "chuẩn bị dữ liệu" chạy trước, tách khỏi lúc người dùng hỏi: chia → tạo vector → lưu index. Lúc hỏi chỉ đọc index. |
+| **How** — chạy thế nào? | Cắt mỗi tin thành cửa sổ từ chồng lên nhau → gắn header → tạo vector (có cache theo nội dung) → chuẩn hóa, lưu ma trận ra đĩa → `search` nhân ma trận, mỗi tin lấy một lần. |
+
+**Từ mới trong bài**
+
+| Từ | Nghĩa đời thường |
+|---|---|
+| chunk, chunking | một đoạn nhỏ của tài liệu; việc chia tài liệu thành các đoạn đó |
+| cửa sổ (window), `size` | khung lấy `size` từ liên tiếp, trượt dọc văn bản |
+| overlap | số từ hai đoạn liền nhau dùng chung, để ý nằm vắt qua ranh giới không bị cắt đôi |
+| header | dòng tiêu đề (tên tin — công ty (thành phố)) gắn đầu mọi chunk |
+| vector index | kho vector đã chuẩn hóa sẵn + danh sách chunk tương ứng, để tìm nhanh |
+| brute force (vét cạn) | so câu hỏi với **mọi** vector — chính xác tuyệt đối, chậm dần khi kho lớn |
+| ANN (Approximate Nearest Neighbor) | tìm "gần đúng" nhanh hơn nhiều, đổi lại có thể sót vài kết quả; HNSW, IVF là hai kiểu phổ biến |
+| vector database | phần mềm chuyên lưu và tìm vector (FAISS, pgvector, Qdrant, Chroma...) |
+| cache theo nội dung | khóa cache tính từ chính văn bản: văn bản không đổi thì không gọi API lại |
+| BLOB | kiểu cột SQLite lưu chuỗi byte thô — ở đây là các con số của vector |
+| float32 | số thực 4 byte; vector 2048 chiều = 8 KB |
+| `np.save` / `np.load` | lưu / đọc ma trận numpy ra file `.npy` |
+| token (giới hạn đầu vào) | model embedding chỉ nhận tối đa một số token; dài hơn thì bị cắt mất phần cuối |
+
+```mermaid
+flowchart TD
+    D["Tài liệu dài"] --> C["Chia thành chunk<br/>có overlap + header"]
+    C --> E["Tạo vector<br/>đã có trong cache thì dùng lại"]
+    E --> I["Vector index<br/>lưu đĩa một lần"]
+    Q["Câu hỏi"] --> QV["Vector câu hỏi"]
+    QV --> S["search: so với mọi chunk"]
+    I --> S
+    S --> R["Top k tin, mỗi tin một lần"]
+```
+
 ### Vì sao chia nhỏ (chunking)
 
-Một vector đại diện cho **cả** đoạn văn bản. Đoạn càng dài, càng nhiều ý, vector càng "trung bình" và mờ đi. Model cũng có giới hạn đầu vào (`nemotron-3-embed-1b`: 4096 token, quá thì bị cắt). Nên tài liệu dài (hợp đồng, tài liệu kỹ thuật, CV) được chia thành đoạn vài trăm từ trước khi tạo embedding.
+`nemotron-3-embed-1b` nhận tối đa 4096 token, quá thì bị cắt. Hai tham số quyết định cách chia:
 
 | Tham số | Nhỏ quá | Lớn quá |
 |---|---|---|

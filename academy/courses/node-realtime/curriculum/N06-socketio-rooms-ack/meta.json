@@ -2,7 +2,7 @@
   "id": "N06-socketio-rooms-ack",
   "title": "Socket.IO: room, ack, so với ws thuần",
   "goal": "Viết lại phòng chat bằng Socket.IO: middleware, room, ack có timeout và gửi lại, chống trùng theo clientId; đo chi phí so với ws; qua hết 11 test.",
-  "duration_min": 210,
+  "duration_min": 225,
   "concepts": [
     "socketio-events",
     "socketio-rooms-ack",
