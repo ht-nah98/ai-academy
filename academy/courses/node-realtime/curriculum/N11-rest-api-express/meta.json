@@ -1,0 +1,156 @@
+{
+  "id": "N11-rest-api-express",
+  "title": "REST API với Express + kiểm tra dữ liệu",
+  "goal": "Thiết kế REST cho kênh và tin nhắn, viết bằng Express 5 + zod: phân trang cursor, lỗi 400 có chi tiết từng trường, error handler không lộ chi tiết; qua hết 8 test.",
+  "duration_min": 240,
+  "concepts": [
+    "rest-design",
+    "http-idempotency",
+    "pagination-cursor",
+    "express-middleware",
+    "express-error-handler",
+    "zod-validation"
+  ],
+  "entry": "app.ts",
+  "checklist": [
+    "Thiết kế được URL theo tài nguyên và chọn đúng method cho từng việc",
+    "Chọn đúng status: 200/201(+Location)/204, 400, 404, 409, 413, 500",
+    "Giải thích idempotency và vì sao gửi lại POST có thể tạo bản ghi trùng",
+    "So sánh phân trang offset và cursor (trùng/mất bản ghi, tốc độ trang sâu); biết mẹo lấy thừa 1",
+    "Biết thứ tự middleware quyết định kết quả; 404 sau route, error handler 4 tham số ở cuối",
+    "Biết Express 5 tự chuyển lỗi của handler async tới error handler (Express 4 thì không)",
+    "Kiểm tra params/query/body bằng zod ở đầu handler; dùng z.coerce cho query; z.infer cho kiểu",
+    "Lỗi 400 trả chi tiết từng trường; lỗi 500 không lộ message/stack",
+    "Gọi được API bằng curl (bash) và curl.exe / Invoke-RestMethod (PowerShell)"
+  ],
+  "interview_questions": [
+    "REST là gì? Thiết kế URL và method cho 'gửi tin vào một kênh' và 'xem tin của kênh' thế nào?",
+    "Method nào idempotent? Vì sao điều đó quan trọng khi client gửi lại request?",
+    "400, 401, 403, 404, 409, 422, 500 khác nhau thế nào? Khi nào trả cái nào?",
+    "Phân trang offset và cursor khác nhau thế nào? Bạn chọn cái nào cho lịch sử chat, vì sao?",
+    "Middleware trong Express là gì? Thứ tự đăng ký ảnh hưởng thế nào?",
+    "Xử lý lỗi tập trung trong Express thế nào? Express 5 khác Express 4 ở điểm nào với hàm async?",
+    "Đã dùng TypeScript rồi sao vẫn cần kiểm tra dữ liệu bằng zod?",
+    "API trả lỗi 500 nên chứa những gì và không nên chứa gì?"
+  ],
+  "tutor_notes": "Bài REST + Express 5 + zod. Học viên đã viết API bằng http thuần ở N02 và biết TypeScript từ N10 (unknown, narrowing). Lỗi hay gặp: (1) schemas: quên trim trước min (chuỗi toàn khoảng trắng lọt), dùng z.number() cho query (query luôn là chuỗi → cần z.coerce.number()), quên .int() (limit 2.5 lọt), regex thiếu ^...$ (tên 'Dev!' lọt), dùng z.strictObject (khóa thừa phải bị BỎ, không phải báo lỗi); (2) toValidationError: dừng ở issue đầu, path rỗng không thành '*', field nối sai (phải join('.')); (3) errorHandler: thiếu tham số next (Express coi là middleware thường), trả err.message cho client, quên kiểm err là object trước khi đọc .type; (4) createApp: express.json đặt sau route, 404 đặt trước route, errorHandler không đặt cuối, quên lấy thừa 1 nên nextBefore sai ở trường hợp vừa đủ limit, sắp xếp lại items (store đã trả mới nhất trước), dùng offset thay cho before, tự try/catch mọi handler (không sai nhưng thừa ở Express 5), không trả Location. Request body text/plain: express.json bỏ qua nên req.body là undefined → validate báo field '*'. Chạy thật: npm start cổng 3110; EADDRINUSE → bash `PORT=3111 npm start`, PowerShell `$env:PORT=3111; npm start`; PowerShell dùng curl.exe hoặc Invoke-RestMethod. Không viết hộ thân hàm.",
+  "tasks": [
+    {
+      "fn": "schemas",
+      "signature": "ChannelBody, MessageBody, ListQuery, IdParams (zod)",
+      "summary": "Hình dạng body/query/params: trim, coerce, mặc định",
+      "example": "ListQuery.parse({ limit: '5' }) → { limit: 5 }",
+      "test_prefix": "schemas"
+    },
+    {
+      "fn": "toValidationError",
+      "signature": "toValidationError(error: ZodError, source): ErrorBody",
+      "summary": "ZodError → { error, in, details: [{ field, message }] }",
+      "example": "{ author: '', text: 5 } → details field ['author', 'text']",
+      "test_prefix": "toValidationError"
+    },
+    {
+      "fn": "validate",
+      "signature": "validate(schema, value, source): z.infer<S>",
+      "summary": "Kiểm tra ở cửa vào; sai → HttpError 400",
+      "example": "validate(ListQuery, { limit: '3' }, 'query') → { limit: 3 }",
+      "test_prefix": "validate"
+    },
+    {
+      "fn": "errorHandler",
+      "signature": "errorHandler(err, req, res, next): void",
+      "summary": "HttpError/400 bad_json/413/500 internal",
+      "example": "throw new Error('db') trong handler async → 500 { error: 'internal' }",
+      "test_prefix": "errorHandler"
+    },
+    {
+      "fn": "createApp",
+      "signature": "createApp(store: ChatStore): Express",
+      "summary": "Middleware, route kênh/tin nhắn, cursor, 404, errorHandler",
+      "example": "GET /channels/1/messages?limit=2 → { items, nextBefore: 4 }",
+      "test_prefix": "createApp"
+    }
+  ],
+  "brief": {
+    "context": "TeamPulse có chat realtime qua WebSocket và giao thức tin nhắn có kiểu TypeScript (N10). API HTTP cũ ở N02 viết bằng module http thuần, chỉ có một danh sách tin chung.",
+    "problem": "App mobile cần tải lịch sử từng kênh theo trang, bot CI cần gửi tin vào kênh, trang quản trị cần tạo kênh. API cũ không có kênh, không phân trang, nhận dữ liệu sai mà vẫn trả 200, lỗi nội bộ lộ ra cho client. Đội cần một REST API đúng chuẩn mà các nhóm khác gọi được mà không phải hỏi.",
+    "requirements": [
+      {
+        "task": "schemas",
+        "purpose": "Mô tả hình dạng dữ liệu vào một lần."
+      },
+      {
+        "task": "toValidationError",
+        "purpose": "Lỗi 400 chỉ ra từng trường sai."
+      },
+      {
+        "task": "validate",
+        "purpose": "Chặn dữ liệu sai ngay đầu handler."
+      },
+      {
+        "task": "errorHandler",
+        "purpose": "Một chỗ trả lỗi, không lộ chi tiết."
+      },
+      {
+        "task": "createApp",
+        "purpose": "Route kênh và tin nhắn, phân trang cursor."
+      }
+    ],
+    "deliverable": "app.ts qua 8/8 test, npm run typecheck 0 lỗi, npm run demo in đúng 12 dòng mẫu; npm start chạy API thật ở cổng 3110.",
+    "constraints": [
+      "Kiểm tra params/query/body bằng zod trước khi gọi store.",
+      "Phân trang bằng cursor before/nextBefore, không dùng offset.",
+      "Lỗi 500 chỉ trả { error: 'internal' }, chi tiết ghi log.",
+      "createApp chỉ dùng interface ChatStore truyền vào."
+    ],
+    "product_nodes": [
+      "rest-api",
+      "rest-express"
+    ],
+    "workflow": {
+      "flow": "chain",
+      "inputs": [
+        {
+          "label": "Request HTTP từ client",
+          "detail": "app mobile, bot CI, trang quản trị"
+        },
+        {
+          "label": "ChatStore",
+          "detail": "bản bộ nhớ, N12 thay PostgreSQL"
+        }
+      ],
+      "steps": [
+        {
+          "task": "schemas",
+          "label": "Mô tả dữ liệu vào"
+        },
+        {
+          "task": "toValidationError",
+          "label": "Định dạng lỗi từng trường"
+        },
+        {
+          "task": "validate",
+          "label": "Kiểm tra ở cửa vào"
+        },
+        {
+          "task": "errorHandler",
+          "label": "Gom lỗi một chỗ"
+        },
+        {
+          "task": "createApp",
+          "label": "Ghép middleware và route"
+        }
+      ],
+      "outputs": [
+        {
+          "label": "REST API kênh và tin",
+          "detail": "201, 400 chi tiết, 404, 409"
+        },
+        {
+          "label": "Lịch sử theo trang",
+          "detail": "items + nextBefore, mới nhất trước"
+        }
+      ]
+    }
+  }
+}

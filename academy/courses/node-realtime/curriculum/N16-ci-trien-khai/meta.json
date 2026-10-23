@@ -1,0 +1,141 @@
+{
+  "id": "N16-ci-trien-khai",
+  "title": "CI và triển khai",
+  "goal": "Cho đúng app TeamPulse N11–N14 (cùng test và Docker của N15): đọc cấu hình bằng zod (sai là dừng), thêm /health và /ready không cần đăng nhập, tắt êm khi SIGTERM (WS đóng 1001, làm nốt request, đóng DB), viết workflow GitHub Actions; so sánh cách triển khai và có checklist trước khi lên production.",
+  "duration_min": 240,
+  "concepts": [
+    "ci-github-actions",
+    "secrets-vs-env",
+    "config-fail-fast",
+    "health-readiness",
+    "graceful-shutdown",
+    "deploy-options"
+  ],
+  "entry": "shutdown.ts",
+  "checklist": [
+    "Giải thích CI và CD khác nhau thế nào, vì sao mỗi pull request phải chạy CI",
+    "Đọc hiểu từng khoá của workflow: on, jobs, runs-on, services, steps, uses, run, env, needs, if",
+    "Phân biệt env và secrets trong GitHub Actions; biết vì sao mật khẩu Postgres của service CI không phải bí mật",
+    "Giải thích fail fast: vì sao app nên chết ngay khi cấu hình sai thay vì chạy nửa vời",
+    "Phân biệt liveness (/health) và readiness (/ready); vì sao /health không gọi DB",
+    "Kể đúng thứ tự tắt êm: ngừng nhận mới → đóng WS 1001 → làm nốt request → đóng DB → thoát",
+    "Giải thích vì sao timeout tắt phải nhỏ hơn thời gian nền tảng chờ trước khi SIGKILL",
+    "So sánh được Render, Fly.io, Railway, VPS cho một app WebSocket",
+    "Giải thích vì sao reverse proxy (nginx) phải chuyển tiếp Upgrade/Connection và tăng timeout đọc cho WebSocket"
+  ],
+  "interview_questions": [
+    "CI/CD là gì? Một pipeline CI tối thiểu cho dịch vụ Node.js có những bước nào?",
+    "Secrets trong GitHub Actions khác biến env thường thế nào? Bạn xử lý mật khẩu database trong CI ra sao?",
+    "Liveness và readiness probe khác nhau thế nào? Nếu /health gọi database thì có vấn đề gì?",
+    "Graceful shutdown cho một server có WebSocket làm những gì, theo thứ tự nào?",
+    "Container nhận SIGTERM rồi bị SIGKILL sau 10 giây — chuyện gì xảy ra với người dùng nếu app không xử lý SIGTERM?",
+    "Bạn deploy một app WebSocket lên đâu? Cần chú ý gì khi đặt sau nginx hay load balancer?",
+    "Vì sao nên validate cấu hình lúc khởi động (fail fast)?"
+  ],
+  "tutor_notes": "Bài cuối P3. App là ĐÚNG TeamPulse sau N14 (app.ts, store.ts, types.ts, db.ts, migrate.ts, migrate-cli.ts, chat-store.ts, demo.ts, migrations 001→004 không đổi); auth.ts thêm 2 tuỳ chọn không bắt buộc cho createAuthServer (wss, publicRoutes); server.ts = bản N14/N15 + startServer gắn registerHealthRoutes TRƯỚC lớp kiểm đăng nhập, trả thêm wss và beginShutdown(), main() gọi loadConfig → openDb → prepareDb → startServer → createShutdown, log JSON. testkit.ts, integration.test.ts (N15, viết khác: DELETE + ALTER ... RESTART, thêm 1 test /health /ready) có sẵn. Học viên viết config.ts (loadConfig, 6 trường gồm allowedOrigins), health.ts (registerHealthRoutes), shutdown.ts (createShutdown) và .github/workflows/ci.yml. startServer gọi registerHealthRoutes nên khi health.ts còn TODO thì npm start (sau loadConfig) và npm run test:mine đều lỗi — bình thường, làm Bước 3 trước. Lỗi hay gặp: (1) loadConfig: đọc process.env trong hàm, z.number() thay vì z.coerce.number() (env luôn là chuỗi), quên chuỗi rỗng = chưa đặt (z.coerce.number() biến '' thành 0), ALLOWED_ORIGINS không tách theo dấu phẩy / không trim / không bỏ mục rỗng, regex origin cho phép '/' cuối, dùng parse (ném ZodError) thay vì safeParse, trả thừa/thiếu trường; (2) health: /health gọi DB, quên Cache-Control: no-store, /ready timeout bằng setTimeout mà không Promise.race nên vẫn chờ query treo, quên clearTimeout, kiểm isShuttingDown sau khi gọi DB; (3) shutdown: gọi closeDb trước khi server.close xong, quên ws.close(1001) nên server.close chờ tới timeout, dùng ws.terminate() ngay (1006), không có timeout, không idempotent, quên clearTimeout; (4) ci.yml: tab thay dấu cách, npm test thay vì npm run test:mine (npm test trong workspace là bài chấm), DATABASE_URL dùng host postgres thay vì localhost, pg_isready không có -h 127.0.0.1 (healthy quá sớm, migrate lỗi 'Connection terminated unexpectedly'), ghi URL deploy hook thật, deploy không có needs/if. Bài chấm ci.yml đọc văn bản: bỏ dòng #, cho phép chú thích cuối dòng, lệnh là giá trị run: một dòng hoặc khối run: |. Test SIGTERM thật bị bỏ qua trên Windows (17 pass + 1 skipped vẫn là xong). Chạy riêng: node --test --test-name-pattern=\"createShutdown\" \"../../curriculum/N16-ci-trien-khai/tests/*.test.js\". Không viết hộ thân hàm hay workflow.",
+  "tasks": [
+    {
+      "fn": "loadConfig",
+      "signature": "loadConfig(env) → Config",
+      "summary": "zod: PORT, HOST, NODE_ENV, DATABASE_URL, SHUTDOWN_TIMEOUT_MS, ALLOWED_ORIGINS; sai → ném lỗi nêu mọi biến",
+      "example": "loadConfig({ PORT: '8080' }).port → 8080; loadConfig({ PORT: 'abc' }) → Error 'Cấu hình không hợp lệ: - PORT ...'",
+      "test_prefix": "loadConfig"
+    },
+    {
+      "fn": "registerHealthRoutes",
+      "signature": "registerHealthRoutes(app, { db, isShuttingDown, readyTimeoutMs })",
+      "summary": "/health luôn 200; /ready 200 | 503 shutting_down | 503 db_unavailable (có timeout)",
+      "example": "GET /ready khi DB treo → 503 { status: 'db_unavailable' } sau readyTimeoutMs",
+      "test_prefix": "registerHealthRoutes"
+    },
+    {
+      "fn": "createShutdown",
+      "signature": "createShutdown({ server, wss, closeDb, timeoutMs, onStart, log }) → (reason) => Promise<void>",
+      "summary": "Ngừng nhận mới, WS đóng 1001, làm nốt request (tối đa timeoutMs), đóng DB một lần",
+      "example": "kill -TERM <pid> → client WS đã đăng nhập nhận close 1001, server thoát mã 0",
+      "test_prefix": "createShutdown"
+    },
+    {
+      "fn": "ci.yml",
+      "signature": ".github/workflows/ci.yml",
+      "summary": "push/PR → npm ci, typecheck, test, migrate trên Postgres service, docker build; deploy từ main bằng secret",
+      "example": "push lên main, test xanh → job deploy gọi ${{ secrets.DEPLOY_HOOK_URL }}",
+      "test_prefix": "ci.yml"
+    }
+  ],
+  "brief": {
+    "context": "TeamPulse (REST, Postgres, WebSocket đồng bộ, đăng nhập — N11–N14) đã có test tích hợp và chạy được trong Docker cùng Postgres (N15). Còn chạy test bằng tay và chưa có chỗ chạy thật cho đồng nghiệp dùng.",
+    "problem": "Đội sắp đưa TeamPulse lên một nền tảng hosting. Ba vấn đề chặn đường: test chỉ chạy khi ai đó nhớ chạy; mỗi lần deploy, server cắt ngang mọi WebSocket (mã 1006) và request đang dở; nền tảng không có cách hỏi app đã sẵn sàng nhận người dùng chưa, và app chạy được cả khi production thiếu DATABASE_URL (dữ liệu nằm trên đĩa container, mất khi deploy lại mà không ai biết).",
+    "requirements": [
+      {
+        "task": "loadConfig",
+        "purpose": "Cấu hình sai thì dừng ngay, báo rõ biến nào."
+      },
+      {
+        "task": "registerHealthRoutes",
+        "purpose": "Nền tảng biết app sống và sẵn sàng."
+      },
+      {
+        "task": "createShutdown",
+        "purpose": "Deploy không cắt ngang người đang dùng."
+      },
+      {
+        "task": "ci.yml",
+        "purpose": "Mỗi push tự kiểm tra, main tự deploy."
+      }
+    ],
+    "deliverable": "config.ts, health.ts, shutdown.ts và ci.yml qua 18/18 test chấm (Windows: 17 + 1 bỏ qua); npm run test:mine xanh; docker compose stop app: client WS nhận 1001, thoát mã 0; checklist trước khi deploy.",
+    "constraints": [
+      "Không deploy thật, không cần tài khoản GitHub/Render để qua bài.",
+      "Không ghi mật khẩu, token hay URL deploy hook thật trong code hoặc workflow.",
+      "loadConfig chỉ đọc tham số env, không đọc process.env bên trong.",
+      "SHUTDOWN_TIMEOUT_MS nhỏ hơn thời gian nền tảng chờ trước khi SIGKILL (Docker: 10 giây)."
+    ],
+    "product_nodes": [
+      "ci-pipeline",
+      "ops-health",
+      "deploy"
+    ],
+    "workflow": {
+      "flow": "parallel",
+      "inputs": [
+        {
+          "label": "TeamPulse chạy được trong Docker",
+          "detail": "App N11–N14 + test N15"
+        },
+        {
+          "label": "Biến môi trường của nền tảng",
+          "detail": "PORT, DATABASE_URL, secrets"
+        }
+      ],
+      "steps": [
+        {
+          "task": "loadConfig",
+          "label": "Kiểm cấu hình lúc khởi động"
+        },
+        {
+          "task": "registerHealthRoutes",
+          "label": "Thêm /health và /ready"
+        },
+        {
+          "task": "createShutdown",
+          "label": "Tắt êm khi SIGTERM"
+        },
+        {
+          "task": "ci.yml",
+          "label": "Viết workflow CI"
+        }
+      ],
+      "outputs": [
+        {
+          "label": "Pipeline CI tự chạy",
+          "detail": "Push → test → build → deploy"
+        },
+        {
+          "label": "App sẵn sàng production",
+          "detail": "Health, tắt êm, cấu hình kiểm tra"
+        }
+      ]
+    }
+  }
+}

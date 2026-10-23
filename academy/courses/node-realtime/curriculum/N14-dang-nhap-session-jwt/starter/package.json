@@ -1,0 +1,13 @@
+{
+  "name": "teampulse-n14",
+  "private": true,
+  "type": "module",
+  "description": "TeamPulse — bài N14: đăng nhập bằng mật khẩu, session cookie; REST và WebSocket dùng chung phiên",
+  "scripts": {
+    "start": "node server.ts",
+    "migrate": "node migrate-cli.ts",
+    "demo": "node demo.ts",
+    "typecheck": "tsc --noEmit -p .",
+    "test": "node --test \"../../curriculum/N14-dang-nhap-session-jwt/tests/*.test.js\""
+  }
+}

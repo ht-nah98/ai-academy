@@ -1,0 +1,13 @@
+{
+  "name": "teampulse-n12",
+  "private": true,
+  "type": "module",
+  "description": "TeamPulse — bài N12: PostgreSQL với Node (migration, truy vấn tham số, transaction)",
+  "scripts": {
+    "start": "node server.ts",
+    "migrate": "node migrate-cli.ts",
+    "demo": "node demo.ts",
+    "typecheck": "tsc --noEmit -p .",
+    "test": "node --test \"../../curriculum/N12-postgresql-voi-node/tests/*.test.js\""
+  }
+}

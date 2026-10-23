@@ -1,0 +1,12 @@
+node_modules
+.pgdata
+npm-debug.log*
+.git
+.github
+.env
+.env.*
+*.log
+Dockerfile
+compose.yaml
+testkit.ts
+*.test.ts

@@ -1,0 +1,14 @@
+{
+  "name": "teampulse-n13",
+  "private": true,
+  "type": "module",
+  "description": "TeamPulse — bài N13: lưu tin nhắn từ WebSocket vào PostgreSQL và đồng bộ khi kết nối lại",
+  "scripts": {
+    "start": "node server.ts",
+    "client": "node client.ts",
+    "migrate": "node migrate-cli.ts",
+    "demo": "node demo.ts",
+    "typecheck": "tsc --noEmit -p .",
+    "test": "node --test \"../../curriculum/N13-luu-tin-dong-bo/tests/*.test.js\""
+  }
+}

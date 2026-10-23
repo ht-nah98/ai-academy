@@ -1,0 +1,180 @@
+{
+  "id": "N14-dang-nhap-session-jwt",
+  "title": "Đăng nhập: mật khẩu, session, JWT",
+  "goal": "Băm mật khẩu bằng scrypt + salt, đăng ký/đăng nhập/đăng xuất với session trong PostgreSQL (migration 004) và cookie HttpOnly, giới hạn lần thử đúng cả khi request song song, chặn CSRF, bắt đăng nhập cho REST N11 và WebSocket N13 bằng cùng phiên; so sánh session với JWT; qua hết 14 test.",
+  "duration_min": 240,
+  "concepts": [
+    "password-hashing-scrypt",
+    "session-cookie",
+    "csrf-samesite",
+    "login-rate-limit",
+    "session-vs-jwt"
+  ],
+  "entry": "auth.ts",
+  "checklist": [
+    "Phân biệt xác thực với phân quyền, băm với mã hoá",
+    "Kể được một vụ lộ mật khẩu và chỉ ra họ đã lưu sai thế nào",
+    "Giải thích salt chống bảng tra sẵn thế nào, và vì sao hàm băm mật khẩu phải chậm",
+    "Biết vì sao dùng scrypt bất đồng bộ trong server và so bằng timingSafeEqual",
+    "Giải thích từng thuộc tính HttpOnly, Secure, SameSite=Lax chặn được gì và không chặn được gì",
+    "Giải thích CSRF và vì sao vẫn kiểm Origin khi đã có SameSite",
+    "Biết vì sao trả cùng lỗi cho 'không có user' và 'sai mật khẩu', và vai trò của DUMMY_HASH",
+    "Giải thích vì sao 'kiểm rồi await rồi mới đếm' bị vượt bằng request song song, và cách đếm trước khi await",
+    "Chỉ ra REST của N11 và WebSocket của N13 lấy danh tính từ cùng một phiên mà không sửa app.ts, chat-store.ts",
+    "So sánh session và JWT: thu hồi, kích thước, khi nào chọn cái nào",
+    "Chạy npm run demo, đọc được dòng 429, {\"401\":5,\"429\":5} khi đoán song song, Set-Cookie và đóng 4001 logged_out",
+    "npm run typecheck sạch và qua hết test của bài"
+  ],
+  "interview_questions": [
+    "Bạn lưu mật khẩu người dùng thế nào? Vì sao không dùng SHA-256 hay mã hoá?",
+    "Salt là gì, chống được kiểu tấn công nào?",
+    "Session và JWT khác nhau thế nào? Với một web app một backend bạn chọn gì, vì sao?",
+    "Làm sao thu hồi một JWT trước khi hết hạn?",
+    "HttpOnly, Secure, SameSite trên cookie dùng để làm gì?",
+    "CSRF là gì? SameSite=Lax có đủ chống CSRF không?",
+    "Bạn chống brute force mật khẩu thế nào? Giới hạn theo IP hay theo tài khoản?",
+    "Xác thực WebSocket bằng session cookie thế nào? Đăng xuất thì kết nối đang mở xử lý ra sao?"
+  ],
+  "tutor_notes": "Học viên đã có N07 (token HMAC, timingSafeEqual, Origin/CSWSH, rejectUpgrade, noServer + handleUpgrade), N11 (Express 5 + zod, validate, HttpError, errorHandler), N12–N13 (PostgreSQL, Db, ON CONFLICT ... RETURNING, attachChat, withBroadcast). Workspace là app TeamPulse của N13 (lời giải N11–N13 có sẵn) + migration 004 (users.password_hash NULL được, bảng sessions); tên đăng nhập là cột users.name. server.ts có sẵn prepareDb + startServer({db, port}) → {server, port, url, close()}. scryptAsync, readCookie, rejectUpgrade, DUMMY_HASH, Credentials đã viết sẵn. Lỗi 400 dùng validate của N11 (validation_failed + details), JSON hỏng → bad_json của errorHandler N11. Nhấn mạnh: không lưu/mã hoá/log mật khẩu gốc; salt riêng mỗi người; hàm băm chậm có chủ đích; đọc tham số từ chuỗi đã lưu; limiter đếm lần thử TRƯỚC mọi await (hit), đúng thì reset; session thu hồi được ngay, JWT thì không nếu không có denylist. Lỗi hay gặp: (1) hashPassword: salt cố định, hex thay vì base64url, scryptSync trong server; (2) verifyPassword: dùng cứng SCRYPT_PARAMS/KEY_LEN (test N=1024, 32 byte đỏ), so bằng ===, timingSafeEqual ném lỗi khi khác độ dài, quên try/catch; (3) createSession: expiresAt tính bằng giây thay vì ms, dùng Math.random; (4) findSession: không kiểm kiểu sessionId, so hạn bằng now() của SQL thay vì đồng hồ giả, quên DELETE phiên hết hạn, JOIN users theo cột username (không có — là name), trả user_id dạng chuỗi; (5) createLoginLimiter: cửa sổ tính từ lần thử cuối, Math.round thay vì Math.ceil, đếm cả lần bị chặn (kéo dài cửa sổ); (6) createAuthServer: gọi hit sau await (test SONG SONG đỏ), lỗi khác nhau cho sai user/sai mật khẩu, không gọi verifyPassword khi không có user hoặc password_hash NULL, kiểm mật khẩu cả khi đã 429, quên Retry-After, maxAge truyền giây (Express nhận ms), clearCookie khác thuộc tính, chặn Origin cả GET, middleware bắt đăng nhập đặt trước các route /api (register cũng 401), quên chừa GET /health, tin author từ body, quên errorHandler N11 ở cuối, attachChat gắn trên wss khác wss của handleUpgrade, gán ws.user SAU emit connection, quên socket.on('error') trước await findSession, quên đóng WebSocket khi logout. Gợi ý chạy riêng test: `node --test --test-name-pattern=\"verifyPassword\" \"../../curriculum/N14-dang-nhap-session-jwt/tests/*.test.js\"`. EADDRINUSE → bash `PORT=3014 npm start`, PowerShell `$env:PORT=3014; npm start`. Không viết hộ thân hàm.",
+  "tasks": [
+    {
+      "fn": "hashPassword",
+      "signature": "hashPassword(password) → Promise<string>",
+      "summary": "scrypt + salt ngẫu nhiên → 'scrypt$N$r$p$salt$hash'",
+      "example": "'mat-khau-dai-123' → 'scrypt$16384$8$1$w0jl…$XUDJ…'",
+      "test_prefix": "hashPassword"
+    },
+    {
+      "fn": "verifyPassword",
+      "signature": "verifyPassword(password, stored) → Promise<boolean>",
+      "summary": "Băm lại với salt/tham số trong chuỗi, timingSafeEqual",
+      "example": "chuỗi lưu hỏng → false, không ném lỗi",
+      "test_prefix": "verifyPassword"
+    },
+    {
+      "fn": "createSession",
+      "signature": "createSession(db, userId, { ttlSec, now }) → Promise<{ id, expiresAt }>",
+      "summary": "Id ngẫu nhiên 32 byte, lưu vào sessions có hạn",
+      "example": "→ { id: '3q2-…' (43 ký tự), expiresAt: +7 ngày }",
+      "test_prefix": "createSession"
+    },
+    {
+      "fn": "findSession",
+      "signature": "findSession(db, sessionId, { now }) → Promise<Session | null>",
+      "summary": "Phiên còn hạn + username; hết hạn → xoá, null",
+      "example": "cookie cũ sau logout → null",
+      "test_prefix": "findSession"
+    },
+    {
+      "fn": "createLoginLimiter",
+      "signature": "createLoginLimiter({ max, windowMs, now }) → { hit, reset }",
+      "summary": "Đếm lần thử trước khi kiểm; quá max → chặn",
+      "example": "lần thử thứ 6 → hit() = { ok: false, retryAfterSec: 900 }",
+      "test_prefix": "createLoginLimiter"
+    },
+    {
+      "fn": "createAuthServer",
+      "signature": "createAuthServer({ db, allowedOrigins, now, limiter, sessionTtlSec }) → http.Server",
+      "summary": "Đăng nhập + REST N11 + WebSocket N13 chung phiên",
+      "example": "logout → 204, WebSocket của phiên đóng 4001",
+      "test_prefix": "createAuthServer"
+    }
+  ],
+  "brief": {
+    "context": "TeamPulse sau N13 lưu và đồng bộ tin qua REST lẫn WebSocket, nhưng ai cũng tự khai tên: author trong body REST, user trong hello WebSocket. Chưa có tài khoản, chưa có đăng nhập.",
+    "problem": "Trước khi mở cho cả công ty, TeamPulse cần đăng ký và đăng nhập bằng mật khẩu, và mọi tin phải mang đúng tên người đã đăng nhập. Yêu cầu bảo mật: database bị lộ cũng không lộ mật khẩu; không đoán mật khẩu hàng loạt được, kể cả gửi song song; trang lạ không lợi dụng được cookie đăng nhập (CSRF, CSWSH); đăng xuất là hết hiệu lực ngay, kể cả kết nối chat đang mở. Không thêm thư viện xác thực, không sửa app REST N11 và chat N13.",
+    "requirements": [
+      {
+        "task": "hashPassword",
+        "purpose": "Lộ database không lộ mật khẩu."
+      },
+      {
+        "task": "verifyPassword",
+        "purpose": "Kiểm mật khẩu an toàn, không ném lỗi."
+      },
+      {
+        "task": "createSession",
+        "purpose": "Cấp phiên không đoán được, có hạn."
+      },
+      {
+        "task": "findSession",
+        "purpose": "Một chỗ trả lời 'cookie này là ai'."
+      },
+      {
+        "task": "createLoginLimiter",
+        "purpose": "Chặn đoán mật khẩu hàng loạt, kể cả song song."
+      },
+      {
+        "task": "createAuthServer",
+        "purpose": "REST và WebSocket dùng chung một danh tính."
+      }
+    ],
+    "deliverable": "auth.ts qua 14/14 test, npm run typecheck sạch; npm run demo cho thấy 409 khi trùng tên, cùng 401 cho sai user/sai mật khẩu, 429 + Retry-After sau 5 lần thử, 10 lần đoán song song chỉ 5 lần được kiểm, cookie HttpOnly; Secure; SameSite=Lax, REST và WebSocket 401/403 khi không phiên, author lấy từ phiên, logout đóng WebSocket với 4001.",
+    "constraints": [
+      "Không lưu, mã hoá hay log mật khẩu gốc.",
+      "So mã băm bằng timingSafeEqual.",
+      "Cùng một lỗi cho sai user và sai mật khẩu.",
+      "Đếm lần thử trước mọi await.",
+      "Request ghi có Origin lạ → 403."
+    ],
+    "product_nodes": [
+      "accounts",
+      "auth",
+      "ws-gateway",
+      "database"
+    ],
+    "workflow": {
+      "flow": "chain",
+      "inputs": [
+        {
+          "label": "Tên và mật khẩu",
+          "detail": "POST /api/register, /api/login"
+        },
+        {
+          "label": "Request kèm cookie phiên",
+          "detail": "REST hoặc nâng cấp /ws"
+        }
+      ],
+      "steps": [
+        {
+          "task": "hashPassword",
+          "label": "Băm scrypt + salt"
+        },
+        {
+          "task": "verifyPassword",
+          "label": "Kiểm mật khẩu"
+        },
+        {
+          "task": "createSession",
+          "label": "Tạo phiên trong DB"
+        },
+        {
+          "task": "findSession",
+          "label": "Tra phiên còn hạn"
+        },
+        {
+          "task": "createLoginLimiter",
+          "label": "Giới hạn lần thử đăng nhập"
+        },
+        {
+          "task": "createAuthServer",
+          "label": "REST + WebSocket chung phiên"
+        }
+      ],
+      "outputs": [
+        {
+          "label": "Cookie tp_session",
+          "detail": "HttpOnly; Secure; SameSite=Lax"
+        },
+        {
+          "label": "401 / 403 / 429",
+          "detail": "Trước khi làm bất cứ gì"
+        },
+        {
+          "label": "Đăng xuất tức thì",
+          "detail": "WebSocket đang mở đóng 4001"
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "name": "teampulse-n10",
+  "private": true,
+  "type": "module",
+  "description": "TeamPulse — bài N10: TypeScript cho giao thức tin nhắn",
+  "scripts": {
+    "start": "node demo.ts",
+    "typecheck": "tsc --noEmit -p .",
+    "test": "node --test \"../../curriculum/N10-typescript-co-ban/tests/*.test.js\""
+  }
+}

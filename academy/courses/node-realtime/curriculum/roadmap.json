@@ -65,14 +65,49 @@
         "q": "Chặn người lạ kết nối WebSocket thế nào?",
         "a": "Kiểm token HMAC + Origin trong upgrade: thiếu token → 401, trang lạ → 403, trước khi có 101",
         "project": "P2"
+      },
+      {
+        "q": "TypeScript có làm code chạy khác đi không?",
+        "a": "Không: Node 22 xoá kiểu rồi chạy; tsc --noEmit bắt lỗi trước — bản JS ra NaN, bản TS báo \"prise\" → \"price\" đúng dòng",
+        "project": "P3"
+      },
+      {
+        "q": "Gửi dữ liệu sai lên API thì sao?",
+        "a": "zod chặn ở đầu handler: 400 kèm details từng trường (author, text); lỗi DB → 500 internal, không lộ chi tiết",
+        "project": "P3"
+      },
+      {
+        "q": "SQL injection nguy hiểm cỡ nào?",
+        "a": "Ghép chuỗi: x' OR '1'='1 vào được tài khoản không cần PIN và lộ tin kênh khác; truy vấn tham số $1 → []",
+        "project": "P3"
+      },
+      {
+        "q": "Tải lại trang hay mất mạng thì có mất tin, có bị tin đôi không?",
+        "a": "Mỗi tin (WebSocket hay REST) lưu vào cùng bảng messages của N12, id server cấp; gửi lại cùng clientMsgId → duplicate=true (5 lần gửi, 4 dòng); kết nối lại với lastSeenId → nhận bù đúng tin bị lỡ rồi mới trực tiếp; tin POST qua REST tới WebSocket ngay",
+        "project": "P3"
+      },
+      {
+        "q": "Đăng nhập lưu mật khẩu thế nào, đăng xuất có hết hiệu lực ngay không?",
+        "a": "Chỉ lưu scrypt + salt; quá 5 lần thử → 429 Retry-After 900, kể cả 10 request song song chỉ 5 lần được kiểm; cookie HttpOnly; Secure; SameSite=Lax dùng chung cho REST và WebSocket; đăng xuất xoá phiên, WebSocket đang mở đóng 4001",
+        "project": "P3"
+      },
+      {
+        "q": "Sửa một chỗ có làm hỏng chỗ khác mà không ai biết không?",
+        "a": "Test tích hợp chạy app thật (REST + WebSocket + DB, đăng nhập thật): 9 test bắt đúng cả 3 app lỗi cố ý; docker compose up dựng app + Postgres 17, tin và phiên còn nguyên sau down/up",
+        "project": "P3"
+      },
+      {
+        "q": "Deploy bản mới có làm rớt người đang chat không?",
+        "a": "Không: SIGTERM → /ready 503, WebSocket đóng 1001 (không phải 1006 rớt mạng) để client nối lại, làm nốt request, đóng DB một lần; docker compose stop: 0,33 s, Exited (0)",
+        "project": "P3"
       }
     ],
     "promise": {
-      "headline": "Một server chat realtime bằng Node.js chạy thật trên trình duyệt, và bạn giải thích được handshake, frame và mọi sự kiện của một kết nối WebSocket.",
+      "headline": "Một server chat realtime bằng Node.js chạy thật trên trình duyệt, đưa lên mức sản phẩm với TypeScript, REST API và PostgreSQL — và bạn giải thích được từng lớp, từ handshake WebSocket tới transaction.",
       "outcomes": [
         {
           "title": "Một sản phẩm chạy được, từng phần",
-          "detail": "TeamPulse lõi chạy được: REST API tin nhắn + WebSocket gateway + giao diện chat web (P0–P1). P2 thêm 5 thành phần riêng, mỗi bài một server/module độc lập có test: heartbeat + reconnect, bản Socket.IO có room/ack, xác thực token, nhiều instance qua Redis, bộ test/đo tải — chưa ghép thành một server duy nhất; bạn hiểu đủ để tự ghép."
+          "detail": "TeamPulse lõi chạy được: REST API tin nhắn + WebSocket gateway + giao diện chat web (P0–P1). P2 thêm 5 thành phần production, mỗi bài một server/module độc lập có test: heartbeat + reconnect, Socket.IO room/ack, xác thực token, nhiều instance qua Redis, bộ test/đo tải. P3 viết lại bằng TypeScript và ghép thành sản phẩm: REST API Express + zod, PostgreSQL, lưu tin và đồng bộ khi kết nối lại, đăng nhập, Docker, CI."
         },
         {
           "title": "Nền Node.js vững",
@@ -87,11 +122,15 @@
           "detail": "Kết nối chết im lặng, reconnect có jitter, ack, xác thực trước handshake, Redis pub/sub, đo p99 — kèm số liệu đo thật."
         },
         {
+          "title": "Backend như ở công ty",
+          "detail": "TypeScript strict với tsc --noEmit, REST API Express 5 + zod (status đúng nghĩa, lỗi theo từng trường, phân trang cursor), PostgreSQL với migration, truy vấn tham số, transaction; test bằng PGlite, chạy thật với Docker."
+        },
+        {
           "title": "Sẵn sàng đi làm và phỏng vấn",
-          "detail": "93 câu hỏi phỏng vấn Node/realtime đã luyện; đọc được code WebSocket/Socket.IO của công ty, tự viết test và debug bằng DevTools, log."
+          "detail": "146 câu hỏi phỏng vấn Node/realtime/backend đã luyện; đọc được code TypeScript, Express, SQL và WebSocket/Socket.IO của công ty, tự viết test và debug bằng DevTools, log."
         }
       ],
-      "note": "Dành cho người đã học một khóa Python (biến, hàm, if/for, list/dict, class) và biết chút HTML/CSS. Chưa quen JavaScript: bắt đầu từ N00 — không cần biết trước Node hay mạng máy tính."
+      "note": "Dành cho người đã học một khóa Python (biến, hàm, if/for, list/dict, class; SQL cơ bản cho P3) và biết chút HTML/CSS. Chưa quen JavaScript: bắt đầu từ N00 — không cần biết trước Node, mạng máy tính hay TypeScript (P3 dạy từ đầu)."
     }
   },
   "concept_groups": [
@@ -122,6 +161,14 @@
     {
       "id": "quality",
       "title": "Test & debug"
+    },
+    {
+      "id": "typescript",
+      "title": "TypeScript"
+    },
+    {
+      "id": "data",
+      "title": "Cơ sở dữ liệu"
     }
   ],
   "concepts": [
@@ -364,6 +411,201 @@
       "id": "realtime-common-bugs",
       "title": "Lỗi realtime hay gặp",
       "group": "quality"
+    },
+    {
+      "id": "ts-why-static-types",
+      "title": "Vì sao cần kiểu tĩnh",
+      "group": "typescript"
+    },
+    {
+      "id": "ts-interface-type",
+      "title": "interface / type alias",
+      "group": "typescript"
+    },
+    {
+      "id": "ts-union-narrowing",
+      "title": "Union, thu hẹp kiểu",
+      "group": "typescript"
+    },
+    {
+      "id": "ts-unknown-vs-any",
+      "title": "unknown thay any, dữ liệu từ mạng",
+      "group": "typescript"
+    },
+    {
+      "id": "ts-generics",
+      "title": "Generic cơ bản",
+      "group": "typescript"
+    },
+    {
+      "id": "ts-type-stripping",
+      "title": "Node chạy .ts, tsc kiểm kiểu",
+      "group": "typescript"
+    },
+    {
+      "id": "rest-design",
+      "title": "Thiết kế REST: tài nguyên, verb, status",
+      "group": "http"
+    },
+    {
+      "id": "http-idempotency",
+      "title": "Idempotency của method HTTP",
+      "group": "http"
+    },
+    {
+      "id": "pagination-cursor",
+      "title": "Phân trang offset vs cursor",
+      "group": "http"
+    },
+    {
+      "id": "express-middleware",
+      "title": "Express: router, middleware",
+      "group": "http"
+    },
+    {
+      "id": "express-error-handler",
+      "title": "Middleware xử lý lỗi",
+      "group": "http"
+    },
+    {
+      "id": "zod-validation",
+      "title": "Kiểm tra dữ liệu bằng zod",
+      "group": "http"
+    },
+    {
+      "id": "postgres-vs-sqlite",
+      "title": "PostgreSQL vs SQLite",
+      "group": "data"
+    },
+    {
+      "id": "sql-schema-constraints",
+      "title": "Schema, khóa ngoại, ràng buộc",
+      "group": "data"
+    },
+    {
+      "id": "db-migrations",
+      "title": "Migration bằng file SQL",
+      "group": "data"
+    },
+    {
+      "id": "sql-injection-params",
+      "title": "Tham số $1, SQL injection",
+      "group": "data"
+    },
+    {
+      "id": "db-interface-di",
+      "title": "Interface Db, tiêm phụ thuộc",
+      "group": "data"
+    },
+    {
+      "id": "sql-transactions",
+      "title": "Transaction: BEGIN/COMMIT/ROLLBACK",
+      "group": "data"
+    },
+    {
+      "id": "delivery-guarantees",
+      "title": "At-most/at-least/exactly-once",
+      "group": "realtime"
+    },
+    {
+      "id": "idempotent-insert",
+      "title": "INSERT ON CONFLICT chống trùng",
+      "group": "data"
+    },
+    {
+      "id": "server-ordered-ids",
+      "title": "Id thứ tự do server cấp",
+      "group": "data"
+    },
+    {
+      "id": "reconnect-catch-up",
+      "title": "Gửi bù theo lastSeenId",
+      "group": "realtime"
+    },
+    {
+      "id": "password-hashing-scrypt",
+      "title": "Băm mật khẩu scrypt + salt",
+      "group": "security"
+    },
+    {
+      "id": "session-cookie",
+      "title": "Session trong cookie HttpOnly",
+      "group": "security"
+    },
+    {
+      "id": "csrf-samesite",
+      "title": "CSRF, SameSite, kiểm Origin",
+      "group": "security"
+    },
+    {
+      "id": "login-rate-limit",
+      "title": "Giới hạn đăng nhập sai",
+      "group": "security"
+    },
+    {
+      "id": "session-vs-jwt",
+      "title": "Session hay JWT",
+      "group": "security"
+    },
+    {
+      "id": "testing-pyramid",
+      "title": "Kim tự tháp test: đơn vị, tích hợp, e2e",
+      "group": "quality"
+    },
+    {
+      "id": "integration-test-db",
+      "title": "Test tích hợp với DB thật (PGlite)",
+      "group": "quality"
+    },
+    {
+      "id": "test-fixtures-isolation",
+      "title": "Fixture và cô lập test",
+      "group": "quality"
+    },
+    {
+      "id": "docker-image-container",
+      "title": "Dockerfile, image và container",
+      "group": "ops"
+    },
+    {
+      "id": "docker-compose-healthcheck",
+      "title": "Docker Compose, healthcheck, depends_on",
+      "group": "ops"
+    },
+    {
+      "id": "twelve-factor-config",
+      "title": "Cấu hình qua biến môi trường (12-factor)",
+      "group": "ops"
+    },
+    {
+      "id": "ci-github-actions",
+      "title": "CI với GitHub Actions",
+      "group": "quality"
+    },
+    {
+      "id": "secrets-vs-env",
+      "title": "Secrets và biến env trong CI",
+      "group": "security"
+    },
+    {
+      "id": "config-fail-fast",
+      "title": "Kiểm cấu hình lúc khởi động (fail fast)",
+      "group": "ops"
+    },
+    {
+      "id": "health-readiness",
+      "title": "Liveness /health và readiness /ready",
+      "group": "ops"
+    },
+    {
+      "id": "graceful-shutdown",
+      "title": "Tắt êm khi SIGTERM",
+      "group": "ops"
+    },
+    {
+      "id": "deploy-options",
+      "title": "Chọn nơi triển khai, nginx cho WebSocket",
+      "group": "ops"
     }
   ],
   "concept_edges": [
@@ -650,6 +892,226 @@
     [
       "websocket-what-why",
       "websocket-handshake"
+    ],
+    [
+      "js-errors-json",
+      "ts-why-static-types"
+    ],
+    [
+      "ts-why-static-types",
+      "ts-interface-type"
+    ],
+    [
+      "js-objects-arrays",
+      "ts-interface-type"
+    ],
+    [
+      "ts-interface-type",
+      "ts-union-narrowing"
+    ],
+    [
+      "message-protocol",
+      "ts-union-narrowing"
+    ],
+    [
+      "ts-union-narrowing",
+      "ts-unknown-vs-any"
+    ],
+    [
+      "ts-interface-type",
+      "ts-generics"
+    ],
+    [
+      "node-runtime",
+      "ts-type-stripping"
+    ],
+    [
+      "ts-why-static-types",
+      "ts-type-stripping"
+    ],
+    [
+      "http-routing-status",
+      "rest-design"
+    ],
+    [
+      "rest-design",
+      "http-idempotency"
+    ],
+    [
+      "rest-design",
+      "pagination-cursor"
+    ],
+    [
+      "http-server",
+      "express-middleware"
+    ],
+    [
+      "express-middleware",
+      "express-error-handler"
+    ],
+    [
+      "ts-unknown-vs-any",
+      "zod-validation"
+    ],
+    [
+      "zod-validation",
+      "express-error-handler"
+    ],
+    [
+      "ack-retry-idempotency",
+      "http-idempotency"
+    ],
+    [
+      "postgres-vs-sqlite",
+      "sql-schema-constraints"
+    ],
+    [
+      "sql-schema-constraints",
+      "db-migrations"
+    ],
+    [
+      "sql-schema-constraints",
+      "sql-injection-params"
+    ],
+    [
+      "ts-interface-type",
+      "db-interface-di"
+    ],
+    [
+      "db-interface-di",
+      "sql-transactions"
+    ],
+    [
+      "sql-injection-params",
+      "sql-transactions"
+    ],
+    [
+      "pagination-cursor",
+      "sql-injection-params"
+    ],
+    [
+      "ack-retry-idempotency",
+      "delivery-guarantees"
+    ],
+    [
+      "delivery-guarantees",
+      "idempotent-insert"
+    ],
+    [
+      "sql-schema-constraints",
+      "idempotent-insert"
+    ],
+    [
+      "sql-schema-constraints",
+      "server-ordered-ids"
+    ],
+    [
+      "server-ordered-ids",
+      "reconnect-catch-up"
+    ],
+    [
+      "offline-queue",
+      "reconnect-catch-up"
+    ],
+    [
+      "pagination-cursor",
+      "reconnect-catch-up"
+    ],
+    [
+      "hmac-token",
+      "password-hashing-scrypt"
+    ],
+    [
+      "password-hashing-scrypt",
+      "session-cookie"
+    ],
+    [
+      "ws-auth-token",
+      "session-cookie"
+    ],
+    [
+      "db-interface-di",
+      "session-cookie"
+    ],
+    [
+      "session-cookie",
+      "csrf-samesite"
+    ],
+    [
+      "origin-cswsh",
+      "csrf-samesite"
+    ],
+    [
+      "express-middleware",
+      "login-rate-limit"
+    ],
+    [
+      "session-cookie",
+      "session-vs-jwt"
+    ],
+    [
+      "hmac-token",
+      "session-vs-jwt"
+    ],
+    [
+      "ws-testing-debugging",
+      "integration-test-db"
+    ],
+    [
+      "deterministic-waits",
+      "integration-test-db"
+    ],
+    [
+      "testing-pyramid",
+      "integration-test-db"
+    ],
+    [
+      "integration-test-db",
+      "test-fixtures-isolation"
+    ],
+    [
+      "docker-image-container",
+      "docker-compose-healthcheck"
+    ],
+    [
+      "twelve-factor-config",
+      "docker-compose-healthcheck"
+    ],
+    [
+      "twelve-factor-config",
+      "config-fail-fast"
+    ],
+    [
+      "integration-test-db",
+      "ci-github-actions"
+    ],
+    [
+      "docker-image-container",
+      "ci-github-actions"
+    ],
+    [
+      "ci-github-actions",
+      "secrets-vs-env"
+    ],
+    [
+      "docker-compose-healthcheck",
+      "health-readiness"
+    ],
+    [
+      "health-readiness",
+      "graceful-shutdown"
+    ],
+    [
+      "horizontal-scaling",
+      "graceful-shutdown"
+    ],
+    [
+      "graceful-shutdown",
+      "deploy-options"
+    ],
+    [
+      "secrets-vs-env",
+      "deploy-options"
     ]
   ],
   "product_map": {
@@ -705,6 +1167,46 @@
       {
         "id": "testing",
         "title": "Test & đo tải"
+      },
+      {
+        "id": "typed-protocol",
+        "title": "Giao thức có kiểu (TypeScript)"
+      },
+      {
+        "id": "rest-express",
+        "title": "REST API Express + zod"
+      },
+      {
+        "id": "database",
+        "title": "PostgreSQL + migration"
+      },
+      {
+        "id": "message-store",
+        "title": "Lưu tin & đồng bộ lại"
+      },
+      {
+        "id": "accounts",
+        "title": "Tài khoản & phiên đăng nhập"
+      },
+      {
+        "id": "integration-tests",
+        "title": "Test tích hợp REST + WS + DB"
+      },
+      {
+        "id": "container",
+        "title": "Docker image + Compose"
+      },
+      {
+        "id": "ci-pipeline",
+        "title": "CI GitHub Actions"
+      },
+      {
+        "id": "ops-health",
+        "title": "Health, readiness, tắt êm"
+      },
+      {
+        "id": "deploy",
+        "title": "Triển khai (PaaS / VPS + nginx)"
       }
     ],
     "edges": [
@@ -767,6 +1269,86 @@
       [
         "ws-gateway",
         "testing"
+      ],
+      [
+        "chat-protocol",
+        "typed-protocol"
+      ],
+      [
+        "typed-protocol",
+        "rest-express"
+      ],
+      [
+        "rest-api",
+        "rest-express"
+      ],
+      [
+        "rest-express",
+        "database"
+      ],
+      [
+        "database",
+        "message-store"
+      ],
+      [
+        "message-store",
+        "ws-gateway"
+      ],
+      [
+        "message-store",
+        "rest-express"
+      ],
+      [
+        "database",
+        "accounts"
+      ],
+      [
+        "accounts",
+        "auth"
+      ],
+      [
+        "accounts",
+        "rest-express"
+      ],
+      [
+        "testing",
+        "integration-tests"
+      ],
+      [
+        "rest-api",
+        "integration-tests"
+      ],
+      [
+        "ws-gateway",
+        "integration-tests"
+      ],
+      [
+        "integration-tests",
+        "ci-pipeline"
+      ],
+      [
+        "container",
+        "ci-pipeline"
+      ],
+      [
+        "ws-gateway",
+        "ops-health"
+      ],
+      [
+        "ci-pipeline",
+        "deploy"
+      ],
+      [
+        "container",
+        "deploy"
+      ],
+      [
+        "ops-health",
+        "deploy"
+      ],
+      [
+        "database",
+        "integration-tests"
       ]
     ]
   },
@@ -905,6 +1487,72 @@
           "id": "N09-test-debug-realtime",
           "title": "Test & debug ứng dụng realtime",
           "goal": "Tự viết test bắt được 4 bug, đo tải p50/p95/p99, debug bằng log; qua hết test.",
+          "status": "ready"
+        }
+      ]
+    },
+    {
+      "id": "P3",
+      "title": "TeamPulse thành sản phẩm thật",
+      "track": "Vận hành",
+      "brief": {
+        "goal": "Đưa TeamPulse từ bản demo lên sản phẩm chạy thật: code có kiểu, REST API chuẩn, dữ liệu bền trong PostgreSQL, tin không mất khi rớt mạng, đăng nhập thật, test tích hợp, Docker và CI.",
+        "deliverable": "Một server TeamPulse duy nhất, lớn dần qua 7 bài, viết bằng TypeScript: giao thức tin có kiểu và tsc chặn lỗi trước khi chạy (N10), REST API Express 5 + zod cho kênh và tin nhắn có phân trang cursor (N11), lưu trên PostgreSQL với migration, truy vấn tham số và transaction (N12), lưu tin WebSocket và gửi bù khi kết nối lại (N13), đăng nhập mật khẩu băm + session dùng chung cho REST và WebSocket (N14), test tích hợp có đăng nhập + Docker Compose cho chính app đó (N15), cấu hình kiểm tra, /health + /ready, tắt êm, CI GitHub Actions và checklist triển khai (N16).",
+        "promise": "Sau 7 bài, bạn làm được phần backend như ở công ty: đọc và viết TypeScript, thiết kế REST API trả đúng mã lỗi kèm chi tiết từng trường, viết SQL an toàn trước injection, thay đổi schema bằng migration, giữ dữ liệu nhất quán bằng transaction, lưu tin và gửi bù khi kết nối lại, làm đăng nhập an toàn — rồi đưa TeamPulse vào Docker, chạy test trên CI và tắt server êm khi triển khai bản mới.",
+        "can_do": [
+          "Viết và đọc TypeScript ở code công ty: interface, union phân biệt theo type, unknown + thu hẹp kiểu, generic; tsc --noEmit chặn lỗi trước khi chạy",
+          "Thiết kế REST API bằng Express 5 + zod: status đúng nghĩa, lỗi 400 chỉ ra từng trường, phân trang cursor, error handler không lộ chi tiết",
+          "Làm việc với PostgreSQL từ Node: schema có ràng buộc, migration bằng file SQL, truy vấn tham số chống SQL injection, transaction trên một kết nối",
+          "Lưu tin WebSocket và gửi bù khi kết nối lại không trùng không sót; đăng nhập bằng mật khẩu băm scrypt, session cookie HttpOnly dùng chung cho REST lẫn WebSocket, hiểu khi nào chọn JWT",
+          "Viết test tích hợp HTTP + WebSocket + database có đăng nhập thật, đóng gói bằng Docker Compose, thêm /health + /ready và tắt êm khi SIGTERM, chạy typecheck + test + migration trên GitHub Actions"
+        ],
+        "showcase": {
+          "caption": "Chạy thật, từ TypeScript tới CI và tắt êm",
+          "markdown": "```output\n$ npx tsc --noEmit -p .          # N10 — cùng hàm totalPrice, bản JS chạy ra NaN; bản TS bị chặn trước khi chạy\ncart.ts(10,19): error TS2551: Property 'prise' does not exist on type 'CartItem'. Did you mean 'price'?\ncart.ts(15,27): error TS2322: Type 'string' is not assignable to type 'number'.\n$ npm run typecheck              # N10 — report.ts \"kế thừa\": 4 lỗi → sửa → 0 lỗi\nreport.ts(32,10): error TS2532: Object is possibly 'undefined'.\n\n$ npm run demo                   # N11 — Express 5 + zod\nPOST   /channels                              → 201 (Location: /channels/1) {\"id\":1,\"name\":\"general\",...}\nPOST   /channels                              → 409 {\"error\":\"channel_exists\"}\nPOST   /channels/1/messages                   → 400 {\"error\":\"validation_failed\",\"in\":\"body\",\"details\":[{\"field\":\"author\",...},{\"field\":\"text\",...}]}\nGET    /channels/1/messages?limit=2           → 200 items: id [6,5], nextBefore: 5\nGET    /channels/1/messages?limit=2&before=5  → 200 items: id [4,3], nextBefore: 3\n\n$ npm run demo                   # N12 — PostgreSQL (PGlite)\nmigrate lần 1: [ '001_init.sql', '002_channel_topic.sql' ]\nmigrate lần 2: []\ntìm \"%' OR 1=1 --\" ghép chuỗi: [ 'Deploy lúc 10h', 'Ok, deploy xong báo nhé', 'Bảng lương tháng 10 (mật)' ]\ntìm \"%' OR 1=1 --\" tham số $2: []\ntạo #qa : mất kết nối tới DB      ← transaction ROLLBACK, không còn kênh mồ côi\n\n# N13 — npm run demo (PGlite)\nAn gửi an-2     → ack id=2 duplicate=true (gửi lại, không lưu thêm)\nBinh hello(1)   → bù: [ '#2 Build #41 xanh' ] (lỡ khi offline)\nREST POST       → 201 | Binh ← message #5 Chi: Mình review (clientMsgId null)\n# N14 — npm run demo (PGlite, đồng hồ giả)\n10 lần đoán binh_tran CÙNG LÚC     → {\"401\":5,\"429\":5}\nPOST tin, author tự khai giam_doc  → 201 {... \"author\":\"an_le\" ...}\nWebSocket đang mở                  → đóng 4001 logged_out\n# N15 — npm test (test tích hợp của bạn, đăng nhập thật bằng route N14, chạy với app đúng + 3 app lỗi); docker compose up: app + Postgres 17\nℹ tests 9  ℹ pass 9  — app lỗi 'WS không lưu DB' → ✖ tin gửi qua WebSocket được lưu vào DB (GET thấy)\napp-1  | DB: PostgreSQL db:5432; migration vừa áp: (không có — DB đã đủ)   ← sau down/up, tin nhắn và phiên đăng nhập còn nguyên\n# N16 — docker compose stop app khi có người đang chat: trước ws đóng 1006; sau tắt êm ws đóng 1001; cả hai Exited (0), 0.33 s\n{\"msg\":\"shutdown: bắt đầu (SIGTERM)\"} … {\"msg\":\"shutdown: đã đóng DB\"} … {\"msg\":\"đã tắt êm\",\"signal\":\"SIGTERM\"}\nPostgreSQL localhost:55432: không có migration mới   ← CI chạy npm run migrate lần hai trên Postgres thật\n```"
+        },
+        "cv_line": "Chuyển server chat realtime (Node.js) sang TypeScript strict và xây REST API Express 5 + zod (lỗi 400 theo từng trường, phân trang cursor); PostgreSQL với migration SQL, truy vấn tham số và transaction; đồng bộ tin WebSocket khi kết nối lại; đăng nhập scrypt + session cookie cho cả REST và WebSocket; test tích hợp trên PGlite, Docker Compose với Postgres, CI GitHub Actions, health/readiness và graceful shutdown."
+      },
+      "lessons": [
+        {
+          "id": "N10-typescript-co-ban",
+          "title": "TypeScript cho người biết JS",
+          "goal": "Viết giao thức tin nhắn TeamPulse bằng TypeScript: union theo type, unknown + thu hẹp kiểu, generic; tsc bắt lỗi trước khi chạy; qua hết test.",
+          "status": "ready"
+        },
+        {
+          "id": "N11-rest-api-express",
+          "title": "REST API với Express + kiểm tra dữ liệu",
+          "goal": "Thiết kế REST cho kênh và tin nhắn, viết bằng Express 5 + zod: phân trang cursor, lỗi 400 có chi tiết từng trường, middleware xử lý lỗi; qua hết test.",
+          "status": "ready"
+        },
+        {
+          "id": "N12-postgresql-voi-node",
+          "title": "PostgreSQL với Node",
+          "goal": "Schema users/channels/messages, migration bằng file SQL, truy vấn tham số $1 chống SQL injection, transaction; test bằng PGlite; qua hết test.",
+          "status": "ready"
+        },
+        {
+          "id": "N13-luu-tin-dong-bo",
+          "title": "Lưu tin nhắn & đồng bộ khi kết nối lại",
+          "goal": "Lưu tin WebSocket vào bảng messages của N12 (migration 003) với id do server cấp, chống trùng bằng ON CONFLICT, gửi bù theo lastSeenId không hở không trùng, tin REST của N11 cũng tới WebSocket; qua hết 12 test.",
+          "status": "ready"
+        },
+        {
+          "id": "N14-dang-nhap-session-jwt",
+          "title": "Đăng nhập: mật khẩu, session, JWT",
+          "goal": "Băm mật khẩu bằng scrypt + salt, đăng ký/đăng nhập/đăng xuất với session trong PostgreSQL (migration 004) và cookie HttpOnly, giới hạn lần thử đúng cả khi request song song, chặn CSRF, bắt đăng nhập cho REST N11 và WebSocket N13 bằng cùng phiên; so sánh session với JWT; qua hết 14 test.",
+          "status": "ready"
+        },
+        {
+          "id": "N15-test-tich-hop-docker",
+          "title": "Test tích hợp + Docker Compose",
+          "goal": "Fixture DB sạch, 3 test tích hợp HTTP + WS + PGlite có đăng nhập thật cho đúng app N11–N14, bắt 3 app lỗi; Dockerfile + Compose với Postgres.",
+          "status": "ready"
+        },
+        {
+          "id": "N16-ci-trien-khai",
+          "title": "CI và triển khai",
+          "goal": "Cùng app N11–N14: cấu hình zod fail fast, /health và /ready không cần đăng nhập, tắt êm khi SIGTERM (WS 1001), workflow GitHub Actions; checklist deploy.",
           "status": "ready"
         }
       ]

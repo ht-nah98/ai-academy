@@ -1,0 +1,172 @@
+{
+  "id": "N12-postgresql-voi-node",
+  "title": "PostgreSQL với Node",
+  "goal": "Đưa TeamPulse lên PostgreSQL: schema có ràng buộc, migration bằng file SQL, truy vấn tham số chống SQL injection, transaction trên một kết nối; test bằng PGlite; qua hết 8 test.",
+  "duration_min": 270,
+  "concepts": [
+    "postgres-vs-sqlite",
+    "sql-schema-constraints",
+    "db-migrations",
+    "sql-injection-params",
+    "db-interface-di",
+    "sql-transactions"
+  ],
+  "entry": "store.ts",
+  "checklist": [
+    "Giải thích khi nào chọn PostgreSQL, khi nào SQLite là đủ",
+    "Viết schema có khóa chính IDENTITY, NOT NULL, UNIQUE, CHECK, khóa ngoại ON DELETE CASCADE, index",
+    "Đọc mã lỗi Postgres 23505/23503/23514/23502 và biết API nên trả status gì",
+    "Viết bộ chạy migration: file đánh số, mỗi file một transaction, schema_migrations, chạy lại an toàn",
+    "Biết vì sao không sửa migration đã chạy",
+    "Giải thích SQL injection bằng ví dụ ' OR '1'='1 và --; luôn dùng $1, $2",
+    "Biết % và _ là ký tự đại diện trong LIKE kể cả khi qua tham số",
+    "Biết kiểu trả về: integer → number, bigint/count/numeric → string (pg), timestamptz → Date",
+    "Viết transaction đúng: một kết nối (pool.connect), ROLLBACK khi lỗi, release trong finally",
+    "Chạy được npm start với Postgres thật qua DATABASE_URL (tuỳ chọn, Docker)"
+  ],
+  "interview_questions": [
+    "PostgreSQL và SQLite khác nhau thế nào? Khi nào bạn chọn cái nào?",
+    "SQL injection là gì? Truy vấn có tham số chặn nó thế nào? Có thứ gì không truyền qua tham số được?",
+    "Migration là gì? Vì sao không sửa một migration đã chạy trên production?",
+    "Transaction là gì? Cho một ví dụ cần transaction trong ứng dụng chat.",
+    "Dùng pg.Pool thì viết transaction thế nào? Vì sao pool.query('BEGIN') là sai?",
+    "Khóa ngoại và ON DELETE CASCADE làm gì? Có nên để database kiểm tra dữ liệu khi API đã kiểm tra bằng zod?",
+    "Index là gì? Bạn đặt index nào cho truy vấn 'tin mới nhất của một kênh'?",
+    "Vì sao test dùng PGlite thay vì mock database? Giới hạn của cách này là gì?"
+  ],
+  "tutor_notes": "Bài PostgreSQL. Học viên biết SQL cơ bản (SELECT/JOIN/GROUP BY trên SQLite) từ khóa Python, chưa biết Postgres, migration, transaction trong code. Thứ tự làm: migrate trước (test riêng dùng thư mục tạm), rồi 001_init.sql (mọi test store cần cả hai). Lỗi hay gặp: (1) migrate: không sort tên file, đọc cả file không phải .sql, ghi version ngoài transaction, quên ROLLBACK khi lỗi (kết nối kẹt trong transaction hỏng → test 'kết nối vẫn dùng được' fail), nuốt lỗi thay vì ném lại, gửi cả file một lần (PGlite chỉ nhận một câu mỗi query → dùng splitStatements); (2) 001_init.sql: dùng serial/bigint (bigint ra string với pg; test cần integer), quên NOT NULL ở khóa ngoại, quên ON DELETE CASCADE, thiếu ^$ trong regex, quên ; cuối câu (splitStatements gộp hai câu); (3) createPgStore: ghép chuỗi vào SQL, quên đổi Date → ISO và snake_case → camelCase, listMessages sắp tăng dần, before undefined truyền vào params (phải null), bắt 23505 giữa transaction (dùng ON CONFLICT DO NOTHING), addMessage tạo user trùng; (4) searchMessages: ILIKE '%' || $2 || '%' không thoát % và _ (test '%' và '_'), quên lọc channel_id, quên q rỗng; (5) withTransaction: gọi BEGIN trên db thay vì conn, release ngoài finally hoặc hai lần, bọc lỗi thành Error mới (test cần đúng lỗi gốc); (6) createChannelWithWelcome: dùng createPgStore(db) thay vì (tx). Chạy thật: npm run migrate (PGlite .pgdata), npm start cổng 3112 cần workspace N11; EADDRINUSE → PORT=3113 / $env:PORT=3113. Postgres thật tuỳ chọn: docker run postgres:17-alpine + DATABASE_URL (bash export, PowerShell $env:). Làm hỏng .pgdata thì xoá thư mục đó. Không viết hộ thân hàm hay SQL schema.",
+  "tasks": [
+    {
+      "fn": "migrate",
+      "signature": "migrate(db: Db, dir: string): Promise<string[]>",
+      "summary": "File .sql theo tên, mỗi file một transaction, schema_migrations",
+      "example": "lần 1 → ['001_init.sql', '002_channel_topic.sql'], lần 2 → []",
+      "test_prefix": "migrate"
+    },
+    {
+      "fn": "001_init.sql",
+      "signature": "migrations/001_init.sql: users, channels, messages + index",
+      "summary": "IDENTITY, NOT NULL, UNIQUE, CHECK, khóa ngoại CASCADE",
+      "example": "INSERT tên kênh trùng → lỗi 23505",
+      "test_prefix": "001_init.sql"
+    },
+    {
+      "fn": "createPgStore",
+      "signature": "createPgStore(db: Db): ChatStore",
+      "summary": "ChatStore của N11 bằng SQL có tham số",
+      "example": "createChannel('general') lần 2 → null",
+      "test_prefix": "createPgStore"
+    },
+    {
+      "fn": "searchMessages",
+      "signature": "searchMessages(db, channelId, q): Promise<Message[]>",
+      "summary": "Tìm không phân biệt hoa thường, chống injection",
+      "example": "q = \"%' OR 1=1 --\" → []",
+      "test_prefix": "searchMessages"
+    },
+    {
+      "fn": "withTransaction",
+      "signature": "withTransaction<T>(db, fn: (tx) => Promise<T>): Promise<T>",
+      "summary": "BEGIN/COMMIT/ROLLBACK trên một kết nối, luôn release",
+      "example": "fn ném lỗi → ROLLBACK, ném lại đúng lỗi",
+      "test_prefix": "withTransaction"
+    },
+    {
+      "fn": "createChannelWithWelcome",
+      "signature": "createChannelWithWelcome(db, { name, owner })",
+      "summary": "Kênh + tin chào cùng có hoặc cùng không",
+      "example": "mất kết nối khi INSERT tin → không còn kênh",
+      "test_prefix": "createChannelWithWelcome"
+    }
+  ],
+  "brief": {
+    "context": "TeamPulse có REST API Express + zod (N11) đứng sau interface ChatStore, hiện lưu trong bộ nhớ. Các instance chạy song song từ N08.",
+    "problem": "Khởi động lại server là mất hết kênh và tin; mỗi instance một bản dữ liệu riêng; không có gì ngăn dữ liệu sai lọt vào từ script hay bug. Đội chọn PostgreSQL, cần schema có ràng buộc, cách thay đổi schema an toàn trên mọi máy, truy vấn không bị SQL injection, và các thao tác nhiều bước không để lại dữ liệu nửa vời.",
+    "requirements": [
+      {
+        "task": "migrate",
+        "purpose": "Mọi máy có cùng schema, chạy lại an toàn."
+      },
+      {
+        "task": "001_init.sql",
+        "purpose": "Database tự chặn dữ liệu sai."
+      },
+      {
+        "task": "createPgStore",
+        "purpose": "App N11 lưu bền, không sửa app.ts."
+      },
+      {
+        "task": "searchMessages",
+        "purpose": "Ô tìm kiếm không thành lỗ hổng."
+      },
+      {
+        "task": "withTransaction",
+        "purpose": "Nhiều câu cùng thành công hoặc cùng huỷ."
+      },
+      {
+        "task": "createChannelWithWelcome",
+        "purpose": "Không còn kênh mồ côi khi lỗi giữa chừng."
+      }
+    ],
+    "deliverable": "migrate.ts, 001_init.sql, store.ts qua 8/8 test trên PGlite; npm run typecheck 0 lỗi; npm run demo in đúng các dòng mẫu; npm start chạy app N11 trên PostgreSQL cổng 3112.",
+    "constraints": [
+      "Mọi giá trị trong SQL đi qua tham số $1, $2…; không ghép chuỗi.",
+      "Không sửa 002_channel_topic.sql; mỗi câu SQL kết thúc bằng ; ở cuối dòng.",
+      "Transaction chạy trên một kết nối (acquire), release trong finally.",
+      "Test không cần Postgres thật hay Docker."
+    ],
+    "product_nodes": [
+      "rest-express",
+      "database"
+    ],
+    "workflow": {
+      "flow": "chain",
+      "inputs": [
+        {
+          "label": "Interface ChatStore của N11",
+          "detail": "5 hàm kênh và tin nhắn"
+        },
+        {
+          "label": "Database",
+          "detail": "PGlite khi test, pg.Pool khi chạy thật"
+        }
+      ],
+      "steps": [
+        {
+          "task": "migrate",
+          "label": "Chạy migration theo thứ tự"
+        },
+        {
+          "task": "001_init.sql",
+          "label": "Schema ba bảng có ràng buộc"
+        },
+        {
+          "task": "createPgStore",
+          "label": "Store bằng SQL có tham số"
+        },
+        {
+          "task": "searchMessages",
+          "label": "Tìm kiếm chống injection"
+        },
+        {
+          "task": "withTransaction",
+          "label": "Transaction trên một kết nối"
+        },
+        {
+          "task": "createChannelWithWelcome",
+          "label": "Kênh kèm tin chào"
+        }
+      ],
+      "outputs": [
+        {
+          "label": "TeamPulse lưu bền",
+          "detail": "Khởi động lại vẫn còn tin"
+        },
+        {
+          "label": "Truy vấn an toàn",
+          "detail": "Tấn công OR 1=1 trả rỗng"
+        }
+      ]
+    }
+  }
+}

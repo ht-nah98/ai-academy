@@ -1,0 +1,18 @@
+# BẠN viết: workflow GitHub Actions cho TeamPulse (xem Bước 5 của bài).
+# Kiểm bằng: node --test --test-name-pattern="ci.yml" "../../curriculum/N16-ci-trien-khai/tests/*.test.js"
+#
+# Cần có (test chấm kiểm tra):
+# - Chạy khi push và khi có pull_request.
+# - Job "test" trên ubuntu-latest, có service postgres (image postgres:17-alpine, healthcheck pg_isready, cổng 5432).
+# - Các bước theo thứ tự: checkout → setup-node (Node 22, cache npm) → npm ci → npm run typecheck
+#   → npm run test:mine → npm run migrate (DATABASE_URL trỏ tới service postgres ở localhost:5432) → docker build.
+# - Job "deploy": chỉ chạy sau job test (needs), chỉ trên nhánh main (if), gọi deploy hook bằng curl với URL lấy từ
+#   secrets.DEPLOY_HOOK_URL — không ghi URL thật trong file.
+# - Thụt lề bằng dấu cách, không dùng tab (YAML cấm tab).
+#
+# Bài chấm đọc file như văn bản (không có thư viện YAML), theo các luật sau:
+# - Dòng bắt đầu bằng # bị bỏ qua; chú thích cuối dòng được phép, vd. "  test:   # job chính".
+# - Lệnh là giá trị của "run:": viết một dòng ("- run: npm ci") hoặc khối nhiều dòng ("run: |" rồi mỗi dòng thụt
+#   sâu hơn là một lệnh). Thứ tự các bước tính theo dòng xuất hiện đầu tiên của lệnh.
+# - Bài chấm KHÔNG kiểm được thụt lề có lồng đúng không: kiểm tra cuối cùng là chạy thật trên GitHub.
+name: CI

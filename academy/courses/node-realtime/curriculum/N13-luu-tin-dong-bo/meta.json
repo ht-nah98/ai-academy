@@ -1,0 +1,148 @@
+{
+  "id": "N13-luu-tin-dong-bo",
+  "title": "Lưu tin nhắn & đồng bộ khi kết nối lại",
+  "goal": "Lưu tin WebSocket vào bảng messages của N12 (migration 003) với id do server cấp, chống trùng bằng ON CONFLICT, gửi bù theo lastSeenId không hở không trùng, tin REST của N11 cũng tới WebSocket; qua hết 12 test.",
+  "duration_min": 240,
+  "concepts": [
+    "delivery-guarantees",
+    "idempotent-insert",
+    "server-ordered-ids",
+    "reconnect-catch-up"
+  ],
+  "entry": "chat-store.ts",
+  "checklist": [
+    "Giải thích vì sao tải lại trang mất lịch sử và người offline lỡ tin khi server không lưu",
+    "Nói bằng lời thường at-most-once, at-least-once, exactly-once effect; vì sao 'giao đúng một lần' không làm được qua mạng",
+    "Giải thích vì sao thêm migration 003 thay vì sửa 001 hay tạo bảng mới, và vì sao cùng một database chạy tiếp được từ N12",
+    "Giải thích vì sao một câu INSERT ... ON CONFLICT DO NOTHING an toàn hơn SELECT rồi INSERT",
+    "Biết id do server cấp tăng dần nhưng có lỗ (lần ghi bị bỏ qua vẫn tiêu số)",
+    "Giải thích vì sao phải lưu xong rồi mới phát tin cho kênh",
+    "Vẽ được tình huống hở và trùng lúc chuyển từ gửi bù sang trực tiếp, và cách hàng đợi + lọc id sửa nó",
+    "Giải thích cách bọc ChatStore để tin REST tới WebSocket mà không sửa app N11",
+    "Chạy npm run demo, đọc được dòng duplicate=true và vì sao id nhảy từ 2 sang 4",
+    "npm run typecheck sạch và qua hết test của bài"
+  ],
+  "interview_questions": [
+    "Làm sao để tin chat không mất và không trùng khi mạng chập chờn?",
+    "At-most-once, at-least-once, exactly-once khác nhau thế nào? Exactly-once có làm được không?",
+    "Idempotency key là gì? Bạn cài nó ở tầng database thế nào?",
+    "Vì sao id thứ tự tin nhắn nên do server cấp, không dùng timestamp của client?",
+    "Client kết nối lại thì đồng bộ tin bị lỡ thế nào? Lúc chuyển từ gửi bù sang trực tiếp có thể sai ở đâu?",
+    "Thay đổi schema của database đang chạy thế nào cho an toàn?",
+    "Vì sao không nên phát tin cho người khác trước khi ghi xong vào database?"
+  ],
+  "tutor_notes": "Học viên đã có N10 (TypeScript), N11 (Express 5 + zod, ChatStore, createApp(store)), N12 (PostgreSQL, Db, acquire, migrate, schema users/channels/messages). Workspace là app N11+N12 (lời giải hai bài, có sẵn) cộng migration 003 (client_msg_id + UNIQUE (channel_id, user_id, client_msg_id)); chat-store.ts có sẵn kiểu ChatMessage, rowToChatMessage, CHAT_MESSAGE_COLUMNS, schema zod, createChatServer. Cùng một database chạy tiếp được: DATABASE_URL còn từ N12 thì migrate chỉ áp 003 — đúng, không phải lỗi. Nhấn mạnh: lưu xong mới ack/phát; chống trùng bằng chỉ mục duy nhất chứ không bằng SELECT trước; id tăng dần nhưng có lỗ; exactly-once chỉ là 'hiệu quả'. Lỗi hay gặp: (1) saveMessage: ghép chuỗi SQL, SELECT trước rồi INSERT, ON CONFLICT sai bộ cột (phải đúng 3 cột của chỉ mục), quên đọc lại tin cũ khi RETURNING rỗng, trả author là user_id, bắt lỗi 23503; (2) messagesAfter: quên ORDER BY id, quên lọc kênh, viết điều kiện kiểu '$2 < id' (test nhận câu đọc bù theo dạng 'id > $n'); (3) attachChat: phát trước khi await saveMessage, phát lại khi duplicate, ghi đè ws.user có sẵn bằng hello.user, vào kênh ở cuối hello (test gap đỏ), gửi tin trực tiếp trong lúc đang bù (test trùng đỏ), chỉ gọi messagesAfter một lần (test 130 tin đỏ), gửi synced trước khi xả hàng đợi; (4) withBroadcast: phát trước khi lưu xong, quên thêm clientMsgId: null, dùng spread {...store} rồi quên bọc addMessage. Test gap/trùng dùng Db bọc ngoài giữ câu đọc bù (SQL có 'id > $n') đầu tiên sau hello. Gợi ý chạy riêng test: `node --test --test-name-pattern=\"saveMessage\" \"../../curriculum/N13-luu-tin-dong-bo/tests/*.test.js\"`. EADDRINUSE → bash `PORT=3013 npm start`, PowerShell `$env:PORT=3013; npm start`. Không viết hộ thân hàm.",
+  "tasks": [
+    {
+      "fn": "saveMessage",
+      "signature": "saveMessage(db, { channelId, author, clientMsgId, text }) → Promise<{ message, duplicate }>",
+      "summary": "Một câu INSERT chống trùng; trùng → tin cũ",
+      "example": "gửi lại 'an-2' → { message: { id: 2, ... }, duplicate: true }",
+      "test_prefix": "saveMessage"
+    },
+    {
+      "fn": "messagesAfter",
+      "signature": "messagesAfter(db, channelId, afterId, limit = 100) → Promise<ChatMessage[]>",
+      "summary": "Tin của kênh có id > afterId, id tăng dần",
+      "example": "messagesAfter(db, 1, 1) → [#2, #4]",
+      "test_prefix": "messagesAfter"
+    },
+    {
+      "fn": "attachChat",
+      "signature": "attachChat(wss, db) → ChatHub",
+      "summary": "hello → gửi bù → synced; chat → lưu → ack → phát",
+      "example": "hello { lastSeenId: 1 } → message #2, message #4, synced",
+      "test_prefix": "attachChat"
+    },
+    {
+      "fn": "withBroadcast",
+      "signature": "withBroadcast(store, hub) → ChatStore",
+      "summary": "Tin POST qua REST cũng tới WebSocket",
+      "example": "POST /channels/1/messages → WebSocket nhận message #5",
+      "test_prefix": "withBroadcast"
+    }
+  ],
+  "brief": {
+    "context": "TeamPulse có chat realtime (P2), REST + PostgreSQL (N11–N12) với bảng users/channels/messages. Tin REST đã được lưu, tin WebSocket thì chưa.",
+    "problem": "Người dùng phàn nàn: tải lại trang là mất tin chat, đi họp về thì lỡ hết tin, mạng 4G chập chờn làm tin hiện hai lần, và tin gửi từ bot qua REST không hiện cho người đang mở chat. Đội cần mọi tin vào cùng bảng messages với thứ tự do server quyết định, gửi lại không sinh tin đôi, kết nối lại nhận bù đủ tin bị lỡ rồi mới nhận tin trực tiếp — mà không sửa app REST của N11 và không phá schema N12.",
+    "requirements": [
+      {
+        "task": "saveMessage",
+        "purpose": "Lưu bền, gửi lại không tạo tin đôi."
+      },
+      {
+        "task": "messagesAfter",
+        "purpose": "Đọc tin bị lỡ theo đúng thứ tự."
+      },
+      {
+        "task": "attachChat",
+        "purpose": "Gửi bù không hở, không trùng; lưu xong mới phát."
+      },
+      {
+        "task": "withBroadcast",
+        "purpose": "REST và WebSocket chung một luồng phát."
+      }
+    ],
+    "deliverable": "chat-store.ts qua 12/12 test, npm run typecheck sạch; npm run demo cho thấy gửi lại → duplicate=true (5 lần gửi, 4 dòng), Binh hello(1) nhận bù đúng tin bị lỡ, tin POST qua REST tới WebSocket ngay.",
+    "constraints": [
+      "Nối tiếp schema N12 bằng migration 003.",
+      "Truy vấn có tham số $1..$n, không ghép chuỗi.",
+      "Chống trùng bằng chỉ mục duy nhất + ON CONFLICT.",
+      "Lưu xong mới ack và phát tin."
+    ],
+    "product_nodes": [
+      "message-store",
+      "ws-gateway",
+      "database"
+    ],
+    "workflow": {
+      "flow": "chain",
+      "inputs": [
+        {
+          "label": "Tin chat có clientMsgId",
+          "detail": "{type, clientMsgId, text}"
+        },
+        {
+          "label": "hello khi kết nối lại",
+          "detail": "{channelId, user, lastSeenId}"
+        },
+        {
+          "label": "POST tin qua REST",
+          "detail": "/channels/:id/messages của N11"
+        }
+      ],
+      "steps": [
+        {
+          "task": "saveMessage",
+          "label": "Lưu, chống trùng"
+        },
+        {
+          "task": "messagesAfter",
+          "label": "Đọc tin sau lastSeenId"
+        },
+        {
+          "task": "attachChat",
+          "label": "Gửi bù, ack, phát"
+        },
+        {
+          "task": "withBroadcast",
+          "label": "REST cũng phát WebSocket"
+        }
+      ],
+      "outputs": [
+        {
+          "label": "ack có id server cấp",
+          "detail": "duplicate: true khi gửi lại"
+        },
+        {
+          "label": "Tin bù rồi synced",
+          "detail": "Không hở, không trùng"
+        },
+        {
+          "label": "Tin REST tới WebSocket",
+          "detail": "clientMsgId: null"
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "name": "teampulse-n11",
+  "private": true,
+  "type": "module",
+  "description": "TeamPulse — bài N11: REST API với Express 5 + zod",
+  "scripts": {
+    "start": "node server.ts",
+    "demo": "node demo.ts",
+    "typecheck": "tsc --noEmit -p .",
+    "test": "node --test \"../../curriculum/N11-rest-api-express/tests/*.test.js\""
+  }
+}

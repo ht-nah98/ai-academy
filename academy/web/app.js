@@ -80,8 +80,8 @@ matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { if
 /* ---------- Markdown → UI (callout, mermaid, code + kết quả) ---------- */
 const CALLOUTS = [["💡", "tip"], ["⚠️", "warn"], ["⚠", "warn"], ["🧠", "remember"], ["🎯", "interview"], ["⚖️", "compare"], ["⚖", "compare"]];
 const LANG = { py: "python", python: "python", python3: "python", sh: "bash", bash: "bash", shell: "bash", console: "bash", zsh: "bash", json: "json",
-  js: "javascript", javascript: "javascript", mjs: "javascript", cjs: "javascript", node: "javascript", html: "xml", xml: "xml" };
-const LANG_LABEL = { python: "Python", bash: "Terminal", json: "JSON", javascript: "JavaScript", xml: "HTML" };
+  js: "javascript", javascript: "javascript", mjs: "javascript", cjs: "javascript", node: "javascript", ts: "typescript", typescript: "typescript", tsx: "typescript", html: "xml", xml: "xml" };
+const LANG_LABEL = { python: "Python", bash: "Terminal", json: "JSON", javascript: "JavaScript", typescript: "TypeScript", xml: "HTML" };
 let mermaidReady = false;
 function initMermaid() {
   if (!window.mermaid) return;

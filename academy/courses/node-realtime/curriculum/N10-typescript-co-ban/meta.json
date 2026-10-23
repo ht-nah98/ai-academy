@@ -1,0 +1,141 @@
+{
+  "id": "N10-typescript-co-ban",
+  "title": "TypeScript cho người biết JS",
+  "goal": "Viết giao thức tin nhắn TeamPulse bằng TypeScript: union phân biệt theo type, unknown + thu hẹp kiểu, generic; sửa code cũ theo lỗi tsc; qua hết 6 test.",
+  "duration_min": 210,
+  "concepts": [
+    "ts-why-static-types",
+    "ts-interface-type",
+    "ts-union-narrowing",
+    "ts-unknown-vs-any",
+    "ts-generics",
+    "ts-type-stripping"
+  ],
+  "entry": "protocol.ts",
+  "checklist": [
+    "Giải thích được vì sao bản JS của totalPrice ra NaN còn bản TS bị tsc chặn trước khi chạy",
+    "Biết node file.ts chỉ xoá kiểu, không kiểm tra; kiểm kiểu bằng npm run typecheck",
+    "Đọc được một dòng lỗi tsc: file(dòng,cột), mã TSxxxx, lý do",
+    "Viết được interface, type union, trường không bắt buộc ?",
+    "Thu hẹp kiểu bằng typeof, in, và switch trên trường phân biệt type",
+    "Dùng never ở nhánh default để tsc báo khi thêm loại tin mới",
+    "Nhận JSON từ mạng bằng unknown rồi kiểm tra; biết vì sao any và as không an toàn",
+    "Viết được hàm generic <T> giữ đúng kiểu kết quả",
+    "Biết vì sao không dùng enum/namespace/parameter properties và dùng gì thay; luôn import type cho kiểu"
+  ],
+  "interview_questions": [
+    "TypeScript khác JavaScript ở đâu? Kiểu còn tồn tại lúc chạy không?",
+    "any và unknown khác nhau thế nào? Bạn nhận JSON từ API bằng kiểu gì?",
+    "Discriminated union là gì? Dùng never để kiểm tra switch đủ nhánh thế nào?",
+    "interface và type alias khác nhau thế nào? Bạn chọn cái nào khi nào?",
+    "Generic giải quyết vấn đề gì? Cho một ví dụ trong thư viện chuẩn.",
+    "Node 22 chạy được file .ts trực tiếp: nó làm gì và không làm gì? Vì sao vẫn cần tsc --noEmit?",
+    "strict trong tsconfig bật những gì? Vì sao dự án nên bật?",
+    "Ép kiểu bằng as và non-null assertion ! nguy hiểm ở đâu?"
+  ],
+  "tutor_notes": "Bài đầu P3, lần đầu học viên gặp TypeScript. Nhấn mạnh hai việc tách rời: node file.ts chỉ xoá kiểu (chạy được không có nghĩa là đúng kiểu), npm run typecheck mới kiểm tra. Lỗi hay gặp: (1) parseClientMessage: dùng any hoặc `JSON.parse(raw) as ClientMessage` (không kiểm tra gì), quên `data === null` vì typeof null === 'object', quên Array.isArray, giữ khóa thừa, so type phân biệt hoa thường sai ('JOIN' phải là unknown_type), kiểm tra độ dài trước khi trim; (2) describeServerMessage: lấy giờ địa phương (getHours) thay vì UTC, không đệm 2 chữ số, default trả chuỗi rỗng thay vì gán never; (3) groupBy: dùng Object.groupBy (object prototype null → deepEqual fail) hoặc Map (test cần object thường), sửa mảng gốc, sao chép phần tử; (4) report.ts: 'sửa' bằng `!`, `as`, `any`, @ts-ignore hoặc tắt strict — test cấm và tin của userId 9 vẫn làm sập; lỗi pad2 nhận number: đổi sang String(...) hoặc đổi chữ ký pad2, cả hai đều được. Lỗi TS1484 khi import kiểu: dùng import type. Lỗi ERR_UNSUPPORTED_TYPESCRIPT_SYNTAX: có enum/namespace/parameter properties. Không viết hộ thân hàm.",
+  "tasks": [
+    {
+      "fn": "parseClientMessage",
+      "signature": "parseClientMessage(raw: string): ParseResult",
+      "summary": "unknown → thu hẹp kiểu → union ok/error như N04",
+      "example": "parseClientMessage('{\"type\":\"join\",\"name\":\" An \"}') → { ok: true, msg: { type: 'join', name: 'An' } }",
+      "test_prefix": "parseClientMessage"
+    },
+    {
+      "fn": "describeServerMessage",
+      "signature": "describeServerMessage(msg: ServerMessage): string",
+      "summary": "switch trên msg.type, default kiểu never",
+      "example": "{ type: 'chat', from: 'An', text: 'Chào', ts } → '[09:05] An: Chào'",
+      "test_prefix": "describeServerMessage"
+    },
+    {
+      "fn": "groupBy",
+      "signature": "groupBy<T>(items: readonly T[], keyOf: (item: T) => string): Record<string, T[]>",
+      "summary": "Gom theo khóa, giữ thứ tự, generic",
+      "example": "groupBy([3, 1, 4], (x) => x % 2 ? 'lẻ' : 'chẵn') → { lẻ: [3, 1], chẵn: [4] }",
+      "test_prefix": "groupBy"
+    },
+    {
+      "fn": "report.ts",
+      "signature": "report.ts: sửa 3 lỗi tsc báo (giữ strict, không any)",
+      "summary": "npm run typecheck từ 4 dòng lỗi về 0; summarize chạy đúng",
+      "example": "tin của userId đã xoá → byUser['(không rõ)'] = 1",
+      "test_prefix": "report.ts"
+    }
+  ],
+  "brief": {
+    "context": "TeamPulse đã chạy được chat realtime với heartbeat, xác thực, nhiều instance (P1–P2), toàn bộ bằng JavaScript. P3 đưa sản phẩm lên mức thật: API, database, đăng nhập, Docker, CI.",
+    "problem": "Codebase lớn dần và nhiều người sửa. Các sự cố gần đây đều là lỗi gõ nhầm tên trường, quên trường hợp undefined, truyền sai kiểu — chỉ lộ ra khi người dùng bấm trúng. Đội quyết định chuyển server sang TypeScript, bắt đầu từ giao thức tin nhắn, và dùng tsc chặn lỗi trước khi chạy.",
+    "requirements": [
+      {
+        "task": "parseClientMessage",
+        "purpose": "Đọc tin từ mạng an toàn bằng unknown."
+      },
+      {
+        "task": "describeServerMessage",
+        "purpose": "tsc báo khi thêm loại tin chưa xử lý."
+      },
+      {
+        "task": "groupBy",
+        "purpose": "Tiện ích dùng chung, giữ đúng kiểu."
+      },
+      {
+        "task": "report.ts",
+        "purpose": "Sửa code cũ theo lỗi tsc chỉ ra."
+      }
+    ],
+    "deliverable": "protocol.ts và report.ts qua 6/6 test; npm run typecheck không còn lỗi; npm start in đúng các dòng mẫu.",
+    "constraints": [
+      "Giữ strict trong tsconfig.json; không dùng any, @ts-ignore, @ts-expect-error.",
+      "Chỉ cú pháp xoá được: không enum, namespace, parameter properties.",
+      "Import kiểu bằng import type; import giữa file .ts ghi đuôi .ts.",
+      "Dữ liệu từ JSON.parse nhận bằng unknown rồi kiểm tra."
+    ],
+    "product_nodes": [
+      "chat-protocol",
+      "typed-protocol"
+    ],
+    "workflow": {
+      "flow": "parallel",
+      "inputs": [
+        {
+          "label": "Giao thức tin N04",
+          "detail": "types.ts: union theo trường type"
+        },
+        {
+          "label": "Code báo cáo cũ",
+          "detail": "report.ts có 3 lỗi ẩn"
+        }
+      ],
+      "steps": [
+        {
+          "task": "parseClientMessage",
+          "label": "Đọc tin bằng unknown"
+        },
+        {
+          "task": "describeServerMessage",
+          "label": "Hiển thị tin, switch đủ nhánh"
+        },
+        {
+          "task": "groupBy",
+          "label": "Hàm generic dùng chung"
+        },
+        {
+          "task": "report.ts",
+          "label": "Sửa lỗi tsc báo"
+        }
+      ],
+      "outputs": [
+        {
+          "label": "Giao thức có kiểu",
+          "detail": "6/6 test, typecheck 0 lỗi"
+        },
+        {
+          "label": "Kết quả npm start",
+          "detail": "Tin đã đọc, dòng hiển thị, báo cáo"
+        }
+      ]
+    }
+  }
+}

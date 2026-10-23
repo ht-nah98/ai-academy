@@ -1,0 +1,40 @@
+# Chạy TeamPulse + Postgres thật: docker compose up --build   (dừng: docker compose down)
+services:
+  db:
+    image: postgres:17-alpine            # giữ 17: postgres:18 đổi chỗ lưu dữ liệu, volume dưới đây sẽ không khớp
+    environment:
+      POSTGRES_USER: teampulse
+      POSTGRES_PASSWORD: teampulse_dev     # chỉ cho máy dev; production lấy từ secret
+      POSTGRES_DB: teampulse
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U teampulse -d teampulse"]   # -h 127.0.0.1: chờ cổng TCP thật, không chỉ socket nội bộ
+      interval: 2s
+      timeout: 3s
+      retries: 15
+
+  app:
+    build: .
+    environment:
+      DATABASE_URL: postgres://teampulse:teampulse_dev@db:5432/teampulse
+      PORT: "3116"
+      ALLOWED_ORIGINS: http://localhost:3116,http://127.0.0.1:3116
+      SHUTDOWN_TIMEOUT_MS: "8000"          # < 10 giây Docker chờ trước khi SIGKILL
+    ports:
+      - "3116:3116"
+    depends_on:
+      db:
+        condition: service_healthy
+    # Compose hỏi /ready (readiness: DB trả lời, chưa tắt) — "(healthy)" trong docker compose ps nghĩa là nhận người dùng được.
+    # Compose KHÔNG tự khởi động lại container unhealthy; nền tảng có liveness probe riêng thì trỏ probe đó vào /health.
+    # Node 22 có sẵn fetch nên image không cần curl.
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3116/ready').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+
+volumes:
+  pgdata:

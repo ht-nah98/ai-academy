@@ -1,0 +1,18 @@
+-- 001_init.sql — schema đầu tiên của TeamPulse: người dùng, kênh, tin nhắn.
+-- TODO: viết 3 câu CREATE TABLE và 1 câu CREATE INDEX. Mỗi câu kết thúc bằng ; ở cuối dòng.
+--
+-- users     id          integer, tự sinh (GENERATED ALWAYS AS IDENTITY), khóa chính
+--           name        text, bắt buộc, không trùng, dài 1–32 ký tự (CHECK)
+--           created_at  timestamptz, bắt buộc, mặc định now()
+--
+-- channels  id          như users.id
+--           name        text, bắt buộc, không trùng, khớp biểu thức chính quy ^[a-z0-9-]{2,32}$ (CHECK, toán tử ~)
+--           created_at  như users.created_at
+--
+-- messages  id          như users.id
+--           channel_id  integer, bắt buộc, khóa ngoại tới channels(id); xoá kênh thì xoá luôn tin (ON DELETE CASCADE)
+--           user_id     integer, bắt buộc, khóa ngoại tới users(id)
+--           text        text, bắt buộc, dài 1–2000 ký tự (CHECK)
+--           created_at  như users.created_at
+--
+-- Index trên messages (channel_id, id DESC) cho truy vấn "tin của một kênh, mới nhất trước".

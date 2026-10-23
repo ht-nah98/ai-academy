@@ -232,7 +232,7 @@ def unlock_lesson(course_id: str, lesson_id: str):
     return {"status": all_statuses(course).get(lesson_id)}
 
 
-_CODE_SUFFIXES = {".py", ".md", ".txt", ".json", ".sql", ".yaml", ".yml", ".js", ".mjs", ".cjs", ".html", ".css"}
+_CODE_SUFFIXES = {".py", ".md", ".txt", ".json", ".sql", ".yaml", ".yml", ".js", ".mjs", ".cjs", ".ts", ".mts", ".html", ".css"}
 _SKIP_DIRS = {"__pycache__", "node_modules", ".git", ".pytest_cache"}
 
 

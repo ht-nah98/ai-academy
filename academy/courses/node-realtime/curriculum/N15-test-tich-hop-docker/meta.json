@@ -1,0 +1,125 @@
+{
+  "id": "N15-test-tich-hop-docker",
+  "title": "Test tích hợp + Docker Compose",
+  "goal": "Viết fixture DB sạch và 3 test tích hợp HTTP + WebSocket + PGlite (đăng nhập thật bằng route N14) cho đúng app TeamPulse đã xây ở N11–N14, bắt được 3 app lỗi; đóng gói app bằng Dockerfile và chạy cùng Postgres bằng Docker Compose.",
+  "duration_min": 240,
+  "concepts": [
+    "testing-pyramid",
+    "integration-test-db",
+    "test-fixtures-isolation",
+    "docker-image-container",
+    "docker-compose-healthcheck",
+    "twelve-factor-config"
+  ],
+  "entry": "testkit.ts",
+  "checklist": [
+    "Giải thích được test đơn vị, test tích hợp, test e2e khác nhau ở đâu và vì sao kim tự tháp có đáy rộng",
+    "Kể được một lỗi test đơn vị không bắt được nhưng test tích hợp bắt được",
+    "Giải thích vì sao mỗi test phải bắt đầu từ cùng một trạng thái DB (fixture) và các cách reset (DELETE, TRUNCATE RESTART IDENTITY, DB mới)",
+    "Viết test có đăng nhập: lấy cookie phiên từ /api/login rồi gửi kèm REST và handshake WebSocket",
+    "Test của mình bắt được cả 3 app lỗi của bài chấm",
+    "Giải thích image và container khác nhau thế nào; vì sao 'chạy trên máy tôi được' không đủ",
+    "Đọc hiểu từng dòng Dockerfile: vì sao COPY package*.json trước, npm ci, USER node, HOST=0.0.0.0",
+    "Giải thích depends_on + healthcheck trong compose.yaml và vì sao trong container dùng host 'db' thay vì localhost",
+    "Biết cấu hình nào đặt ở biến môi trường và vì sao không ghi cứng mật khẩu trong code"
+  ],
+  "interview_questions": [
+    "Test đơn vị, test tích hợp và test e2e khác nhau thế nào? Bạn chia tỉ lệ ra sao?",
+    "Bạn viết test tích hợp cho một API có database thế nào? Làm sao để các test không ảnh hưởng nhau?",
+    "Test với PGlite/SQLite trong bộ nhớ thay vì Postgres thật có rủi ro gì? Bạn bù lại thế nào?",
+    "Image và container khác nhau thế nào? Vì sao trong Dockerfile hay COPY package.json trước rồi mới COPY code?",
+    "Vì sao không nên chạy container bằng root?",
+    "depends_on trong Docker Compose có đảm bảo database đã sẵn sàng không?",
+    "12-factor app nói gì về cấu hình? Mật khẩu database nên nằm ở đâu?"
+  ],
+  "tutor_notes": "Bài đầu tiên học viên viết test có DB và đóng gói bằng Docker. App là ĐÚNG TeamPulse sau N14, chép nguyên: db.ts, migrate.ts, migrate-cli.ts, types.ts, store.ts (N12), app.ts (N11), chat-store.ts (N13), auth.ts (N14), server.ts (N14, chỉ thêm biến HOST cho container), demo.ts, migrations 001→004. Học viên viết resetDb, startTestApp trong testkit.ts và 3 test trong integration.test.ts; helper có sẵn: waitForMessage, api (gửi kèm cookie), loginAs (register + login → 'tp_session=...'), connectWs (cookie → hello N13 → gom tin bù tới synced). Bài chấm chép starter chuẩn ra thư mục tạm, chạy integration.test.ts của học viên với app đúng và 3 bản lỗi (chỉ khác mode.json): ws-no-persist (ack + phát nhưng không lưu; bắt bằng test WS → GET), rest-no-broadcast (withBroadcast không phát; bắt bằng test POST → client WS nhận), catchup-off-by-one (gửi bù từ lastSeenId − 1; bắt bằng assert missed đúng [3]). Lỗi hay gặp: (1) resetDb: TRUNCATE riêng từng bảng bị lỗi khoá ngoại (cần một lệnh TRUNCATE cho messages, sessions, users, channels hoặc CASCADE), quên RESTART IDENTITY (test mẫu fail vì id không từ 1), quên users/sessions (loginAs báo 409 username_taken ở test thứ hai), nối chuỗi SQL thay vì $1, chèn kênh sai thứ tự; (2) startTestApp: gọi startServer trước resetDb, import startServer thẳng từ './server.ts' thay vì dùng dòng có TEAMPULSE_APP (bài chấm không đổi được app → 3 test 'bắt được lỗi' fail), quên t.after(app.close) (testkit.test.js báo; bài chấm chạy con với --test-force-exit nên không treo), trả cổng 0; (3) integration.test.ts: gửi trước rồi mới waitForMessage, chờ tin 'message' thay vì 'ack' ở test WS → DB rồi GET quá sớm, chỉ kiểm status, test lastSeenId chỉ kiểm missed.length > 0, dùng sleep, quên đăng nhập (handshake 401). Docker là phần chạy thật tuỳ chọn: thiếu package-lock.json, Docker Desktop chưa chạy (Windows: 'error during connect ... dockerDesktopLinuxEngine'), dùng localhost thay cho tên service db, cổng 3115 bị chiếm. docker compose stop app thoát 0 trong ~0,3 s (server.ts của N14 đã bắt SIGTERM) nhưng WebSocket bị cắt mã 1006 và không có /ready — N16 sửa. Chạy riêng test: node --test --test-name-pattern=\"resetDb\" \"../../curriculum/N15-test-tich-hop-docker/tests/*.test.js\". Không viết hộ thân hàm hay test.",
+  "tasks": [
+    {
+      "fn": "resetDb",
+      "signature": "resetDb(db: Db) → Promise<void>",
+      "summary": "Xoá sạch messages/sessions/users/channels, id đếm lại từ 1, nạp FIXTURE_CHANNELS",
+      "example": "resetDb(db) → channels = general (1), random (2); user, tin mới có id 1",
+      "test_prefix": "resetDb"
+    },
+    {
+      "fn": "startTestApp",
+      "signature": "startTestApp(t, db) → Promise<{ baseUrl, wsUrl, app }>",
+      "summary": "resetDb + startServer({ db, port: 0 }) + t.after(app.close)",
+      "example": "startTestApp(t, db) → { baseUrl: 'http://127.0.0.1:41873', wsUrl: 'ws://127.0.0.1:41873/ws' }",
+      "test_prefix": "startTestApp"
+    },
+    {
+      "fn": "integration.test.ts",
+      "signature": "integration.test.ts: 3 test bạn viết (npm run test:mine)",
+      "summary": "Bắt 3 lỗi: WS không lưu DB, REST không đẩy WS, lastSeenId lặp tin",
+      "example": "app gửi bù từ lastSeenId − 1 → test kết nối lại fail",
+      "test_prefix": "integration.test.ts"
+    }
+  ],
+  "brief": {
+    "context": "TeamPulse đã có REST (N11), Postgres (N12), WebSocket lưu tin và đồng bộ (N13), đăng nhập (N14). Mỗi phần có test riêng, nhưng chưa có test nào chạy cả hệ thống cùng lúc, và app mới chạy được trên máy người viết.",
+    "problem": "Đội chuẩn bị cho đồng nghiệp dùng thử. Hai sự cố gần đây lọt qua mọi test đơn vị: tin gửi qua WebSocket không được lưu, và tin gửi qua REST không tới người đang mở chat. Ngoài ra máy chủ thử nghiệm cần chạy app cùng Postgres bằng một lệnh, không cài tay Node và Postgres.",
+    "requirements": [
+      {
+        "task": "resetDb",
+        "purpose": "Mỗi test bắt đầu từ cùng dữ liệu mẫu."
+      },
+      {
+        "task": "startTestApp",
+        "purpose": "Dựng app thật cổng ngẫu nhiên, tự dọn."
+      },
+      {
+        "task": "integration.test.ts",
+        "purpose": "Bắt lỗi giữa REST, WebSocket và DB."
+      }
+    ],
+    "deliverable": "testkit.ts và integration.test.ts qua 9/9 test chấm (test của bạn pass với app đúng, fail với cả 3 app lỗi); tuỳ chọn: docker compose up chạy TeamPulse + Postgres, đăng nhập và tin nhắn còn sau khi tắt bật.",
+    "constraints": [
+      "Test không cần Docker, Postgres thật hay mạng ngoài: dùng PGlite trong bộ nhớ.",
+      "Mọi server/client/DB mở trong test đều được đóng.",
+      "Không sửa dòng import app có TEAMPULSE_APP trong testkit.ts, không sửa các file app có sẵn.",
+      "Không ghi mật khẩu/URL database cứng trong code: đọc từ biến môi trường."
+    ],
+    "product_nodes": [
+      "integration-tests",
+      "container"
+    ],
+    "workflow": {
+      "flow": "chain",
+      "inputs": [
+        {
+          "label": "TeamPulse N11–N14 có sẵn",
+          "detail": "REST, WebSocket, Postgres, đăng nhập"
+        },
+        {
+          "label": "PGlite trong bộ nhớ",
+          "detail": "Postgres nhúng, không cần cài"
+        }
+      ],
+      "steps": [
+        {
+          "task": "resetDb",
+          "label": "Đưa DB về fixture"
+        },
+        {
+          "task": "startTestApp",
+          "label": "Dựng app cổng 0"
+        },
+        {
+          "task": "integration.test.ts",
+          "label": "Viết test tích hợp"
+        }
+      ],
+      "outputs": [
+        {
+          "label": "Bộ test bắt được lỗi",
+          "detail": "Pass app đúng, fail 3 bản lỗi"
+        },
+        {
+          "label": "Image + compose chạy được",
+          "detail": "docker compose up: app + Postgres"
+        }
+      ]
+    }
+  }
+}

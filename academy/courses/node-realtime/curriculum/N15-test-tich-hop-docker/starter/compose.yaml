@@ -1,0 +1,30 @@
+# Chạy TeamPulse + Postgres thật: docker compose up --build   (dừng: docker compose down)
+services:
+  db:
+    image: postgres:17-alpine            # giữ 17: postgres:18 đổi chỗ lưu dữ liệu, volume dưới đây sẽ không khớp
+    environment:
+      POSTGRES_USER: teampulse
+      POSTGRES_PASSWORD: teampulse_dev     # chỉ cho máy dev; production lấy từ secret
+      POSTGRES_DB: teampulse
+    volumes:
+      - pgdata:/var/lib/postgresql/data    # dữ liệu sống sót qua docker compose down (mất khi down -v)
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U teampulse -d teampulse"]   # -h 127.0.0.1: chờ cổng TCP thật, không chỉ socket nội bộ
+      interval: 2s
+      timeout: 3s
+      retries: 15
+
+  app:
+    build: .
+    environment:
+      DATABASE_URL: postgres://teampulse:teampulse_dev@db:5432/teampulse   # "db" = tên service ở trên
+      PORT: "3115"
+      ALLOWED_ORIGINS: http://localhost:3115,http://127.0.0.1:3115         # trang web được phép gọi API/WebSocket (N14)
+    ports:
+      - "3115:3115"                        # cổng máy bạn : cổng trong container
+    depends_on:
+      db:
+        condition: service_healthy         # chờ Postgres trả lời pg_isready rồi mới chạy app
+
+volumes:
+  pgdata:
